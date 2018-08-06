@@ -38,81 +38,100 @@ def main(mode, filepath):
     fTmp = open(tempFileName, "w+")
 
     fRaw = commentRemover(fRaw_commented.read())
+    # fTmp.write(fRaw)
     rawData = json.loads(fRaw)
 
     newData = {}
-    newData['packets'] = []
+    newData['concurrent'] = []
 
     # expand all outer loops
     loopFound = True
     while loopFound:
         loopFound = False
-        for packet in rawData['packets']:
-            if packet['type'] == "loop":
-                index = packet['start']
-                while index < packet['end']:
-                    for statement in packet['body']:
-                        newData['packets'].append(statement)
-                    index+=1
-                loopFound = True
-            else:
-                newData['packets'].append(packet)
+        for block in rawData['concurrent']:
+            newDataSeq = {}
+            newDataSeq['sequential'] = []
+            for packet in block['sequential']:
+                if packet['type'] == "loop":
+                    index = packet['start']
+                    while index < packet['end']:
+                        for statement in packet['body']:
+                            newDataSeq['sequential'].append(statement)
+                        index+=1
+                    loopFound = True
+                else:
+                    newDataSeq['sequential'].append(packet)
+            newData['concurrent'].append(newDataSeq)
         rawData = newData.copy()
         if loopFound:
             newData = {}
-            newData['packets'] = []
+            newData['concurrent'] = []
 
     rawData = newData.copy()
     newData = {}
-    newData['packets'] = []
+    newData['concurrent'] = []
 
     # expand all inner loops
     loopFound = True
     while loopFound:
         loopFound = False
         innerLoopFound = False
-        for packet in rawData['packets']:
-            for word in packet['payload']:
-                if 'loop' in word:
-                    loopFound = True
-                    innerLoopFound = True
-            if innerLoopFound:
-                packetTmp = packet.copy()
-                del packetTmp['payload']
-                packetTmp['payload'] = []
+        for block in rawData['concurrent']:
+            newDataSeq = {}
+            newDataSeq['sequential'] = []
+            for packet in block['sequential']:
                 for word in packet['payload']:
                     if 'loop' in word:
-                        index = word['loop']['start']
-                        while index < word['loop']['end']:
-                            for statement in word['loop']['body']:
-                                packetTmp['payload'].append(statement)
-                            index+=1
-                    else:
-                        packetTmp['payload'].append(word)
-                newData['packets'].append(packetTmp)
-            else:
-                newData['packets'].append(packet)
-            innerLoopFound = False
+                        loopFound = True
+                        innerLoopFound = True
+                if innerLoopFound:
+                    packetTmp = packet.copy()
+                    del packetTmp['payload']
+                    packetTmp['payload'] = []
+                    for word in packet['payload']:
+                        if 'loop' in word:
+                            index = word['loop']['start']
+                            while index < word['loop']['end']:
+                                for statement in word['loop']['body']:
+                                    packetTmp['payload'].append(statement)
+                                index+=1
+                        else:
+                            packetTmp['payload'].append(word)
+                    newDataSeq['sequential'].append(packetTmp)
+                else:
+                    newDataSeq['sequential'].append(packet)
+                innerLoopFound = False
+            newData['concurrent'].append(newDataSeq)
         rawData = newData.copy()
         if loopFound:
             newData = {}
-            newData['packets'] = []
+            newData['concurrent'] = []
 
     # replace all hex numbers
-    for packet in rawData['packets']:
-        for word in packet['payload']:
-            if not isinstance(word['data'], (int, long)):
-                if word['data'][:2] == "0x":
-                    word['data'] = int(word['data'], 16)
-                else:
-                    word['data'] = int(word['data'])
+    for block in rawData['concurrent']:
+        for packet in block['sequential']:
+            for word in packet['payload']:
+                if not isinstance(word['data'], (int, long)):
+                    if word['data'][:2] == "0x":
+                        word['data'] = int(word['data'], 16)
+                    else:
+                        if word['data'][:2] == "0b":
+                            word['data'] = int(word['data'], 2)
+                        else:
+                            word['data'] = int(word['data'],10)
 
     # replace all the keep values
-    for packet in rawData['packets']:
-        for word in packet['payload']:
-            if 'keep' in word:
-                if word['keep'] == "ALL":
-                    word['keep'] = ((packet['width'] / 8) ** 2) - 1
+    for block in rawData['concurrent']:
+        for packet in block['sequential']:
+            for word in packet['payload']:
+                if 'keep' in word and not isinstance(word['data'], (int, long)):
+                    if word['keep'] == "ALL":
+                        word['keep'] = ((packet['width'] / 8) ** 2) - 1
+                    else:
+                        if word['keep'][:2] == "0x":
+                            word['keep'] = int(word['data'], 16)
+                        else:
+                            word['keep'] = int(word['keep'],10)
 
     json.dump(newData, fTmp, indent=2, sort_keys=False)
 
