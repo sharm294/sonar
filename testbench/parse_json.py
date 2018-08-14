@@ -3,6 +3,9 @@ import sys
 import json
 import re
 
+from utilities import strToInt
+from utilities import extractNumber
+
 # taken from https://gist.github.com/ChunMinChang/88bfa5842396c1fbbc5b
 def commentRemover(text):
     def replacer(match):
@@ -38,8 +41,13 @@ def main(mode, filepath):
     fTmp = open(tempFileName, "w+")
 
     fRaw = commentRemover(fRaw_commented.read())
-    # fTmp.write(fRaw)
-    rawData = json.loads(fRaw)
+    try:
+        rawData = json.loads(fRaw)
+    except ValueError, e:
+        fTmp.write(fRaw)
+        print("Invalid JSON file. Use " + tempFileName + \
+            " to find errors and fix source file.")
+        exit(-1)
 
     newData = {}
     newData['concurrent'] = []
@@ -56,12 +64,12 @@ def main(mode, filepath):
                     index = packet['start']
                     while index < packet['end']:
                         for statement in packet['body']:
-                            newDataSeq['sequential'].append(statement)
+                            newDataSeq['sequential'].append(statement.copy())
                         index+=1
                     loopFound = True
                 else:
-                    newDataSeq['sequential'].append(packet)
-            newData['concurrent'].append(newDataSeq)
+                    newDataSeq['sequential'].append(packet.copy())
+            newData['concurrent'].append(newDataSeq.copy())
         rawData = newData.copy()
         if loopFound:
             newData = {}
@@ -93,15 +101,15 @@ def main(mode, filepath):
                             index = word['loop']['start']
                             while index < word['loop']['end']:
                                 for statement in word['loop']['body']:
-                                    packetTmp['payload'].append(statement)
+                                    packetTmp['payload'].append(statement.copy())
                                 index+=1
                         else:
-                            packetTmp['payload'].append(word)
-                    newDataSeq['sequential'].append(packetTmp)
+                            packetTmp['payload'].append(word.copy())
+                    newDataSeq['sequential'].append(packetTmp.copy())
                 else:
-                    newDataSeq['sequential'].append(packet)
+                    newDataSeq['sequential'].append(packet.copy())
                 innerLoopFound = False
-            newData['concurrent'].append(newDataSeq)
+            newData['concurrent'].append(newDataSeq.copy())
         rawData = newData.copy()
         if loopFound:
             newData = {}
@@ -112,28 +120,28 @@ def main(mode, filepath):
         for packet in block['sequential']:
             for word in packet['payload']:
                 if not isinstance(word['data'], (int, long)):
-                    if word['data'][:2] == "0x":
-                        word['data'] = int(word['data'], 16)
+                    if word['data'][:1] == "{":
+                        word['data'] = strToInt(word['data'])
                     else:
-                        if word['data'][:2] == "0b":
-                            word['data'] = int(word['data'], 2)
-                        else:
-                            word['data'] = int(word['data'],10)
+                       word['data'] = extractNumber(word['data'])
 
     # replace all the keep values
     for block in rawData['concurrent']:
         for packet in block['sequential']:
             for word in packet['payload']:
-                if 'keep' in word and not isinstance(word['data'], (int, long)):
+                if 'keep' in word and not isinstance(word['keep'], (int, long)):
                     if word['keep'] == "ALL":
                         word['keep'] = ((packet['width'] / 8) ** 2) - 1
                     else:
-                        if word['keep'][:2] == "0x":
-                            word['keep'] = int(word['data'], 16)
-                        else:
-                            word['keep'] = int(word['keep'],10)
+                        word['keep'] = extractNumber(word['keep'])
 
-    json.dump(newData, fTmp, indent=2, sort_keys=False)
+    # add id tags to each payload
+    for block in rawData['concurrent']:
+        for packet in block['sequential']:
+            for index, word in enumerate(packet['payload']):
+                word['id'] = packet['id'] + str(index)
+
+    json.dump(rawData, fTmp, indent=2, sort_keys=False)
 
 if __name__ == "__main__":
 
