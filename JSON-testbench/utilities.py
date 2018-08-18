@@ -1,4 +1,27 @@
 import sys
+import os
+
+def getEnvironmentVar(envVar):
+    variable = os.environ.get(envVar)
+    if variable is None:
+        printError(1, envVar + " not defined in env")
+        return None
+    else:
+        return variable
+
+def stripFileName(filename):
+    repoPath = getEnvironmentVar("SHOAL_PATH")
+    if repoPath is None:
+        return None
+    
+    localName = filename.replace(repoPath, '')
+    return localName    
+
+def printWarning(message):
+    print("*** Warning *** : " + message)
+
+def printError(errorCode, message):
+    print("*** Fatal Error *** Code " + str(errorCode) + ": " + message)
 
 def evalMacro(header, macro):
     import subprocess
@@ -67,12 +90,15 @@ def strToInt(packet):
             exit(-1)
 
     elif packetArgs[0] == "AMLongStride":
-        assert (len(packetArgs) == 5),"Invalid number of arguments for AMLongStride"
+        assert (len(packetArgs) == 5 or len(packetArgs) == 4), \
+            "Invalid number of arguments for AMLongStride"
         stride = extractNumber(packetArgs[1])
         blockSize = extractNumber(packetArgs[2]) << 16
         blockNum = extractNumber(packetArgs[3]) << 28
-        token = extractNumber(packetArgs[4]) << 40
-        intVal = stride + blockNum + blockSize + token
+        if(len(packetArgs) == 5):
+            token = extractNumber(packetArgs[4]) << 40
+            intVal += token
+        intVal = stride + blockNum + blockSize
 
     elif packetArgs[0] == "AMHeaderOld":
         assert (len(packetArgs) == 4),"Invalid number of arguments for AMHeaderOld"
