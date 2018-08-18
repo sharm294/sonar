@@ -3,8 +3,11 @@ import sys
 import json
 import re
 
-from utilities import strToInt
-from utilities import extractNumber
+from testbench.utilities import strToInt
+from testbench.utilities import extractNumber
+from testbench.utilities import printError
+from testbench.utilities import printWarning
+from testbench.utilities import stripFileName
 
 # taken from https://gist.github.com/ChunMinChang/88bfa5842396c1fbbc5b
 def commentRemover(text):
@@ -20,23 +23,26 @@ def commentRemover(text):
     )
     return re.sub(pattern, replacer, text)
 
-def main(mode, filepath):
+def parseJSON(mode, filepath):
 
     if mode == "0":
         repoPath = os.environ.get('SHOAL_PATH')
         if repoPath is None:
-            print("Error: SHOAL_PATH not defined in env")
-            exit(-1)
+            printError(1, "SHOAL_PATH not defined in env")
+            exit(1)
         testFileName = repoPath + filepath
     else:
         testFileName = filepath
     if not os.path.isfile(testFileName):
-        print("Error: File " + testFileName + " does not exist")
-        exit(-2)
+        message = "File " + stripFileName(testFileName) + " does not exist"
+        printError(2, message)
+        exit(2)
 
-    tempFileName = testFileName.replace('.json', '_out.json')
+    pathTuple = os.path.split(testFileName)
+    tempFileName = pathTuple[0] + "/build/" + pathTuple[1].replace('.json', '_out.json')
     if os.path.isfile(tempFileName):
-        print("Warning: overwriting existing file " + tempFileName)
+        message = "Overwriting existing file " + stripFileName(tempFileName)
+        printWarning(message)
     fRaw_commented = open(testFileName, "r")
     fTmp = open(tempFileName, "w+")
 
@@ -45,9 +51,10 @@ def main(mode, filepath):
         rawData = json.loads(fRaw)
     except ValueError, e:
         fTmp.write(fRaw)
-        print("Invalid JSON file. Use " + tempFileName + \
-            " to find errors and fix source file.")
-        exit(-1)
+        message = "Invalid JSON file. Use " + stripFileName(tempFileName) + \
+            " to find errors and fix source file."
+        printError(3, message)
+        exit(3)
 
     newData = {}
     newData['concurrent'] = []
@@ -152,4 +159,4 @@ if __name__ == "__main__":
         print("  Filename: JSON file to parse")
         exit(1)
 
-    main(sys.argv[1], sys.argv[2])
+    parseJSON(sys.argv[1], sys.argv[2])
