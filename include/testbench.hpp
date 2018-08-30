@@ -14,7 +14,7 @@
         } \
     }
 #define CHECK_DEBUG \
-    if(keep > 255){ \
+    if(keep > 1023){ \
         switch(hexData){ \
             case 0:{ \
                 PRINT_AXIS \
@@ -35,7 +35,7 @@
         } \
     }
 #else
-#define CHECK_DEBUG if(keep > 255){}
+#define CHECK_DEBUG if(keep > 1023){}
 #endif
 
 #define OPEN_FILE(fileName) \
