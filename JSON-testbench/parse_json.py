@@ -3,34 +3,23 @@ import sys
 import json
 import re
 
-from testbench.utilities import strToInt
-from testbench.utilities import extractNumber
-from testbench.utilities import printError
-from testbench.utilities import printWarning
-from testbench.utilities import stripFileName
-from testbench.utilities import getFilePath
+from utilities import strToInt
+from utilities import extractNumber
+from utilities import printError
+from utilities import printWarning
+from utilities import getFilePath
 
 def expandLoops(rawData, expandingFunction):
     newData = {}
-    # newData['seek'] = rawData['seek']
-    # newData['count'] = rawData['count']
     newData['data'] = []
     loopFound = True
     while loopFound:
         loopFound = False
         for testVector in rawData['data']:
             newData_testVector = {}
-            # if 'count' in testVector:
-            #     newData_testVector['count'] = testVector['count']
-            # if 'seek' in testVector:
-            #     newData_testVector['seek'] = testVector['seek']
             newData_testVector['data'] = []
             for parallelSection in testVector['data']:
                 newData_parallelSection = {}
-                # if 'count' in parallelSection:
-                #     newData_testVector['count'] = parallelSection['count']
-                # if 'seek' in parallelSection:
-                #     newData_testVector['seek'] = parallelSection['seek']
                 newData_parallelSection['data'] = []
                 for packet in parallelSection['data']:
                     newData_parallelSection['data'], loopFound = expandingFunction(packet, \
@@ -40,8 +29,6 @@ def expandLoops(rawData, expandingFunction):
         rawData = newData.copy()
         if loopFound:
             newData = {}
-            # newData['seek'] = rawData['seek']
-            # newData['count'] = rawData['count']
             newData['data'] = []
     rawData = newData.copy()
 
@@ -72,7 +59,7 @@ def convertKeep(packet):
 def convertData(packet):
     if 'type' in packet:
         packetType = packet['type']
-        if packetType == 'axis' or packetType == 'csim':
+        if packetType == 'axis':
             for word in packet['payload']:
                 if not isinstance(word['data'], (int, long)):
                     if word['data'][:1] == "{":
@@ -149,7 +136,16 @@ def resolveInnerLoop(packet, sequence, loopFound):
         sequence.append(packet.copy())
     return sequence, loopFound
 
-# taken from https://gist.github.com/ChunMinChang/88bfa5842396c1fbbc5b
+### commentRemover ###
+# This function removes all C-style comments (// and /* */) from a JSON file.
+# Since comments are not allowed in JSON, they must be removed initially. This 
+# function is adapted from https://gist.github.com/ChunMinChang/88bfa5842396c1fbbc5b
+#
+# Arguments:
+#   text: the read text from a file
+#
+# Return: the text with all comments replaced with spaces
+
 def commentRemover(text):
     def replacer(match):
         s = match.group(0)
@@ -163,9 +159,27 @@ def commentRemover(text):
     )
     return re.sub(pattern, replacer, text)
 
-def parseJSON(mode, filepath):
+### parseJSON ###
+# This function parses and expands the user-specified JSON file into a valid,
+# generic JSON file that can be used to generate test data files. The generated 
+# JSON file is free of comments, integer strings and other user abstractions 
+# available in the user JSON
+#
+# Arguments:
+#   mode: must be one of "env", "path", or "absolute". 
+#       - "env" considers modeArg as an environment variable and appends the 
+#           filepath to it
+#       - "path" considers modeArg as a path and appends the filepath to it
+#       - "absolute" ignores modeArg and uses the filepath alone
+#   modeArg: a string argument used in conjunction with mode
+#   filepath: a string argument for the file to check
+#
+# Return: N/A. Writes the new valid JSON file in a build/ subdirectory in the 
+#   same directory as the source JSON file
+#TODO tie printing warnings to a verbosity flag or a quiet flag
+def parseJSON(mode, modeArg, filepath):
 
-    testFileName = getFilePath(mode, filepath)
+    testFileName = getFilePath(mode, modeArg, filepath)
     if testFileName is None:
         exit(1)
 
@@ -174,7 +188,7 @@ def parseJSON(mode, filepath):
         os.makedirs(pathTuple[0] + "/build/")
     tempFileName = pathTuple[0] + "/build/" + pathTuple[1].replace('.json', '_out.json')
     if os.path.isfile(tempFileName):
-        message = "Overwriting existing file " + stripFileName(tempFileName)
+        message = "Overwriting existing file " + filepath
         printWarning(message)
     fRaw_commented = open(testFileName, "r")
     fTmp = open(tempFileName, "w+")
@@ -184,7 +198,7 @@ def parseJSON(mode, filepath):
         rawData = json.loads(fRaw)
     except ValueError, e:
         fTmp.write(fRaw)
-        message = "Invalid JSON file. Use " + stripFileName(tempFileName) + \
+        message = "Invalid JSON file. Use " + filepath + \
             " to find errors and fix source file."
         printError(3, message)
         exit(3)
@@ -193,7 +207,7 @@ def parseJSON(mode, filepath):
 
     expandLoops(rawData, innerLoops)
 
-    # add count and seek values
+    # add count and seek values that are used with systemverilog testbenches
     for testVector in rawData['data']:
         for parallelSection in testVector['data']:
             sv_count = 0
@@ -228,33 +242,24 @@ def parseJSON(mode, filepath):
         rawData['count'] = sv_count
         rawData['seek'] = [0] * sv_count
 
-    # replace all hex numbers in data
     for testVector in rawData['data']:
         for parallelSection in testVector['data']:
             for packet in parallelSection['data']:
-                convertData(packet)
-
-    # replace all the keep values
-    for testVector in rawData['data']:
-        for parallelSection in testVector['data']:
-            for packet in parallelSection['data']:
-                convertKeep(packet)
-
-    # add id tags to each payload
-    for testVector in rawData['data']:
-        for parallelSection in testVector['data']:
-            for packet in parallelSection['data']:
-                addID(packet)
+                convertData(packet) # replace all string numbers in data
+                convertKeep(packet) # replace all the keep values
+                addID(packet) # add ID tags to each payload
 
     json.dump(rawData, fTmp, indent=2, sort_keys=False)
 
 if __name__ == "__main__":
 
-    if (len(sys.argv) != 3):
-        print("Usage: python parse_json.py mode filename")
-        print("  Mode: 0 - use relative path from Shoal repo root")
-        print("        1 - use absolute file path")
-        print("  Filename: JSON file to parse")
+    if (len(sys.argv) != 4):
+        print("Usage: python parse_json.py mode modeArg filename")
+        print("  mode: env - use relative path from an environment variable")
+        print("        path - use relative path from a string")
+        print("        absolute - use absolute filepath")
+        print("  modeArg: environment variable or path string. None otherwise")
+        print("  filename: JSON file to parse")
         exit(1)
 
-    parseJSON(sys.argv[1], sys.argv[2])
+    parseJSON(sys.argv[1], sys.argv[2], sys.argv[3])

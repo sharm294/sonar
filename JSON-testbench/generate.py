@@ -2,10 +2,10 @@ import os
 import json
 import sys
 
-from testbench.utilities import printError
-from testbench.utilities import trimFinalLine
-from testbench.utilities import getFilePath
-from testbench.parse_json import parseJSON
+from utilities import printError
+from utilities import trimFinalLine
+from utilities import getFilePath
+from parse_json import parseJSON
 
 def calculateSeeks(testData_sv, repeatCount, updateStr, seekStr, countStr, converged):
     i = 0
@@ -60,8 +60,9 @@ def writeLine_c(dataFile_c, packet):
                     str(word['last']) + " " + str(word['callTB']) + " " + \
                     str(word['keep']) + " " + str(word['id'])+"\n")
         elif packetType == 'end':
-            dataFile_c.write("end " + " " + \
-                '0x{0:0{1}X}'.format(packet['value'], 8) + " 0 0 0")
+            dataFile_c.write("end " + \
+                '0x{0:0{1}X}'.format(packet['value'], 8) + " 0 0 0 " + 
+                    str(packet['id'])+"\n")
     else:
         for packet2 in packet:
             writeLine_c(dataFile_c, packet2)
@@ -92,11 +93,11 @@ def writeLine_sv(dataFile_sv, packet):
         for packet2 in packet:
             writeLine_sv(dataFile_sv, packet2)
 
-def generate(mode, filepath):
+def generate(mode, modeArg, filepath):
 
-    parseJSON(mode, filepath)
+    parseJSON(mode, modeArg, filepath)
 
-    testFileName = getFilePath(mode, filepath)
+    testFileName = getFilePath(mode, modeArg, filepath)
     if testFileName is None:
         exit(1)
 
@@ -167,14 +168,14 @@ def generate(mode, filepath):
 if __name__ == "__main__":
     for arg in sys.argv:
         if arg == "-h" or arg == "--help":
-            print("Usage: python generate.py mode filename")
-            print("Arguments: ")
-            print("  mode: 0 - use relative path from Shoal repo root")
-            print("        1 - use absolute file path")
-            print("  filename - name of the file to parse")
-            exit(1)
+            print("Usage: python generate.py mode modeArg filename")
+            print("  mode: env - use relative path from an environment variable")
+            print("        path - use relative path from a string")
+            print("        absolute - use absolute filepath")
+            print("  modeArg: environment variable or path string. None otherwise")
+            print("  filename: JSON file to parse")
 
-    if (len(sys.argv) == 3):
-        generate(sys.argv[1], sys.argv[2])
+    if (len(sys.argv) == 4):
+        generate(sys.argv[1], sys.argv[2], sys.argv[3])
     else:
         print("Incorrect number of arguments. Use -h or --help")

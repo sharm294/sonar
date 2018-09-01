@@ -1,49 +1,117 @@
 import sys
 import os
 
-def getFilePath(mode, filepath):
-    if mode == "0":
-        repoPath = getEnvironmentVar('SHOAL_PATH')
-        if repoPath is None:
+### GetFilePath ###
+# This function checks if a file exists and returns the absolute path to it
+# 
+# Arguments:
+#   mode: must be one of "env", "path", or "absolute". 
+#       - "env" considers modeArg as an environment variable and appends the 
+#           filepath to it
+#       - "path" considers modeArg as a path and appends the filepath to it
+#       - "absolute" ignores modeArg and uses the filepath alone
+#   modeArg: a string argument used in conjunction with mode
+#   filepath: a string argument for the file to check
+#
+# Return: a string containing the absolute path of the filename if found. None 
+#   otherwise.
+def getFilePath(mode, modeArg, filepath):
+    if mode == "env":
+        if modeArg is None:
+            printError(1, "getFilePath - the mode argument must not be None for env")
             return None
         else:
-            testFileName = repoPath + filepath
+            path = getEnvironmentVar(modeArg)
+            if path is None:
+                printError(1, "getFilePath - environment variable not found: " + modeArg)
+                return None
+    elif mode == "path":
+        if modeArg is None:
+            printError(1, "getFilePath - the mode argument must not be None for path")
+            return None
+        path = modeArg
+    elif mode == "absolute":
+        path = ""
     else:
-        testFileName = filepath
+        printError(1, "getFilePath - unknown mode option: " + mode)
+        return None
+
+    testFileName = path + filepath
 
     if not os.path.isfile(testFileName):
-        message = "File " + stripFileName(testFileName) + " does not exist"
+        message = "getFilePath - file does not exist: " + filePath
         printError(2, message)
         return None
     else:
         return testFileName
 
-def trimFinalLine(filename):
-    filename.seek(0, os.SEEK_END) #move to end of file
-    pos = filename.tell()
-    while pos > 0 and filename.read(1) != "\n": #traverse back until \n
+### trimFinalLine ###
+# This function removes the final line from a file
+#
+# Arguments:
+#   openFile: an open file object to trim
+#
+# Return: N/A
+def trimFinalLine(openFile):
+    openFile.seek(0, os.SEEK_END) #move to end of file
+    pos = openFile.tell()
+    while pos > 0 and openFile.read(1) != "\n": #traverse back until \n
         pos -= 1
-        filename.seek(pos, os.SEEK_SET)
+        openFile.seek(pos, os.SEEK_SET)
 
     if pos > 0: #if we're not at the start, delete chars ahead
-        filename.seek(pos, os.SEEK_SET)
-        filename.truncate()
+        openFile.seek(pos, os.SEEK_SET)
+        openFile.truncate()
 
+### getEnvironmentVar ###
+# This function evaluates an environment variable and returns its value
+#
+# Arguments:
+#   envVar: environment variable to evaluate (string)
+#
+# Return: environment variable value (string) or None (if not found)
 def getEnvironmentVar(envVar):
     variable = os.environ.get(envVar)
     if variable is None:
-        printError(1, envVar + " not defined in env")
+        printError(1, "getEnvironmentVar - environment variable not found: " + variable)
         return None
     else:
         return variable
 
-def stripFileName(filename):
-    repoPath = getEnvironmentVar("SHOAL_PATH")
-    if repoPath is None:
-        return None
-    
-    localName = filename.replace(repoPath, '')
-    return localName    
+### stripFileName ###
+# This function strips the unnecessary parts of the absolute path of a file to 
+# improve legibility
+#
+# Arguments:
+#   mode: must be one of "env" or "path"
+#       - "env" considers modeArg as an environment variable and strips it
+#       - "path" considers modeArg as a string and strips it
+#   modeArg: a string argument used in conjunction with mode
+#   filepath: a string argument for the filepath to strip
+#
+# Return: the stripped filepath (string) or None (if error)
+#TODO delete if no longer needed
+# def stripFileName(mode, modeArg, filename):  
+#     if mode == "env":
+#         if modeArg is None:
+#             printError(1, "stripFileName - the mode argument must not be None for env")
+#             return None
+#         else:
+#             stripHeader = getEnvironmentVar(modeArg)
+#             if stripHeader is None:
+#                 printError(1, "stripFileName - environment variable not found: " + modeArg)
+#                 return None
+#     elif mode == "path":
+#         if modeArg is None:
+#             printError(1, "stripFileName - the mode argument must not be None for path")
+#             return None
+#         stripHeader = modeArg
+#     else:
+#         printError(1, "stripFileName - unknown mode option: " + mode)
+#         return None
+
+#     localName = filename.replace(stripHeader, '')
+#     return localName
 
 def printWarning(message):
     print("*** Warning *** : " + message)
@@ -51,18 +119,14 @@ def printWarning(message):
 def printError(errorCode, message):
     print("*** Fatal Error *** Code " + str(errorCode) + ": " + message)
 
-def evalMacro(header, macro):
-    import subprocess
-
-    command = "g++ -I$SHOAL_PATH/share/include \
-        -I$SHOAL_VIVADO_HLS -I$SHOAL_PATH/GASCore/include \
-        $SHOAL_PATH/share/src/eval_macro.cpp -w \
-        -include $SHOAL_PATH/" + header + " -DMACRO_VALUE=" + \
-        macro + " -o $SHOAL_PATH/share/build/bin/eval_macro"
-
-    subprocess.call(command, shell=True)
-    return subprocess.check_output("$SHOAL_PATH/share/build/bin/eval_macro", shell=True)
-
+### extractNumber ###
+# This function converts a(n encoded) string into an integer.
+#
+# Arguments:
+#   numberStr: the string to convert
+#
+# Return: the integer. May raise an error if an unhandled case occurs
+#TODO handle exceptions for graceful exit
 def extractNumber(numberStr):
     if not isinstance(numberStr, (int, long)):
         if numberStr[:2] == "0x":
@@ -86,7 +150,18 @@ def extractNumber(numberStr):
     else:
         return int(numberStr, 10)
 
-#This assumes the format {type,arg0,arg1,...,argn}
+### strToInt ###
+# This function converts a defined packed structure into an integer by 
+# appropriately bitshifting and concatenating the different fields. New fields
+# can be added as needed.
+#
+# Arguments:
+#   packet: the string to convert. Must be in the format:
+#       - {type,arg0,arg1,...,argn} for implicit conversion
+#       - {type,name0:arg0,name1:arg1...namen:argn} for named conversion
+#
+# Return: the evaluated integer. May raise an error if an unhandled case occurs
+#TODO enforce data size checking for arguments
 def strToInt(packet):
     packetArgs = packet[1:-1].split(",")
     intVal = 0
@@ -287,9 +362,8 @@ if __name__ == "__main__":
         if arg == "-h" or arg == "--help":
             print("Usage: python utilities.py [function] [args...]")
             print("Functions: ")
-            print("   strToInt - <{type,arg0,arg1...argn}>, returns int")
-            print("   extractNumber - <number string>, returns int")
-            print("   evalMacro - <header, macro>, returns int")
+            print("   strToInt {type,arg0,arg1...argn}, returns int")
+            print("   extractNumber number string, returns int")
             exit(1)
 
     if (len(sys.argv) > 1):
@@ -297,8 +371,6 @@ if __name__ == "__main__":
             print(strToInt(sys.argv[2]))
         elif sys.argv[1] == "extractNumber" and len(sys.argv) == 3:
             print(extractNumber(sys.argv[2]))
-        elif sys.argv[1] == "evalMacro" and len(sys.argv) == 4:
-            print(evalMacro(sys.argv[2], sys.argv[3]))
         else:
             print("Unknown flags. Use -h or --help")
     else:

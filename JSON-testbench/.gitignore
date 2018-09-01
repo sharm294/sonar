@@ -5,6 +5,8 @@ vivado*.log
 vivado*.jou
 *_out.json
 *.pyc
+build/
+.vscode/
 
 # Prerequisites
 *.d

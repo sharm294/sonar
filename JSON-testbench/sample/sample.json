@@ -1,0 +1,98 @@
+{
+  "data": [
+    {
+      "data": [
+        {
+          "data": [
+            {
+              "type": "delay", "interface": "ns", "value": 100, "id": "Delay-1-"
+            },{
+              "type": "axis", "interface": "axis_input", "width": 32, "id": "Input-1-",
+              "payload": [
+                {"data": "0xABCD","keep": "ALL","last": 0,"callTB": 1}
+              ]
+            },{
+              "type": "wait", "interface": "ack", "value": 1, "id": "Wait-1-"
+            },{
+              "type": "axis", "interface": "axis_input", "width": 32, "id": "Input-2-",
+              "payload": [
+                {"data": "0sdbgContinue","keep":1024,"last":0,"callTB":1},
+                {"data": "0x0000","keep": "ALL","last": 0,"callTB": 1}
+              ]
+            },{
+              "type": "wait", "interface": "ack", "value": 1, "id": "Wait-2-"
+            },{
+              "type": "axis", "interface": "axis_input", "width": 32, "id": "Input-3-",
+              "payload": [
+                {"data": "0sdbgContinue","keep":1024,"last":0,"callTB":1}
+              ]
+            }           
+          ]
+        },{
+          "data": [
+            {
+              "type": "axis", "interface": "axis_output", "width": 32, "id": "Output-1-",
+              "payload": [
+                {"data": "0sdbgContinue","keep":1024,"last":0,"callTB":1},
+                {"data": "0x0001","keep": "ALL","last": 0,"callTB": 0}
+              ]
+            },{
+              "type": "end", "interface": "vector0", "value": 0, "id": "End"
+            }
+          ]
+        },{
+          "data": [
+            {
+              "type": "signal", "interface": "rst_n", "value": 0, "id": "Reset-1-"
+            },{
+              "type": "delay", "interface": "ns", "value": 50, "id": "Delay-1-"
+            },{
+              "type": "signal", "interface": "rst_n", "value": 1, "id": "Reset-1-"
+            }
+          ]
+        }
+      ]
+    },{
+      "data": [
+        {
+          "data": [
+            {
+              "type": "axis", "interface": "axis_input", "width": 32, "id": "Input-1-",
+              "payload": [
+                {"data": "0xABCD","keep": "ALL","last": 0,"callTB": 1}
+              ]
+            },{
+              "type": "wait", "interface": "ack", "value": 1, "id": "Wait-1-"
+            },{
+              "type": "axis", "interface": "axis_input", "width": 32, "id": "Input-2-",
+              "payload": [
+                {"data": "0sdbgContinue","keep":1024,"last":0,"callTB":1},
+                {"data": "0x0000","keep": "ALL","last": 0,"callTB": 1}
+              ]
+            },{
+              "type": "wait", "interface": "ack", "value": 1, "id": "Wait-2-"
+            },{
+              //TODO make new type for debug / control statements
+              "type": "axis", "interface": "axis_input", "width": 32, "id": "Input-3-",
+              "payload": [
+                {"data": "0sdbgContinue","keep":1024,"last":0,"callTB":1}
+              ]
+            }           
+          ]
+        },{
+          "data": [
+            {
+              "type": "axis", "interface": "axis_output", "width": 32, "id": "Output-1-",
+              "payload": [
+                {"data": "0sdbgContinue","keep":1024,"last":0,"callTB":1},
+                {"data": "0x0001","keep": "ALL","last": 0,"callTB": 0}
+              ]
+            },{
+              "type": "end", "interface": "vector1", "value": 1, "id": "End"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
