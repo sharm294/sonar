@@ -6,6 +6,7 @@ vivado*.jou
 share/build/
 *_out.json
 *.pyc
+.vscode/
 
 # Prerequisites
 *.d
