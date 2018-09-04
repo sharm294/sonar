@@ -3,7 +3,7 @@
 *.code-workspace
 vivado*.log
 vivado*.jou
-share/build/
+*/build
 *_out.json
 *.pyc
 .vscode/

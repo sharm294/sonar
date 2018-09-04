@@ -4,7 +4,7 @@
 //needed for a stupid HLS bug where it searches the system headers before the 
 //Vivado ones during cosim. This is apparently a known issue in at least 2017.2 
 //for designs that use fixed point.
-#include "/media/sharm294/HDD_1TB/Xilinx/Vivado_HLS/2017.2/include/gmp.h"
+// #include "/media/sharm294/HDD_1TB/Xilinx/Vivado_HLS/2017.2/include/gmp.h"
 
 #include "ap_int.h"
 
