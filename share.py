@@ -1,14 +1,32 @@
+import sys
+
+### evalMacro ###
+# This function will print the value of a numeric macro defined in a C/C++ 
+# header file and return it for use within the Python environment
+# 
+# Arguments:
+#   header: absolute path to the header file containing the macro
+#   macro: the name of the macro to evaluate (case sensitive)
+#
+# Return: integer value of the macro
 def evalMacro(header, macro):
     import subprocess
 
-    command = "g++ -I$SHOAL_PATH/share/include \
-        -I$SHOAL_VIVADO_HLS -I$SHOAL_PATH/GASCore/include \
-        $SHOAL_PATH/share/src/eval_macro.cpp -w \
-        -include $SHOAL_PATH/" + header + " -DMACRO_VALUE=" + \
-        macro + " -o $SHOAL_PATH/share/build/bin/eval_macro"
+    command = "g++ $SHOAL_SHARE_PATH/src/eval_macro.cpp -w \
+        -I$SHOAL_SHARE_PATH/include -I$SHOAL_VIVADO_HLS \
+        -include " + header + " -DMACRO_VALUE=" + \
+        macro + " -o $SHOAL_SHARE_PATH/build/bin/eval_macro"
 
-    subprocess.call(command, shell=True)
-    return subprocess.check_output("$SHOAL_PATH/share/build/bin/eval_macro", shell=True)
+    try:
+        subprocess.check_output(command, shell=True)
+    except subprocess.CalledProcessError as e:
+        print("Error code", e.returncode, e.output)
+        exit(1)
+    
+    try:
+        subprocess.check_output("$SHOAL_SHARE_PATH/build/bin/eval_macro", shell=True)
+    except subprocess.CalledProcessError as e:
+        return e.returncode
 
 if __name__ == "__main__":
 

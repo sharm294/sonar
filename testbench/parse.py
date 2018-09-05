@@ -188,7 +188,10 @@ def parseJSON(mode, modeArg, filepath):
         os.makedirs(pathTuple[0] + "/build/")
     tempFileName = pathTuple[0] + "/build/" + pathTuple[1].replace('.json', '_out.json')
     if os.path.isfile(tempFileName):
-        message = "Overwriting existing file " + filepath
+        if mode == "env":
+            message = "Overwriting existing file $" + modeArg + filepath
+        else:
+            message = "Overwriting existing file $" + tempFileName
         printWarning(message)
     fRaw_commented = open(testFileName, "r")
     fTmp = open(tempFileName, "w+")

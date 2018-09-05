@@ -5,7 +5,7 @@ import sys
 from utilities import printError
 from utilities import trimFinalLine
 from utilities import getFilePath
-from parse_json import parseJSON
+from parse import parseJSON
 
 def calculateSeeks(testData_sv, repeatCount, updateStr, seekStr, countStr, converged):
     i = 0
@@ -161,6 +161,8 @@ def generate(mode, modeArg, filepath):
 
     trimFinalLine(dataFile_c)
     trimFinalLine(dataFile_sv)
+
+    dataFile_c.write("\nfinish 0 0 0 0 0") #fixes reading fixed point reading issue
 
     dataFile_c.close()
     dataFile_sv.close()

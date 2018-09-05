@@ -39,7 +39,7 @@ def getFilePath(mode, modeArg, filepath):
     testFileName = path + filepath
 
     if not os.path.isfile(testFileName):
-        message = "getFilePath - file does not exist: " + filePath
+        message = "testFileName - file does not exist: " + testFileName
         printError(2, message)
         return None
     else:

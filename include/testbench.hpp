@@ -38,10 +38,10 @@
 #define CHECK_DEBUG if(keep > 1023){}
 #endif
 
-#define OPEN_FILE(fileName) \
-    char const* tmp_repo_path = std::getenv("SHOAL_PATH"); \
+#define OPEN_FILE(env, fileName) \
+    char const* tmp_repo_path = std::getenv(env); \
     if(tmp_repo_path == NULL){ \
-        std::cout << "SHOAL_PATH not set in environment\n"; \
+        std::cout << "Environment variable not set\n"; \
         return -1; \
     } \
     std::string repo_path(tmp_repo_path); \

@@ -17,20 +17,20 @@ SHELL := bash
 # Variables
 ###############################################################################
 
-SHOAL_SHARE_PATH = "/home/sharm294/Documents/masters/git_repos/shoal/shoal-share"
-SHOAL_VIVADO_HLS_INC = "/media/sharm294/HDD_1TB/Xilinx/Vivado_HLS/2017.2/include"
+shoal_share_path = /home/sharm294/Documents/masters/git_repos/shoal-share
+shoal_vivado_hls = /media/sharm294/HDD_1TB/Xilinx/Vivado_HLS/2017.2/include
 
-sample_dir = $(SHOAL_SHARE_PATH)/sample
+testbench_dir = $(SHOAL_SHARE_PATH)/testbench
+sample_dir = $(testbench_dir)/sample
 sample_obj_dir = $(sample_dir)/build
 sample_bin_dir = $(sample_obj_dir)/bin
-JSON_testbench_dir = $(SHOAL_SHARE_PATH)/JSON-testbench
 
-obj = $(shell find $(sample_obj_dir) -name '*.o' -printf '%f\n' | \
+obj = $(shell find $(sample_obj_dir)/ -name '*.o' -printf '%f\n' | \
 sort -k 1nr | cut -f2-)
 dep = $(obj:%.o=$(obj_dir)/%.d)
 
 CC = g++
-CFLAGS = -g -Wall -I./include -I$(SHOAL_VIVADO_HLS_INC) \
+CFLAGS = -g -Wall -I$(SHOAL_SHARE_PATH)/include -I$(SHOAL_VIVADO_HLS) \
 	-Wno-unknown-pragmas -Wno-comment -MMD -MP
 
 ###############################################################################
@@ -44,13 +44,15 @@ CFLAGS = -g -Wall -I./include -I$(SHOAL_VIVADO_HLS_INC) \
 #------------------------------------------------------------------------------
 
 sample: $(sample_bin_dir)/sample_tb
-	python $(JSON_testbench_dir)/generate.py absolute None $(JSON_testbench_dir)/sample/sample.json
-	$(sample_bin_dir)/sample_tb
+	@python $(testbench_dir)/generate.py env SHOAL_SHARE_PATH /testbench/sample/sample.json
+	@$(sample_bin_dir)/sample_tb
 
 init:
+	mkdir -p $(shoal_share_path)/build
+	mkdir -p $(shoal_share_path)/build/bin
 	mkdir -p $(sample_obj_dir)
 	mkdir -p $(sample_bin_dir)
-	./init.sh $(SHOAL_SHARE_PATH) $(SHOAL_VIVADO_HLS_INC)
+	./init.sh $(shoal_share_path) $(shoal_vivado_hls)
 
 hw:
 	$(sample_dir)/sample.sh

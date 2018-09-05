@@ -2,6 +2,7 @@
 
 repoPath=$1
 vivadoPath=$2
+configFile = ~/.shoal
 
 if [[ -f ${repoPath}/.initialized ]]; then
   echo "Initialization already run!"
@@ -10,32 +11,30 @@ fi
 
 touch ${repoPath}/.initialized
 
-GASCORE_PATH=${GIT_PATH}/GASCore
-SHARE_PATH=${GIT_PATH}/share
-
-echo "" >> ~/.bashrc
-echo "#--- Begin: added by SHOAL-SHARE ---#" >> ~/.bashrc
+echo "" >> configFile
+echo "#--- Begin: added by SHOAL-SHARE ---#" >> configFile
 
 if [[ -z "${SHOAL_SHARE_PATH}" ]]; then
-  echo "export SHOAL_SHARE_PATH=$repoPath" >> ~/.bashrc
+  echo "export SHOAL_SHARE_PATH=$repoPath" >> configFile
 fi
 
 if [[ -z "${SHOAL_VIVADO_HLS_INC}" ]]; then
-  echo "export SHOAL_VIVADO_HLS_INC=$vivadoPath" >> ~/.bashrc
+  echo "export SHOAL_VIVADO_HLS_INC=$vivadoPath" >> configFile
 fi
-echo "" >> ~/.bashrc
+echo "" >> configFile
 
-echo 'if [[ -z "$PYTHONPATH" ]]; then' >> ~/.bashrc
-echo '  export PYTHONPATH=$SHOAL_SHARE_PATH' >> ~/.bashrc
-echo "else" >> ~/.bashrc
-echo '  for x in $SHOAL_SHARE_PATH; do' >> ~/.bashrc
-echo '    case ":$PYTHONPATH:" in' >> ~/.bashrc
-echo '      *":$x:"*) :;; # already there' >> ~/.bashrc
-echo '      *) PYTHONPATH="$x:$PYTHONPATH";;' >> ~/.bashrc
-echo "    esac" >> ~/.bashrc
-echo "  done" >> ~/.bashrc
-echo "fi" >> ~/.bashrc
-echo "#--- End: added by SHOAL-SHARE ---#" >> ~/.bashrc
-echo "" >> ~/.bashrc
+echo 'if [[ -z "$PYTHONPATH" ]]; then' >> configFile
+echo '  export PYTHONPATH=$SHOAL_SHARE_PATH' >> configFile
+echo "else" >> configFile
+echo '  for x in $SHOAL_SHARE_PATH; do' >> configFile
+echo '    case ":$PYTHONPATH:" in' >> configFile
+echo '      *":$x:"*) :;; # already there' >> configFile
+echo '      *) PYTHONPATH="$x:$PYTHONPATH";;' >> configFile
+echo "    esac" >> configFile
+echo "  done" >> configFile
+echo "fi" >> configFile
+echo "#--- End: added by SHOAL-SHARE ---#" >> configFile
+echo "" >> configFile
 
+echo "source $configFile #added by shoal-share" >> ~/.bashrc
 source ~/.bashrc

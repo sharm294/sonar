@@ -4,7 +4,7 @@
 #include "sample.hpp"
 #include "testbench.hpp"
 
-#define DAT_FILE "/GASCore/testbench/build/sample_c.dat" //relative to repo root
+#define DAT_FILE "/testbench/sample/build/sample_c.dat" //relative to repo root
 
 #define CALL_TB sample(axis_input, axis_output,ack, &state_out);
 
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]){
     uint_64_t readData;
     uint_1_t readLast;
 
-    OPEN_FILE(testData)
+    OPEN_FILE("SHOAL_SHARE_PATH", testData)
 
     std::cout << "\n*** Starting SAMPLE_TB ***\n\n";
 
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]){
                 READ_WORD(axis_word, readData, readLast, axis_output)
             }
         }
-        else if(key.compare("END") == 0){
+        else if(key.compare("end") == 0){
             if(!valid){
                 std::cout << "Test " << std::hex << hexData << " failed\n";
             }
@@ -67,6 +67,9 @@ int main(int argc, char* argv[]){
                 std::cout << "Test " << std::hex << hexData << " successful\n";
             }
             valid = true;
+        }
+        else if(key.compare("finish") == 0){
+            break;
         }
         else{
             std::cout << "Unknown key: " << key << "\n";
@@ -88,7 +91,8 @@ int main(int argc, char* argv[]){
                     readLast << "id: " << id << "\n";
             }
         }
-        else if(key.compare("END") != 0 && callEnable == 1){
+        
+        if(callEnable == 1){
             CALL_TB
         }
     }
