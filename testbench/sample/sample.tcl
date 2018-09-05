@@ -6,7 +6,7 @@ set Flow        ""
 set Clock       4.0
 set DefaultFlag 1
 
-set local_include -I${::env(SHOAL_SHARE_PATH)}/sample
+set local_include -I${::env(SHOAL_SHARE_PATH)}/testbench/sample
 set share_include -I${::env(SHOAL_SHARE_PATH)}/include
 append include local_include " " share_include
 

@@ -17,8 +17,15 @@ SHELL := bash
 # Variables
 ###############################################################################
 
-shoal_share_path = /home/sharm294/Documents/masters/git_repos/shoal-share
-shoal_vivado_hls = /media/sharm294/HDD_1TB/Xilinx/Vivado_HLS/2017.2/include
+ifeq ($(SHOAL_SHARE_PATH),)
+	$(error SHOAL_SHARE_PATH not set in env -- must be set to the absolute \
+	path of of the share repository root. Did you run init.sh?)
+endif
+
+ifeq ($(SHOAL_VIVADO_HLS),)
+	$(error SHOAL_VIVADO_HLS not set in env -- must be set to the absolute \
+	path of of the Vivado HLS include/ directory. Did you run init.sh?)
+endif
 
 testbench_dir = $(SHOAL_SHARE_PATH)/testbench
 sample_dir = $(testbench_dir)/sample
@@ -37,7 +44,7 @@ CFLAGS = -g -Wall -I$(SHOAL_SHARE_PATH)/include -I$(SHOAL_VIVADO_HLS) \
 # Body
 ###############################################################################
 
-.PHONY: init sample hw clean
+.PHONY: sample hw clean
 
 #------------------------------------------------------------------------------
 # Main
@@ -46,13 +53,6 @@ CFLAGS = -g -Wall -I$(SHOAL_SHARE_PATH)/include -I$(SHOAL_VIVADO_HLS) \
 sample: $(sample_bin_dir)/sample_tb
 	@python $(testbench_dir)/generate.py env SHOAL_SHARE_PATH /testbench/sample/sample.json
 	@$(sample_bin_dir)/sample_tb
-
-init:
-	mkdir -p $(shoal_share_path)/build
-	mkdir -p $(shoal_share_path)/build/bin
-	mkdir -p $(sample_obj_dir)
-	mkdir -p $(sample_bin_dir)
-	./init.sh $(shoal_share_path) $(shoal_vivado_hls)
 
 hw:
 	$(sample_dir)/sample.sh

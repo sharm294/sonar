@@ -1,25 +1,38 @@
 #!/bin/bash
 
-repoPath=$1
-vivadoPath=$2
+if [[ $# !=  3 ]]; then
+    echo "Usage: init.sh dependenceMode /abs/path/to/shoal/repository /abs/path/to/vivado_hls/include"
+    echo "  dependenceMode: 0 (independent repo) or 1 (submodule of shoal)"
+    exit 1
+fi
+
+mode=$1
+repoPath=$2
+vivadoPath=$3
 configFile = ~/.shoal
 
-if [[ -f ${repoPath}/.initialized ]]; then
+if [[ mode == 0 && -f configFile ]]; then
   echo "Initialization already run!"
   exit
 fi
 
-touch ${repoPath}/.initialized
+if [[ mode == 0]]; then
+  touch configFile
+fi
+
+mkdir -p $repoPath/build
+mkdir -p $repoPath/build/bin
+mkdir -p $repoPath/testbench/sample/build
+mkdir -p $repoPath/testbench/sample/build/bin
+mkdir -p $repoPath/testbench/sample/build/vivado_hls
 
 echo "" >> configFile
 echo "#--- Begin: added by SHOAL-SHARE ---#" >> configFile
 
-if [[ -z "${SHOAL_SHARE_PATH}" ]]; then
-  echo "export SHOAL_SHARE_PATH=$repoPath" >> configFile
-fi
+echo "export SHOAL_SHARE_PATH=$repoPath" >> configFile
 
-if [[ -z "${SHOAL_VIVADO_HLS_INC}" ]]; then
-  echo "export SHOAL_VIVADO_HLS_INC=$vivadoPath" >> configFile
+if [[ mode == 0 ]]; then
+  echo "export SHOAL_VIVADO_HLS=$vivadoPath" >> configFile
 fi
 echo "" >> configFile
 
@@ -36,5 +49,7 @@ echo "fi" >> configFile
 echo "#--- End: added by SHOAL-SHARE ---#" >> configFile
 echo "" >> configFile
 
-echo "source $configFile #added by shoal-share" >> ~/.bashrc
-source ~/.bashrc
+if [[ mode == 0 ]]; then
+  echo "source $configFile #added by shoal" >> ~/.bashrc
+  source ~/.bashrc
+fi
