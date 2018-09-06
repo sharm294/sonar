@@ -17,4 +17,4 @@ This provides a JSON-based testbenching infrastructure for CSim and SV. The user
 
 ## Dependencies
 
-Vivado and Vivado HLS are assumed to be on the PATH. The scripts have been tested on Bash, with Python 2.7 and Vivado 2017.2 on Ubuntu 16.04
+Vivado and Vivado HLS are assumed to be on the PATH. The scripts have been tested on Bash, with Python 2.7 and Vivado 2017.2 on Ubuntu 16.04. Two environment variables are also added: SHOAL_VIVADO_HLS and SHOAL_SHARE_PATH
