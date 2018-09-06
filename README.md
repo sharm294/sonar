@@ -12,6 +12,8 @@ This provides a JSON-based testbenching infrastructure for CSim and SV. The user
 * ``sample.sh``: creates the HLS project by calling ``sample.tcl``
 * ``sample.tcl``: creates an HLS project for ``sample.cpp``
 
+A Vivado project for sample can be created by adding the .v file from HLS, the systemverilog testbench, axis_interface.sv and sample_sv.dat to the project. Note that the files must be in the same directory.
+
 ## Usage
 ``source init.sh`` with the correct arguments (run without args for help) to initialize repository. Then use the appropriate make commands or run scripts as needed. ``make sample`` and ``make hw`` are two examples.
 
