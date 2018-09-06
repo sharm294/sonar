@@ -13,7 +13,7 @@ This provides a JSON-based testbenching infrastructure for CSim and SV. The user
 * ``sample.tcl``: creates an HLS project for ``sample.cpp``
 
 ## Usage
-``source init.sh`` with the correct arguments (run without args for help) to initialize repository. Then use the appropriate make commands or run scripts as needed.
+``source init.sh`` with the correct arguments (run without args for help) to initialize repository. Then use the appropriate make commands or run scripts as needed. ``make sample`` and ``make hw`` are two examples.
 
 ## Dependencies
 
