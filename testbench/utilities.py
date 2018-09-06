@@ -90,28 +90,27 @@ def getEnvironmentVar(envVar):
 #   filepath: a string argument for the filepath to strip
 #
 # Return: the stripped filepath (string) or None (if error)
-#TODO delete if no longer needed
-# def stripFileName(mode, modeArg, filename):  
-#     if mode == "env":
-#         if modeArg is None:
-#             printError(1, "stripFileName - the mode argument must not be None for env")
-#             return None
-#         else:
-#             stripHeader = getEnvironmentVar(modeArg)
-#             if stripHeader is None:
-#                 printError(1, "stripFileName - environment variable not found: " + modeArg)
-#                 return None
-#     elif mode == "path":
-#         if modeArg is None:
-#             printError(1, "stripFileName - the mode argument must not be None for path")
-#             return None
-#         stripHeader = modeArg
-#     else:
-#         printError(1, "stripFileName - unknown mode option: " + mode)
-#         return None
+def stripFileName(mode, modeArg, filename):  
+    if mode == "env":
+        if modeArg is None:
+            printError(1, "stripFileName - the mode argument must not be None for env")
+            return None
+        else:
+            stripHeader = getEnvironmentVar(modeArg)
+            if stripHeader is None:
+                printError(1, "stripFileName - environment variable not found: " + modeArg)
+                return None
+    elif mode == "path":
+        if modeArg is None:
+            printError(1, "stripFileName - the mode argument must not be None for path")
+            return None
+        stripHeader = modeArg
+    else:
+        printError(1, "stripFileName - unknown mode option: " + mode)
+        return None
 
-#     localName = filename.replace(stripHeader, '')
-#     return localName
+    localName = filename.replace(stripHeader, '')
+    return localName
 
 def printWarning(message):
     print("*** Warning *** : " + message)

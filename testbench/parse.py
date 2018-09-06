@@ -8,6 +8,7 @@ from utilities import extractNumber
 from utilities import printError
 from utilities import printWarning
 from utilities import getFilePath
+from utilities import stripFileName
 
 def expandLoops(rawData, expandingFunction):
     newData = {}
@@ -18,9 +19,17 @@ def expandLoops(rawData, expandingFunction):
         for testVector in rawData['data']:
             newData_testVector = {}
             newData_testVector['data'] = []
+            if 'data' not in testVector:
+                print('The data key not found in dict:')
+                print(testVector)
+                raise KeyError
             for parallelSection in testVector['data']:
                 newData_parallelSection = {}
                 newData_parallelSection['data'] = []
+                if 'data' not in parallelSection:
+                    print('\nFATAL ERROR\n')
+                    print(json.dumps(parallelSection, indent=2))
+                    raise KeyError('The data key not found in dict')
                 for packet in parallelSection['data']:
                     newData_parallelSection['data'], loopFound = expandingFunction(packet, \
                         newData_parallelSection['data'], loopFound)
@@ -30,7 +39,9 @@ def expandLoops(rawData, expandingFunction):
         if loopFound:
             newData = {}
             newData['data'] = []
-    rawData = newData.copy()
+
+    return rawData
+    #rawData = newData.copy()
 
 def addID(packet):
     if 'type' in packet:
@@ -189,7 +200,7 @@ def parseJSON(mode, modeArg, filepath):
     tempFileName = pathTuple[0] + "/build/" + pathTuple[1].replace('.json', '_out.json')
     if os.path.isfile(tempFileName):
         if mode == "env":
-            message = "Overwriting existing file $" + modeArg + filepath
+            message = "Overwriting existing file $" + modeArg + stripFileName(mode, modeArg, tempFileName)
         else:
             message = "Overwriting existing file $" + tempFileName
         printWarning(message)
@@ -206,9 +217,9 @@ def parseJSON(mode, modeArg, filepath):
         printError(3, message)
         exit(3)
 
-    expandLoops(rawData, outerLoops)
+    rawData = expandLoops(rawData, outerLoops)
 
-    expandLoops(rawData, innerLoops)
+    rawData = expandLoops(rawData, innerLoops)
 
     # add count and seek values that are used with systemverilog testbenches
     for testVector in rawData['data']:
