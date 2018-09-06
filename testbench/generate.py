@@ -72,7 +72,7 @@ def writeLine_sv(dataFile_sv, packet):
         packetType = packet['type']
         if packetType == 'axis':
             for word in packet['payload']:
-                if word['keep'] < 1024: #exclude debug statements
+                if word['keep'] == 0: #exclude debug statements
                     dataFile_sv.append(packetType + " " + packet['interface']+ " " + \
                         str(word['data']) + " " + \
                         str(word['last']) + " " + \

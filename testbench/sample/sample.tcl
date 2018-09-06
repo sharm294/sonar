@@ -6,9 +6,10 @@ set Flow        ""
 set Clock       4.0
 set DefaultFlag 1
 
-set local_include -I${::env(SHOAL_SHARE_PATH)}/testbench/sample
+set sample_dir ${::env(SHOAL_SHARE_PATH)}/testbench/sample
+set local_include -I$sample_dir
 set share_include -I${::env(SHOAL_SHARE_PATH)}/include
-append include local_include " " share_include
+append include $local_include " " $share_include
 
 #### main part
 
@@ -16,10 +17,10 @@ append include local_include " " share_include
 open_project $Project -reset
 
 # Add the file for synthesis
-add_files sample.cpp -cflags $include
+add_files $sample_dir/sample.cpp -cflags $include
 
 # Add testbench files for co-simulation
-add_files -tb sample_tb.cpp -cflags $include
+add_files -tb $sample_dir/sample_tb.cpp -cflags $include
 
 # Set top module of the design
 set_top sample

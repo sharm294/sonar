@@ -17,14 +17,14 @@ SHELL := bash
 # Variables
 ###############################################################################
 
-ifeq ($(SHOAL_SHARE_PATH),)
-	$(error SHOAL_SHARE_PATH not set in env -- must be set to the absolute \
-	path of of the share repository root. Did you run init.sh?)
+ifndef SHOAL_SHARE_PATH
+$(error SHOAL_SHARE_PATH not set in env -- must be set to the absolute \
+path of of the share repository root. Did you source init.sh?)
 endif
 
-ifeq ($(SHOAL_VIVADO_HLS),)
-	$(error SHOAL_VIVADO_HLS not set in env -- must be set to the absolute \
-	path of of the Vivado HLS include/ directory. Did you run init.sh?)
+ifndef SHOAL_VIVADO_HLS
+$(error SHOAL_VIVADO_HLS not set in env -- must be set to the absolute \
+path of of the Vivado HLS include/ directory. Did you source init.sh?)
 endif
 
 testbench_dir = $(SHOAL_SHARE_PATH)/testbench
@@ -83,3 +83,7 @@ $(sample_obj_dir)/sample.o: $(sample_dir)/sample.cpp
 
 clean: 
 	@$(RM) $(sample_obj_dir)/*.o $(sample_obj_dir)/*.d $(sample_bin_dir)/*
+
+purge: clean
+	@rm -rf ~/.shoal
+	@sed -i '/added by shoal/d' ~/.bashrc
