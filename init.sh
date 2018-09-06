@@ -26,6 +26,7 @@ mkdir -p $repoPath/build/bin
 mkdir -p $repoPath/testbench/sample/build
 mkdir -p $repoPath/testbench/sample/build/bin
 mkdir -p $repoPath/testbench/sample/build/vivado_hls
+mkdir -p $repoPath/testbench/sample/build/vivado
 
 echo "" >> $configFile
 echo "#--- Begin: added by SHOAL-SHARE ---#" >> $configFile

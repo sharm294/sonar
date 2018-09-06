@@ -25,7 +25,7 @@
 //filename for the input data file
 string dataFileName = "sample_sv.dat";
 
-localparam CLOCK_PERIOD = 20ns
+localparam CLOCK_PERIOD = 20ns;
 localparam MAX_DATA_SIZE = 64; //max width of the data to be read/writtn
 localparam MAX_VECTORS = 5; //number of test vectors
 localparam MAX_PARALLEL = 3;  //max number of parallel sections in any vector
