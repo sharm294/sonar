@@ -28,6 +28,8 @@ mkdir -p $repoPath/testbench/sample/build/bin
 mkdir -p $repoPath/testbench/sample/build/vivado_hls
 mkdir -p $repoPath/testbench/sample/build/vivado
 
+sudo apt-get install python-yaml
+
 echo "" >> $configFile
 echo "#--- Begin: added by SHOAL-SHARE ---#" >> $configFile
 

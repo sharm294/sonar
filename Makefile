@@ -51,7 +51,7 @@ CFLAGS = -g -Wall -I$(SHOAL_SHARE_PATH)/include -I$(SHOAL_VIVADO_HLS) \
 #------------------------------------------------------------------------------
 
 sample: $(sample_bin_dir)/sample_tb
-	@python $(testbench_dir)/generate.py env SHOAL_SHARE_PATH /testbench/sample/sample.json
+	@python $(testbench_dir)/generate_tb.py env SHOAL_SHARE_PATH /testbench/sample/sample.yaml
 	@$(sample_bin_dir)/sample_tb
 
 hw:

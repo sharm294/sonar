@@ -41,7 +41,7 @@ config_rtl -reset state -reset_level low
 #################
 # C SIMULATION
 #################
-csim_design
+#csim_design
 
 #############
 # SYNTHESIS #

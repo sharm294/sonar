@@ -72,7 +72,7 @@ def writeLine_sv(dataFile_sv, packet):
         packetType = packet['type']
         if packetType == 'axis':
             for word in packet['payload']:
-                if word['keep'] == 0: #exclude debug statements
+                if word['keep'] != 0: #exclude debug statements
                     dataFile_sv.append(packetType + " " + packet['interface']+ " " + \
                         str(word['data']) + " " + \
                         str(word['last']) + " " + \
@@ -86,6 +86,9 @@ def writeLine_sv(dataFile_sv, packet):
         elif packetType == 'delay':
             dataFile_sv.append("delay " + str(packet['interface']) + " " + \
                 str(packet['value']) + " 0 0")
+        elif packetType == 'timestamp':
+            dataFile_sv.append("timestamp " + str(packet['interface']) + " " + \
+                str(packet['value']) + " 0 0")
         elif packetType == 'end':
             dataFile_sv.append("end " + str(packet['interface']) + " " + \
                 str(packet['value']) + " 0 0")
@@ -95,24 +98,16 @@ def writeLine_sv(dataFile_sv, packet):
 
 def generate(mode, modeArg, filepath):
 
-    parseJSON(mode, modeArg, filepath)
-
-    testFileName = getFilePath(mode, modeArg, filepath)
-    if testFileName is None:
-        exit(1)
-
-    pathTuple = os.path.split(testFileName)
-    if not os.path.exists(pathTuple[0] + "/build/"):
-        os.makedirs(pathTuple[0] + "/build/")
-    outFileName = pathTuple[0] + "/build/" + pathTuple[1].replace('.json', '_out.json')
-
+    outFileName = parseJSON(mode, modeArg, filepath)
     try:
-        testFile = json.load(open(outFileName, "r"))
+        with open(outFileName, "r") as outFile:
+            testFile = json.load(outFile)
     except ValueError, e:
         printError(1, "Unable to open JSON file. See errors above")
         exit(1)
 
-    currentDirectory = pathTuple[0] + "/build/" + pathTuple[1].replace('.json', '')
+    pathTuple = os.path.split(outFileName)
+    currentDirectory = pathTuple[0] + "/" + pathTuple[1].replace('_out.json', '')
 
     filename_c = currentDirectory + "_c.dat"
     filename_sv = currentDirectory + "_sv.dat"

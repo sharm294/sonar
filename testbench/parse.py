@@ -185,7 +185,7 @@ def commentRemover(text):
 #   modeArg: a string argument used in conjunction with mode
 #   filepath: a string argument for the file to check
 #
-# Return: N/A. Writes the new valid JSON file in a build/ subdirectory in the 
+# Return: Path of file created. Writes the new valid JSON file in a build/ subdirectory in the 
 #   same directory as the source JSON file
 #TODO tie printing warnings to a verbosity flag or a quiet flag
 def parseJSON(mode, modeArg, filepath):
@@ -195,9 +195,7 @@ def parseJSON(mode, modeArg, filepath):
         exit(1)
 
     pathTuple = os.path.split(testFileName)
-    if not os.path.exists(pathTuple[0] + "/build/"):
-        os.makedirs(pathTuple[0] + "/build/")
-    tempFileName = pathTuple[0] + "/build/" + pathTuple[1].replace('.json', '_out.json')
+    tempFileName = pathTuple[0] + "/" + pathTuple[1].replace('.json', '_out.json')
     if os.path.isfile(tempFileName):
         if mode == "env":
             message = "Overwriting existing file $" + modeArg + stripFileName(mode, modeArg, tempFileName)
@@ -227,15 +225,17 @@ def parseJSON(mode, modeArg, filepath):
             sv_count = 0
             for packet in parallelSection['data']:
                 if packet['type'] == "delay" or packet['type'] == "wait" or \
-                    packet['type'] == "signal" or packet['type'] == 'end':
+                    packet['type'] == "signal" or packet['type'] == 'end' or \
+                    packet['type'] == "timestamp":
                     sv_count += 1
                 elif packet['type'] == 'axis':
-                    svPacket = False
+                    svPacket = 0
                     for payload in packet['payload']:
-                        if not payload['data'].startswith("0s"):
-                            svPacket = True
-                    if svPacket:
-                        sv_count += 1
+                        if isinstance(payload['data'], (int, long)):
+                            svPacket += 1
+                        elif not payload['data'].startswith("0s"):
+                            svPacket += 1
+                    sv_count += svPacket
             if sv_count > 0:
                 parallelSection['count'] = sv_count
 
@@ -264,6 +264,10 @@ def parseJSON(mode, modeArg, filepath):
                 addID(packet) # add ID tags to each payload
 
     json.dump(rawData, fTmp, indent=2, sort_keys=False)
+    
+    fRaw_commented.close()
+    fTmp.close()
+    return tempFileName
 
 if __name__ == "__main__":
 

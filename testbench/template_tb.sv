@@ -1,45 +1,34 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
+`timescale #TIMESCALE#
+////////////////////////////////////////////////////////////////////////////////
+// Company: #COMPANY#
+// Engineer: #ENGINEER#
 // 
-// Create Date: 08/22/2018 09:57:31 PM
-// Design Name: 
-// Module Name: sample_tb
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
+// Create Date: #CURR_DATE#
+// Module Name: #MODULE_NAME#
+// Project Name: #PROJECT_NAME#
+// Target Devices: #TARGET_DEVICES#
+// Tool Versions: #TOOL_VERSIONS#
+// Description: #DESCRIPTION#
 // 
-// Dependencies: 
+// Dependencies: #DEPENDENCIES#
 // 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 //defines the axis interfaces
 `include "axis_interface.sv"
 
 //filename for the input data file
-string dataFileName = "sample_sv.dat";
+string dataFileName = #DATA_FILE#;
 
-localparam CLOCK_PERIOD = 20ns;
-localparam MAX_DATA_SIZE = 64; //max width of the data to be read/writtn
-localparam MAX_VECTORS = 5; //number of test vectors
-localparam MAX_PARALLEL = 3;  //max number of parallel sections in any vector
+localparam MAX_DATA_SIZE = #MAX_DATA_SIZE#; //max width of the data to be read/writtn
+localparam MAX_VECTORS = #MAX_VECTORS#; //number of test vectors
+localparam MAX_PARALLEL = #MAX_PARALLEL#;  //max number of parallel sections in any vector
 localparam MAX_SEEK_SIZE = 64; //base 2 log of the max number to fseek
-localparam MAX_KEEP_SIZE = 4; //max width of the keep field in axis
+localparam MAX_KEEP_SIZE = #MAX_KEEP_SIZE#; //max width (bits) of the keep field in axis
 
 //This module provides the stimulus for the DUT by reading the data file
 module exerciser (
-    output logic clock,
-    output logic rst_n,
-
-    input ack,
-    axi_stream.axis_m_mp AXIS_M,
-    axi_stream.axis_s_mp AXIS_S
+    #EXERCISER_PORTS#
 );
 
     logic [MAX_SEEK_SIZE-1:0] parallelSections [MAX_PARALLEL];
@@ -60,17 +49,13 @@ module exerciser (
     );
         
         if (packetType_par == "wait") begin
-            if(interfaceType_par == "ack") begin
-                wait(ack == tdata);
-            end
+            #IF_ELSE_WAIT#
             else begin
                 $display({"Unhandled case for wait type: ", interfaceType_par});
             end
         end
         else if (packetType_par == "signal") begin
-            if(interfaceType_par == "rst_n") begin
-                rst_n = tdata;
-            end
+            #IF_ELSE_SIGNAL#
             else begin
                 $display({"Unhandled case for signal type: ", 
                     interfaceType_par});
@@ -85,23 +70,15 @@ module exerciser (
                     interfaceType_par});
             end
         end
+        else if (packetType_par == "timestamp") begin
+            $display("%s: %t", interfaceType_par, $time);
+        end
         else if(packetType_par == "end") begin
+            $display("Test vector %d complete", tdata);
             done = 1'b1;
         end
-        else if (interfaceType_par == "axis_input") begin
-            AXIS_M.tvalid = 1'b1;
-            AXIS_M.tdata = tdata;
-            AXIS_M.tlast = tlast;
-            @(posedge clock iff AXIS_M.tready)
-            @(posedge clock)
-            AXIS_M.tvalid = '0;
-        end
-        else if (interfaceType_par == "axis_output") begin
-            @(posedge clock iff AXIS_S.tready && AXIS_S.tvalid)
-            assert(AXIS_S.tdata == tdata);
-            assert(AXIS_S.tlast == tlast);
-        end
-        
+        #ELSE_IF_AXIS_IN#
+        #ELSE_IF_AXIS_OUT#
         else begin
             $display({"Unhandled case: ", packetType_par, " " , 
                 interfaceType_par});
@@ -114,12 +91,7 @@ module exerciser (
     ***************************************************************************/
 
     //clock generation
-    initial begin
-        clock = 0;
-        forever begin
-            #(CLOCK_PERIOD/2) clock <= ~clock;
-        end
-    end
+    #INITIAL_CLOCK#
     
     int vectorCount;
 
@@ -132,11 +104,6 @@ module exerciser (
 
         int dataFile_0;
         int parallelSectionCount;
-
-        AXIS_M.tvalid = 1'b0;
-        AXIS_M.tdata = 1'b0;
-        AXIS_M.tlast = 1'b0;
-        AXIS_S.tready = 1'b1;
 
         dataFile_0 = $fopen(dataFileName, "r");
         status = $fscanf(dataFile_0, "%s %s %d\n", packetType, interfaceType, 
@@ -159,7 +126,7 @@ module exerciser (
                     updateEnd = 1;
                     wait(|testVectorEnd == 1);
                     updateEnd = 0;
-                    @(posedge clock)
+                    @(posedge #VECTOR_CLOCK#)
                     for(int z = 0; z < MAX_PARALLEL; z++) begin
                         parallelSections[z] = 0;
                     end
@@ -199,7 +166,7 @@ module exerciser (
                             packetType_par, interfaceType_par, packetCount);
                         for(int k = 0; k < packetCount; k++) begin
                             status_par = $fscanf(dataFile, "%s %s %d %d %d\n", 
-                                packetType_par, interfaceType_par , tdata, 
+                                packetType_par, interfaceType_par, tdata, 
                                 tlast, tkeep);
 
                             evaluateData(tdata, tlast, tkeep, packetType_par,
@@ -215,76 +182,20 @@ module exerciser (
    
 endmodule
 
-module sample_tb();
+module am_rx_tb();
 
-    logic clock;
-    logic rst_n;
-
-    logic ack;
-    logic [2:0] state_out;
-
-    logic [MAX_DATA_SIZE-1:0] input_tdata;
-    logic input_tlast;
-    logic input_tready;
-    logic input_tvalid;
-
-    logic [MAX_DATA_SIZE-1:0] output_tdata;
-    logic output_tlast;
-    logic output_tready;
-    logic output_tvalid;
+    #TB_SIGNAL_LIST#
 
     //initialize interfaces
-    axi_stream master(
-        .aclk(clock)
-    );
+    #TB_AXIS_LIST#
+
+    #EXERCISER_INT#
     
-    axi_stream slave(
-        .aclk(clock)
-    );
-
-    axis_m master_m(
-        .AXIS_M(master),
-        .tdata(input_tdata),
-        .tvalid(input_tvalid),
-        .tlast(input_tlast),
-        .tready(input_tready)
-    );
-
-    axis_s slave_s(
-        .AXIS_S(slave),
-        .tdata(output_tdata),
-        .tvalid(output_tvalid),
-        .tlast(output_tlast),
-        .tready(output_tready)
-    );
-
-    exerciser exerciser_i(
-        .clock(clock),
-        .ack(ack),
-        .rst_n(rst_n),
-        .AXIS_M(master),
-        .AXIS_S(slave)
-    );
-
     always_comb begin
-        master_m.write();
-        slave_s.read();
+        #AXIS_ASSIGN#
     end
 
     //initialize DUT
-    sample sample_i(
-        .ack_V(ack),
-        .ap_clk(clock),
-        .ap_rst_n(rst_n),
-        .axis_input_TDATA(input_tdata),
-        .axis_input_TLAST(input_tlast),
-        .axis_input_TREADY(input_tready),
-        .axis_input_TVALID(input_tvalid),
-        .axis_output_TDATA(output_tdata),
-        .axis_output_TLAST(output_tlast),
-        .axis_output_TREADY(output_tready),
-        .axis_output_TVALID(output_tvalid),
-        .state_out_V(state_out)
-    );
+    #DUT_INST#
 
 endmodule

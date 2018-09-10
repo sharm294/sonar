@@ -1,0 +1,69 @@
+################################################################################
+# JSON-Testbench Configuration File
+################################################################################
+
+# Optional Meta Data #
+Company: 
+Engineer: 
+Project_Name: 
+Target_Devices: 
+Tool_Versions: 
+Description: 
+Dependencies: 
+
+# Required Data #
+Module_Name: sample
+Timescale: 1ns / 1ps #the default timescale of the simulation
+
+################################################################################
+
+# DUT #
+DUT:
+  - {direction: input, name: ap_clk, type: clock, period: 20ns}
+  - {direction: input, name: ap_rst_n}
+  - {direction: output, size: 3, name: state_out_V}
+  - {direction: master, name: axis_output, type: axis, clock: ap_clk, interface: [
+      {name: "TDATA", type: "tdata", size: 64},
+      {name: "TVALID", type: "tvalid"},
+      {name: "TREADY", type: "tready"},
+      {name: "TLAST", type: "tlast"}
+    ]}
+  - {direction: slave, name: axis_input, type: axis, clock: ap_clk, interface: [
+      {name: "TDATA", type: "tdata", size: 64},
+      {name: "TVALID", type: "tvalid"},
+      {name: "TREADY", type: "tready"},
+      {name: "TLAST", type: "tlast"}
+    ]}
+  - {direction: output, name: ack_V}
+
+Test_Vectors:
+  - Test_Vector_0:
+    - Parallel_Section_0:
+      - macro: INIT_SIGNALS
+      - delay: 50ns
+      - signal: [{name: ap_rst_n, value: 1}, {name: "axis_output_TREADY", value: 1}]
+    - Parallel_Section_1:
+      - delay: 100ns
+      - timestamp: Start
+      - axis: {name: axis_input, payload: [
+        {data: "0xABCD", keep: "ALL", callTB: 1}
+      ]}
+      - wait: {key: "ack", value: 1}
+      - axis: {name: axis_input, payload: [
+        {data: 0sdbgContinue, callTB: 1},
+        {data: "0", callTB: 1}
+      ]}
+      - wait: {key: "ack", value: 1}
+      - axis: {name: axis_input, payload: [
+        {data: 0sdbgContinue, callTB: 1}
+      ]}
+    - Parallel_Section_2:
+      - axis: {name: axis_output, payload: [
+        {data: 0sdbgContinue, callTB: 1},
+        {data: 1, callTB: 1}
+      ]}
+      - timestamp: End
+      - macro: END
+
+Wait_Conditions:
+  - {condition: "wait(ack_V == $value);", key: "ack"}
