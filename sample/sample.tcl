@@ -6,9 +6,9 @@ set Flow        ""
 set Clock       4.0
 set DefaultFlag 1
 
-set sample_dir ${::env(SHOAL_SHARE_PATH)}/testbench/sample
+set sample_dir ${::env(SONAR_PATH)}/sample
 set local_include -I$sample_dir
-set share_include -I${::env(SHOAL_SHARE_PATH)}/include
+set share_include -I${::env(SONAR_PATH)}/include
 append include $local_include " " $share_include
 
 #### main part

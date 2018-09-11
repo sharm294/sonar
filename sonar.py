@@ -14,7 +14,7 @@ from generate import generate
 #TODO make seek size programmatic
 #TODO add comments
 #TODO clean up code and add functions
-def generate_tb(mode, modeArg, filepath):
+def sonar(mode, modeArg, filepath):
     userFileName = getFilePath(mode, modeArg, filepath)
     if userFileName is None:
         exit(1)
@@ -26,7 +26,7 @@ def generate_tb(mode, modeArg, filepath):
     dataFileName = buildPath + pathTuple[1].replace('.yaml', '.json')
     tbFileName_sv = buildPath + pathTuple[1].replace('.yaml', '_tb.sv')
 
-    templateTB_sv = getFilePath("env", "SHOAL_SHARE_PATH", "/testbench/template_tb.sv")
+    templateTB_sv = getFilePath("env", "SONAR_PATH", "/include/template_tb.sv")
 
     dataFile = open(dataFileName, "w+")
     yamlFile = open(userFileName, "r")
@@ -510,7 +510,7 @@ def generate_tb(mode, modeArg, filepath):
 if __name__ == "__main__":
     for arg in sys.argv:
         if arg == "-h" or arg == "--help":
-            print("Usage: python generate_tb.py mode modeArg filename")
+            print("Usage: python sonar.py mode modeArg filename")
             print("  mode: env - use relative path from an environment variable")
             print("        path - use relative path from a string")
             print("        absolute - use absolute filepath")
@@ -518,6 +518,6 @@ if __name__ == "__main__":
             print("  filename: user file to read")
 
     if (len(sys.argv) == 4):
-        generate_tb(sys.argv[1], sys.argv[2], sys.argv[3])
+        sonar(sys.argv[1], sys.argv[2], sys.argv[3])
     else:
         print("Incorrect number of arguments. Use -h or --help")

@@ -17,18 +17,17 @@ SHELL := bash
 # Variables
 ###############################################################################
 
-ifndef SHOAL_SHARE_PATH
-$(error SHOAL_SHARE_PATH not set in env -- must be set to the absolute \
+ifndef SONAR_PATH
+$(error SONAR_PATH not set in env -- must be set to the absolute \
 path of of the share repository root. Did you source init.sh?)
 endif
 
-ifndef SHOAL_VIVADO_HLS
-$(error SHOAL_VIVADO_HLS not set in env -- must be set to the absolute \
+ifndef SONAR_VIVADO_HLS
+$(error SONAR_VIVADO_HLS not set in env -- must be set to the absolute \
 path of of the Vivado HLS include/ directory. Did you source init.sh?)
 endif
 
-testbench_dir = $(SHOAL_SHARE_PATH)/testbench
-sample_dir = $(testbench_dir)/sample
+sample_dir = $(SONAR_PATH)/sample
 sample_obj_dir = $(sample_dir)/build
 sample_bin_dir = $(sample_obj_dir)/bin
 
@@ -37,21 +36,21 @@ sort -k 1nr | cut -f2-)
 dep = $(obj:%.o=$(obj_dir)/%.d)
 
 CC = g++
-CFLAGS = -g -Wall -I$(SHOAL_SHARE_PATH)/include -I$(SHOAL_VIVADO_HLS) \
+CFLAGS = -g -Wall -I$(SONAR_PATH)/include -I$(SONAR_VIVADO_HLS) \
 	-Wno-unknown-pragmas -Wno-comment -MMD -MP
 
 ###############################################################################
 # Body
 ###############################################################################
 
-.PHONY: sample hw clean
+.PHONY: sample hw clean purge
 
 #------------------------------------------------------------------------------
 # Main
 #------------------------------------------------------------------------------
 
 sample: $(sample_bin_dir)/sample_tb
-	@python $(testbench_dir)/generate_tb.py env SHOAL_SHARE_PATH /testbench/sample/sample.yaml
+	@python $(SONAR_PATH)/sonar.py env SONAR_PATH /sample/sample.yaml
 	@$(sample_bin_dir)/sample_tb
 
 hw:
@@ -85,5 +84,5 @@ clean:
 	@$(RM) $(sample_obj_dir)/*.o $(sample_obj_dir)/*.d $(sample_bin_dir)/*
 
 purge: clean
-	@rm -rf ~/.shoal
-	@sed -i '/added by shoal/d' ~/.bashrc
+	@rm -rf ~/.sonar
+	@sed -i '/added by sonar/d' ~/.bashrc
