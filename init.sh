@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ $# !=  3 ]]; then
+if [[ $# !=  2 ]]; then
     echo "Usage: init.sh /abs/path/to/repository /abs/path/to/vivado_hls/include"
     return 0
 fi
@@ -9,15 +9,13 @@ repoPath=$1
 vivadoPath=$2
 configFile=~/.sonar
 
-if [[ $mode == 0 && -f $configFile ]]; then
+if [[ -f $configFile ]]; then
   echo "Initialization already run!"
   return 0
 fi
 
-if [[ $mode == 0 ]]; then
-  touch $configFile
-  echo "#!/bin/bash" >> $configFile
-fi
+touch $configFile
+echo "#!/bin/bash" >> $configFile
 
 mkdir -p $repoPath/sample/build
 mkdir -p $repoPath/sample/build/bin
@@ -30,10 +28,8 @@ echo "" >> $configFile
 echo "#--- Begin: added by SONAR ---#" >> $configFile
 
 echo "export SONAR_PATH=$repoPath" >> $configFile
+echo "export SONAR_VIVADO_HLS=$vivadoPath" >> $configFile
 
-if [[ $mode == 0 ]]; then
-  echo "export SONAR_VIVADO_HLS=$vivadoPath" >> $configFile
-fi
 echo "" >> $configFile
 
 echo 'if [[ -z "$PYTHONPATH" ]]; then' >> $configFile
@@ -49,8 +45,6 @@ echo "fi" >> $configFile
 echo "#--- End: added by SONAR ---#" >> $configFile
 echo "" >> $configFile
 
-if [[ $mode == 0 ]]; then
-  echo "" >> ~/.bashrc
-  echo "source $configFile #added by sonar" >> ~/.bashrc
-  source ~/.bashrc
-fi
+echo "" >> ~/.bashrc
+echo "source $configFile #added by sonar" >> ~/.bashrc
+source ~/.bashrc
