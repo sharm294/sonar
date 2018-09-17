@@ -14,8 +14,8 @@
 // 
 ////////////////////////////////////////////////////////////////////////////////
 
-//defines the axis interfaces
-`include "axis_interface.sv"
+//defines the interfaces
+// #INCLUDE_INTERFACES#
 
 //filename for the input data file
 string dataFileName = #DATA_FILE#;
@@ -24,7 +24,8 @@ localparam MAX_DATA_SIZE = #MAX_DATA_SIZE#; //max width of the data to be read/w
 localparam MAX_VECTORS = #MAX_VECTORS#; //number of test vectors
 localparam MAX_PARALLEL = #MAX_PARALLEL#;  //max number of parallel sections in any vector
 localparam MAX_SEEK_SIZE = 64; //base 2 log of the max number to fseek
-localparam MAX_KEEP_SIZE = #MAX_KEEP_SIZE#; //max width (bits) of the keep field in axis
+localparam MAX_ARG_NUM = #MAX_ARG_NUM#;
+localparam MAX_ARG_SIZE = $clog2(MAX_ARG_NUM) + 1;
 
 //This module provides the stimulus for the DUT by reading the data file
 module exerciser (
@@ -36,13 +37,8 @@ module exerciser (
     logic [MAX_PARALLEL-1:0] testVectorEnd = 0;
     logic updateEnd = 0;
 
-    /***************************************************************************
-    * EDIT THIS TASK AS NEEDED
-    ***************************************************************************/
-    task evaluateData(
-        input logic [MAX_DATA_SIZE-1:0] tdata,
-        input logic tlast,
-        input logic [MAX_KEEP_SIZE-1:0] tkeep,
+    task automatic evaluateData(
+        input logic [MAX_DATA_SIZE-1:0] args [MAX_ARG_NUM],
         input string packetType_par,
         input string interfaceType_par,
         output logic done
@@ -63,22 +59,39 @@ module exerciser (
         end
         else if (packetType_par == "delay") begin
             if(interfaceType_par == "ns") begin
-                #(tdata);
+                #(args[0]);
             end
             else begin
                 $display({"Unhandled case for delay type: ", 
                     interfaceType_par});
             end
         end
+        else if (packetType_par == "display") begin
+            $display("%s", interfaceType_par);
+        end
+        else if (packetType_par == "flag") begin
+            if(interfaceType_par == "set") begin
+                flags[args[0]] = 1;
+            end
+            else begin
+                flags[args[0]] = 0;
+            end
+        end
         else if (packetType_par == "timestamp") begin
-            $display("%s: %t", interfaceType_par, $time);
+            #TIME_FORMAT#
+            if(interfaceType_par == "INIT") begin
+                timeRef = $time;
+            end
+            else begin
+                $display("%s: %t", interfaceType_par, $time - timeRef);
+            end
         end
         else if(packetType_par == "end") begin
-            $display("Test vector %d complete", tdata);
+            $display("Test vector %0d complete", args[0]);
             done = 1'b1;
         end
-        #ELSE_IF_AXIS_IN#
-        #ELSE_IF_AXIS_OUT#
+        #ELSE_IF_INTERFACE_IN#
+        #ELSE_IF_INTERFACE_OUT#
         else begin
             $display({"Unhandled case: ", packetType_par, " " , 
                 interfaceType_par});
@@ -86,14 +99,12 @@ module exerciser (
         end
     endtask
 
-    /***************************************************************************
-    * DO NOT EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING
-    ***************************************************************************/
-
     //clock generation
     #INITIAL_CLOCK#
     
     int vectorCount;
+    time timeRef;
+    logic [#FLAG_COUNT#-1:0] flags;
 
     initial begin
         int status;
@@ -149,11 +160,10 @@ module exerciser (
             initial begin
                 int status_par;
                 int dataFile; 
-                logic [MAX_DATA_SIZE-1:0] tdata;
-                logic tlast;
-                logic [MAX_KEEP_SIZE-1:0] tkeep; 
+                logic [MAX_DATA_SIZE-1:0] args [MAX_ARG_NUM];
+                logic [MAX_ARG_SIZE-1:0] argCount;
                 string packetType_par; 
-                string interfaceType_par; 
+                string interfaceType_par;
                 int packetCount;
                 
                 dataFile = $fopen(dataFileName, "r");
@@ -162,14 +172,15 @@ module exerciser (
                     if (parallelSections[gen_i] != 0) begin
                         status_par = $fseek(dataFile, parallelSections[gen_i], 
                             0);
-                        status_par = $fscanf(dataFile, "%s %s %d\n", 
+                        status_par = $fscanf(dataFile, "%s %s %d", 
                             packetType_par, interfaceType_par, packetCount);
                         for(int k = 0; k < packetCount; k++) begin
-                            status_par = $fscanf(dataFile, "%s %s %d %d %d\n", 
-                                packetType_par, interfaceType_par, tdata, 
-                                tlast, tkeep);
-
-                            evaluateData(tdata, tlast, tkeep, packetType_par,
+                            status_par = $fscanf(dataFile, "%s %s %d", 
+                                packetType_par, interfaceType_par, argCount);
+                            for(int l = 0; l < argCount; l++) begin
+                                status_par = $fscanf(dataFile, "%d", args[l]);
+                            end
+                            evaluateData(args, packetType_par,
                                 interfaceType_par, testVectorEnd[gen_i]);
                         end
                     end
@@ -186,14 +197,13 @@ module am_rx_tb();
 
     #TB_SIGNAL_LIST#
 
-    //initialize interfaces
-    #TB_AXIS_LIST#
+    // #TB_AXIS_LIST#
 
     #EXERCISER_INT#
     
-    always_comb begin
-        #AXIS_ASSIGN#
-    end
+    // always_comb begin
+    //     #AXIS_ASSIGN#
+    // end
 
     //initialize DUT
     #DUT_INST#

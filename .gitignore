@@ -4,9 +4,10 @@
 vivado*.log
 vivado*.jou
 build/
-*_out.json
 *.pyc
 .vscode/
+user_utilities.py
+.Xil/
 
 # Prerequisites
 *.d

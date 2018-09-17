@@ -19,12 +19,7 @@ SHELL := bash
 
 ifndef SONAR_PATH
 $(error SONAR_PATH not set in env -- must be set to the absolute \
-path of of the share repository root. Did you source init.sh?)
-endif
-
-ifndef SONAR_VIVADO_HLS
-$(error SONAR_VIVADO_HLS not set in env -- must be set to the absolute \
-path of of the Vivado HLS include/ directory. Did you source init.sh?)
+path of repository root. Did you source init.sh?)
 endif
 
 sample_dir = $(SONAR_PATH)/sample
@@ -36,25 +31,36 @@ sort -k 1nr | cut -f2-)
 dep = $(obj:%.o=$(obj_dir)/%.d)
 
 CC = g++
-CFLAGS = -g -Wall -I$(SONAR_PATH)/include -I$(SONAR_VIVADO_HLS) \
+CFLAGS = -g -Wall -I$(SONAR_VIVADO_HLS) \
 	-Wno-unknown-pragmas -Wno-comment -MMD -MP
 
 ###############################################################################
 # Body
 ###############################################################################
 
-.PHONY: sample hw clean purge
+.PHONY: sample hw sim clean purge sample_gen sample_csim
 
 #------------------------------------------------------------------------------
 # Main
 #------------------------------------------------------------------------------
 
-sample: $(sample_bin_dir)/sample_tb
+sample: hw sample_gen sample_csim sim
+
+# creates a Vivado HLS project and export Sample to RTL
+hw:
+	@$(sample_dir)/sample_hls.sh
+
+# generate the testbenches and data files
+sample_gen:
 	@python $(SONAR_PATH)/sonar.py env SONAR_PATH /sample/sample.yaml
+
+# performs C-simulation on sample
+sample_csim: $(sample_bin_dir)/sample_tb
 	@$(sample_bin_dir)/sample_tb
 
-hw:
-	$(sample_dir)/sample.sh
+# creates a Vivado project, adds all the files and opens Vivado for simulation
+sim:
+	@vivado -source $(sample_dir)/sample_vivado.tcl
 
 #------------------------------------------------------------------------------
 # Executables
@@ -62,17 +68,19 @@ hw:
 
 $(sample_bin_dir)/sample_tb: $(sample_obj_dir)/sample_tb.o $(sample_obj_dir)/sample.o
 	$(CC) $(CFLAGS) -o $(sample_bin_dir)/sample_tb $(sample_obj_dir)/sample_tb.o \
-	$(sample_obj_dir)/sample.o
+		$(sample_obj_dir)/sample.o
 
 #------------------------------------------------------------------------------
 # Object Files
 #------------------------------------------------------------------------------
 
-$(sample_obj_dir)/sample_tb.o: $(sample_dir)/sample_tb.cpp
-	$(CC) $(CFLAGS) -o $(sample_obj_dir)/sample_tb.o -c $(sample_dir)/sample_tb.cpp
+$(sample_obj_dir)/sample_tb.o: $(sample_dir)/build/sample_tb.cpp
+	$(CC) $(CFLAGS) -I$(SONAR_PATH)/sample -o $(sample_obj_dir)/sample_tb.o \
+		-c $(sample_dir)/build/sample_tb.cpp
 
 $(sample_obj_dir)/sample.o: $(sample_dir)/sample.cpp
-	$(CC) $(CFLAGS) -o $(sample_obj_dir)/sample.o -c $(sample_dir)/sample.cpp
+	$(CC) $(CFLAGS) -I$(SONAR_PATH)/sample -o $(sample_obj_dir)/sample.o \
+		-c $(sample_dir)/sample.cpp
 
 -include $(dep)
 
@@ -82,7 +90,9 @@ $(sample_obj_dir)/sample.o: $(sample_dir)/sample.cpp
 
 clean: 
 	@$(RM) $(sample_obj_dir)/*.o $(sample_obj_dir)/*.d $(sample_bin_dir)/*
+	@$(RM) vivado*.jou vivado*.log
 
 purge: clean
 	@rm -rf ~/.sonar
+	@rm -rf $(SONAR_PATH)/sample/build
 	@sed -i '/added by sonar/d' ~/.bashrc

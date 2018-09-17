@@ -2,13 +2,20 @@ import os
 import sys
 import json
 import re
+import importlib
 
-from utilities import strToInt
+from include.strToInt import strToInt
 from utilities import extractNumber
 from utilities import printError
 from utilities import printWarning
 from utilities import getFilePath
 from utilities import stripFileName
+from utilities import sonar_types
+
+################################################################################
+### expandLoops ###
+# This function expands the loop data structure for outer and inner loops. It 
+# calls an 'expandingFunction' which is one of outerLoops or innerLoops.
 
 def expandLoops(rawData, expandingFunction):
     newData = {}
@@ -41,43 +48,47 @@ def expandLoops(rawData, expandingFunction):
             newData['data'] = []
 
     return rawData
-    #rawData = newData.copy()
+
+################################################################################
+### convertPayload ###
+# This function converts each key in each packet in an interface payload to an
+# integer.
+
+def convertPayload(packet):
+    if 'type' in packet:
+        if 'payload' in packet:
+            for payload in packet['payload']:
+                for key in payload:
+                    if not isinstance(payload[key], (int, long)):
+                        if payload[key][:1] == "{":
+                            payload[key] = strToInt(payload[key])
+                        else:
+                            payload[key] = extractNumber(payload[key])
+    else:
+        for packet2 in packet:
+            addID(packet2)
+
+################################################################################
+### addID ###
+# This function appends an increasing ID number to each packet in an interface 
+# payload. This needs to occur after all inner loops have been expanded.
 
 def addID(packet):
     if 'type' in packet:
-        packetType = packet['type']
-        if packetType == 'axis' or packetType == 'csim':
+        if 'payload' in packet:
             for index, word in enumerate(packet['payload']):
                 word['id'] = packet['id'] + str(index)
     else:
         for packet2 in packet:
             addID(packet2)
 
-def convertKeep(packet):
-    if 'type' in packet:
-        packetType = packet['type']
-        if packetType == 'axis' or packetType == 'csim':
-            for word in packet['payload']:
-                if 'keep' in word and not isinstance(word['keep'], (int, long)):
-                    if word['keep'] == "ALL":
-                        word['keep'] = (2 ** (packet['width'] / 8)) - 1
-                    else:
-                        word['keep'] = extractNumber(word['keep'])
-    else:
-        for packet2 in packet:
-            convertKeep(packet2)    
+################################################################################
+### convertValue ###
+# This function converts the 'value' key in a packet to an integer.
 
-def convertData(packet):
+def convertValue(packet):
     if 'type' in packet:
-        packetType = packet['type']
-        if packetType == 'axis':
-            for word in packet['payload']:
-                if not isinstance(word['data'], (int, long)):
-                    if word['data'][:1] == "{":
-                        word['data'] = strToInt(word['data'])
-                    else:
-                        word['data'] = extractNumber(word['data'])
-        elif packetType == 'wait':
+        if 'value' in packet:
             if not isinstance(packet['value'], (int, long)):
                 if packet['value'][:1] == "{":
                     packet['value'] = strToInt(packet['value'])
@@ -87,6 +98,14 @@ def convertData(packet):
         for packet2 in packet:
             convertData(packet2)
 
+################################################################################
+### outerLoops ###
+# This function expands the loop structure found around individual packets. It 
+# returns the expanded dictionary.
+# 
+# Note: this function may be removed in later versions. It's less useful than 
+# originally envisioned and not supported in a YAML configuration file.
+
 def outerLoops(packet, newDataSeq, loopFound):
     if 'type' in packet: #this is an object
         newDataSeq, loopFound = resolveOuterLoop(packet, newDataSeq, loopFound)
@@ -95,7 +114,9 @@ def outerLoops(packet, newDataSeq, loopFound):
         for packet2 in packet:
             newDataSeq2, loopFound = outerLoops(packet2, newDataSeq2, loopFound)
         newDataSeq.append(newDataSeq2)
-    return newDataSeq, loopFound    
+    return newDataSeq, loopFound
+
+#------------------------------------------------------------------------------#
 
 def resolveOuterLoop(packet, sequence, loopFound):
     if packet['type'] == "loop":
@@ -110,6 +131,11 @@ def resolveOuterLoop(packet, sequence, loopFound):
 
     return sequence, loopFound
 
+################################################################################
+### innerLoops ###
+# This function expands the loop structure found inside the payload array in an 
+# interface. It returns the expanded dictionary.
+
 def innerLoops(packet, newDataSeq, loopFound):
     if 'type' in packet: #this is an object
         newDataSeq,loopFound = resolveInnerLoop(packet, newDataSeq, loopFound)
@@ -119,6 +145,8 @@ def innerLoops(packet, newDataSeq, loopFound):
             newDataSeq2,loopFound = innerLoops(packet2, newDataSeq2, loopFound)
         newDataSeq.append(newDataSeq2)
     return newDataSeq, loopFound
+
+#------------------------------------------------------------------------------#
 
 def resolveInnerLoop(packet, sequence, loopFound):
     innerLoopFound = False
@@ -147,6 +175,7 @@ def resolveInnerLoop(packet, sequence, loopFound):
         sequence.append(packet.copy())
     return sequence, loopFound
 
+################################################################################
 ### commentRemover ###
 # This function removes all C-style comments (// and /* */) from a JSON file.
 # Since comments are not allowed in JSON, they must be removed initially. This 
@@ -170,6 +199,7 @@ def commentRemover(text):
     )
     return re.sub(pattern, replacer, text)
 
+################################################################################
 ### parseJSON ###
 # This function parses and expands the user-specified JSON file into a valid,
 # generic JSON file that can be used to generate test data files. The generated 
@@ -185,7 +215,7 @@ def commentRemover(text):
 #   modeArg: a string argument used in conjunction with mode
 #   filepath: a string argument for the file to check
 #
-# Return: Path of file created. Writes the new valid JSON file in a build/ subdirectory in the 
+# Return: Path of file created. Writes the new valid JSON file in the 
 #   same directory as the source JSON file
 #TODO tie printing warnings to a verbosity flag or a quiet flag
 def parseJSON(mode, modeArg, filepath):
@@ -196,12 +226,12 @@ def parseJSON(mode, modeArg, filepath):
 
     pathTuple = os.path.split(testFileName)
     tempFileName = pathTuple[0] + "/" + pathTuple[1].replace('.json', '_out.json')
-    if os.path.isfile(tempFileName):
-        if mode == "env":
-            message = "Overwriting existing file $" + modeArg + stripFileName(mode, modeArg, tempFileName)
-        else:
-            message = "Overwriting existing file $" + tempFileName
-        printWarning(message)
+    # if os.path.isfile(tempFileName):
+    #     if mode == "env":
+    #         message = "Overwriting existing file $" + modeArg + stripFileName(mode, modeArg, tempFileName)
+    #     else:
+    #         message = "Overwriting existing file $" + tempFileName
+    #     printWarning(message)
     fRaw_commented = open(testFileName, "r")
     fTmp = open(tempFileName, "w+")
 
@@ -224,18 +254,15 @@ def parseJSON(mode, modeArg, filepath):
         for parallelSection in testVector['data']:
             sv_count = 0
             for packet in parallelSection['data']:
-                if packet['type'] == "delay" or packet['type'] == "wait" or \
-                    packet['type'] == "signal" or packet['type'] == 'end' or \
-                    packet['type'] == "timestamp":
+                if packet['type'] in sonar_types:
                     sv_count += 1
-                elif packet['type'] == 'axis':
-                    svPacket = 0
-                    for payload in packet['payload']:
-                        if isinstance(payload['data'], (int, long)):
-                            svPacket += 1
-                        elif not payload['data'].startswith("0s"):
-                            svPacket += 1
+                elif 'interface' in packet:
+                    currInterface = importlib.import_module("include." + packet['type'])
+                    svPacket = currInterface.count(packet)
                     sv_count += svPacket
+                else:
+                    printError(1, "Unknown packet type: " + packet['type'])
+                    exit(1)
             if sv_count > 0:
                 parallelSection['count'] = sv_count
 
@@ -259,8 +286,11 @@ def parseJSON(mode, modeArg, filepath):
     for testVector in rawData['data']:
         for parallelSection in testVector['data']:
             for packet in parallelSection['data']:
-                convertData(packet) # replace all string numbers in data
-                convertKeep(packet) # replace all the keep values
+                packetType = packet['type']
+                if packetType not in sonar_types:
+                    currInterface.convert(packet)
+                convertValue(packet)
+                convertPayload(packet)
                 addID(packet) # add ID tags to each payload
 
     json.dump(rawData, fTmp, indent=2, sort_keys=False)
@@ -268,6 +298,8 @@ def parseJSON(mode, modeArg, filepath):
     fRaw_commented.close()
     fTmp.close()
     return tempFileName
+
+################################################################################
 
 if __name__ == "__main__":
 

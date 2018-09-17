@@ -1,5 +1,5 @@
 ################################################################################
-# JSON-Testbench Configuration File
+# Sonar Sample Configuration File
 ################################################################################
 
 # Optional Meta Data #
@@ -14,21 +14,31 @@ Dependencies:
 # Required Data #
 Module_Name: sample
 Timescale: 1ns / 1ps #the default timescale of the simulation
-
+Time_Format: {unit: "1us", precision: 3} #can be one of s, ms, us, ns, ps, fs
+Flag_Count: 4 #even if not using, must be non zero
 ################################################################################
 
-# DUT #
+
+#list any used interfaces in the DUT
+#TODO remove need for this explict list
+Interfaces:
+  - axis
+
+#This defines the DUT. The type:clock must be specified only on clocks that the
+#the testbench must generate. Size is assumed to be 1 if omitted for signals. 
+#For interfaces, the default is defined in the interface.py. All directions are
+#relative to the DUT.
 DUT:
   - {direction: input, name: ap_clk, type: clock, period: 20ns}
   - {direction: input, name: ap_rst_n}
   - {direction: output, size: 3, name: state_out_V}
-  - {direction: master, name: axis_output, type: axis, clock: ap_clk, interface: [
+  - {direction: master, name: axis_output, type: axis, clock: ap_clk, channels: [
       {name: "TDATA", type: "tdata", size: 64},
       {name: "TVALID", type: "tvalid"},
       {name: "TREADY", type: "tready"},
       {name: "TLAST", type: "tlast"}
     ]}
-  - {direction: slave, name: axis_input, type: axis, clock: ap_clk, interface: [
+  - {direction: slave, name: axis_input, type: axis, clock: ap_clk, channels: [
       {name: "TDATA", type: "tdata", size: 64},
       {name: "TVALID", type: "tvalid"},
       {name: "TREADY", type: "tready"},
@@ -36,34 +46,61 @@ DUT:
     ]}
   - {direction: output, name: ack_V}
 
+#This defines the test vectors. There may be one or more test vectors with each
+#test vector made up of one or more parallel sections. Each parallel section 
+#occurs, as the name suggests, in parallel and independently during the testbench.
+#
+# Fields may also make use of syntax like "{AMHeader,0xAA,0xCC,0,0xE,1,2}" where
+# python will concatenate and bitshift an integer for you. Refer to include/strToInt.py
+# 
+# Interface payloads can make use of loops instead of packets and be nested. 
 Test_Vectors:
   - Test_Vector_0:
     - Parallel_Section_0:
-      - macro: INIT_SIGNALS
+      - macro: INIT_SIGNALS #initialize all input signals to zero at t=0
       - delay: 50ns
-      - signal: [{name: ap_rst_n, value: 1}, {name: "axis_output_TREADY", value: 1}]
+      - signal: #set the following signals to these values
+        - {name: ap_rst_n, value: 1}
+        - {name: "axis_output_TREADY", value: 1}
     - Parallel_Section_1:
       - delay: 100ns
-      - timestamp: Start
-      - axis: {name: axis_input, payload: [
-        {data: "0xABCD", keep: "ALL", callTB: 1}
+      - timestamp: INIT #the INIT keyword is special: it sets the new reference point
+      - interface: {type: axis, name: axis_input, payload: [
+        {loop: { start: 0, end: 1, body: [
+          {loop: { start: 0, end: 1, body: [
+            {tdata: "0xABCD", tkeep: "KEEP_ALL", callTB: 2},
+            {tdata: "0xABCD", tkeep: "KEEP_ALL", callTB: 2}
+          ]}},
+          {tdata: "0xABCD", tkeep: "KEEP_ALL", callTB: 2}
+        ]}}
+        # {tdata: "0xABCD", tkeep: "KEEP_ALL", callTB: 2}
       ]}
       - wait: {key: "ack", value: 1}
-      - axis: {name: axis_input, payload: [
-        {data: 0sdbgContinue, callTB: 1},
-        {data: "0", callTB: 1}
+      - interface: {type: axis, name: axis_input, payload: [
+        {tdata: "0", callTB: 3} #callTB is used to call the DUT function during CSIM x times
       ]}
       - wait: {key: "ack", value: 1}
-      - axis: {name: axis_input, payload: [
-        {data: 0sdbgContinue, callTB: 1}
-      ]}
+      - delay: 110ns #the time scale must be specified
+      - flag: {set_flag: 0} #flags must use set_flag: $flag_number to set it to 1
     - Parallel_Section_2:
-      - axis: {name: axis_output, payload: [
-        {data: 0sdbgContinue, callTB: 1},
-        {data: 1, callTB: 1}
+      - interface: {type: axis, name: axis_output, payload: [
+        {tdata: 1, callTB: 1} #note that hex, decimal, and binary ints and strings are all supported
       ]}
-      - timestamp: End
-      - macro: END
+      - wait: {key: "flag", value: 0}
+      - flag: {clear_flag: 0} #flags must be cleared to reuse
+      - timestamp: End #print delta since last reference. The argument is printed too.
+      - display: "The_simulation_is_finished."
+      - macro: END #to make CSIM work, the parallel section containing this macro must be at the end
 
+#These wait conditions are inserted directly into the systemverilog testbench
+#and so must be valid syntax (minus any variable substitutions.) Variables may 
+#be $value (referring to the value key in a wait packet). For now, only a single
+#argument can be passed to the wait. To use the wait, use the key in the test 
+#vector to identify which wait condition to use.
+#
+# If you use signals in the wait, their names should match the names defined
+# above.
+#TODO support more arguments to wait
 Wait_Conditions:
   - {condition: "wait(ack_V == $value);", key: "ack"}
+  - {condition: "wait(flags[$value]);", key: "flag"}

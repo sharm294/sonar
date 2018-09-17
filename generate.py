@@ -1,13 +1,22 @@
 import os
 import json
 import sys
+import importlib
 
 from utilities import printError
 from utilities import trimFinalLine
 from utilities import getFilePath
+from utilities import sonar_types
 from parse import parseJSON
 
-def calculateSeeks(testData_sv, repeatCount, updateStr, seekStr, countStr, converged):
+################################################################################
+### calculateSeeks ###
+# This function repeats over the generated data file for systemverilog and 
+# calculates the character counts for the different packets/parallel sections so 
+# the fseek function can work properly during readback. It's repeated until all 
+# the values converge to a static value.
+def calculateSeeks(testData_sv, repeatCount, updateStr, seekStr, countStr, \
+    converged):
     i = 0
     while i < repeatCount:
         charCount = 0
@@ -50,54 +59,64 @@ def calculateSeeks(testData_sv, repeatCount, updateStr, seekStr, countStr, conve
                     updated = False
     return testData_sv, converged
 
+################################################################################
+### writeLine_c ###
+# This function writes a single line of the c data file
 def writeLine_c(dataFile_c, packet):
     if 'type' in packet:
         packetType = packet['type']
-        if packetType == 'axis':
-            for word in packet['payload']:
-                dataFile_c.write(packet['interface']+ " " + \
-                    '0x{0:0{1}X}'.format(word['data'], 8) + " " + \
-                    str(word['last']) + " " + str(word['callTB']) + " " + \
-                    str(word['keep']) + " " + str(word['id'])+"\n")
+        if packet['type'] not in sonar_types:
+            currInterface = importlib.import_module("include." + packet['type'])
+            dataFile_c.write(currInterface.write_c(packet))
         elif packetType == 'end':
-            dataFile_c.write("end " + \
-                '0x{0:0{1}X}'.format(packet['value'], 8) + " 0 0 0 " + 
-                    str(packet['id'])+"\n")
+            dataFile_c.write("end " + str(packet['id']) + " 1 0 " + \
+                str(packet['value']) + "\n")
     else:
         for packet2 in packet:
             writeLine_c(dataFile_c, packet2)
 
+################################################################################
+### writeLine_sv ###
+# This function writes a single line of the systemverilog data file
 def writeLine_sv(dataFile_sv, packet):
     if 'type' in packet:
         packetType = packet['type']
-        if packetType == 'axis':
-            for word in packet['payload']:
-                if word['keep'] != 0: #exclude debug statements
-                    dataFile_sv.append(packetType + " " + packet['interface']+ " " + \
-                        str(word['data']) + " " + \
-                        str(word['last']) + " " + \
-                        str(word['keep']))
+        if packet['type'] not in sonar_types:
+            currInterface = importlib.import_module("include." + packet['type'])
+            line = currInterface.write_sv(packet)
+            if line != "":
+                dataFile_sv.append(line)
         elif packetType == 'wait':
             dataFile_sv.append("wait " + str(packet['interface']) + " " + \
-                str(packet['value']) + " 0 0")
+                str(1) + " " + str(packet['value']))
         elif packetType == 'signal':
             dataFile_sv.append("signal " + str(packet['interface']) + " " + \
-                str(packet['value']) + " 0 0")
+                str(1) + " " + str(packet['value']))
         elif packetType == 'delay':
             dataFile_sv.append("delay " + str(packet['interface']) + " " + \
-                str(packet['value']) + " 0 0")
+                str(1) + " " + str(packet['value']))
+        elif packetType == 'display':
+            dataFile_sv.append("display " + str(packet['interface']) + " " + \
+                str(1) + " " + str(packet['value']))
+        elif packetType == 'flag':
+            dataFile_sv.append("flag " + str(packet['interface']) + " " + \
+                str(1) + " " + str(packet['value']))
         elif packetType == 'timestamp':
             dataFile_sv.append("timestamp " + str(packet['interface']) + " " + \
-                str(packet['value']) + " 0 0")
+                str(1) + " " + str(packet['value']))
         elif packetType == 'end':
             dataFile_sv.append("end " + str(packet['interface']) + " " + \
-                str(packet['value']) + " 0 0")
+                str(1) + " " + str(packet['value']))
     else:
         for packet2 in packet:
             writeLine_sv(dataFile_sv, packet2)
 
+################################################################################
+### generate ###
+# This function generates the data files for C and systemverilog testbenches.
 def generate(mode, modeArg, filepath):
 
+    # sanitize the JSON and continue processing
     outFileName = parseJSON(mode, modeArg, filepath)
     try:
         with open(outFileName, "r") as outFile:
@@ -107,7 +126,8 @@ def generate(mode, modeArg, filepath):
         exit(1)
 
     pathTuple = os.path.split(outFileName)
-    currentDirectory = pathTuple[0] + "/" + pathTuple[1].replace('_out.json', '')
+    currentDirectory = pathTuple[0] + "/" + pathTuple[1].replace('_out.json', \
+        '')
 
     filename_c = currentDirectory + "_c.dat"
     filename_sv = currentDirectory + "_sv.dat"
@@ -117,6 +137,9 @@ def generate(mode, modeArg, filepath):
     absTestVectorCount = testFile['count']
     absParallelSectionCount = 0
 
+#------------------------------------------------------------------------------#
+# Generate data files
+
     testData_sv = []
     testData_sv.append("TestVector count " + str(testFile['count']))
     for seek in testFile['seek']:
@@ -124,21 +147,26 @@ def generate(mode, modeArg, filepath):
 
     for testVector in testFile['data']:
         if 'count' in testVector:
-            testData_sv.append("ParallelSection count " + str(testVector['count']))
+            testData_sv.append("ParallelSection count " + \
+                str(testVector['count']))
         if 'seek' in testVector:
             for seek in testVector['seek']:
                 testData_sv.append("ParallelSection seek " + str(seek))
                 absParallelSectionCount += 1
         for parallelSection in testVector['data']:
             if 'count' in parallelSection:
-                testData_sv.append("Packet count " + str(parallelSection['count']))
+                testData_sv.append("Packet count " + \
+                    str(parallelSection['count']))
             if 'seek' in parallelSection:
-                testData_sv.append("Packet seek " + str(parallelSection['seek']))
+                testData_sv.append("Packet seek " + \
+                    str(parallelSection['seek']))
             for packet in parallelSection['data']:
                 writeLine_c(dataFile_c, packet)
                 writeLine_sv(testData_sv, packet)
 
-    #resolve test vector seek sizes
+#------------------------------------------------------------------------------#
+
+    # resolve seek sizes for systemverilog data file
     converged = False
     while not converged:
         converged = True
@@ -154,13 +182,20 @@ def generate(mode, modeArg, filepath):
     for line in testData_sv:
         dataFile_sv.write(line + "\n")          
 
+    # remove final new line character
     trimFinalLine(dataFile_c)
     trimFinalLine(dataFile_sv)
 
-    dataFile_c.write("\nfinish 0 0 0 0 0") #fixes reading fixed point reading issue
+    # append a finish tag to the C data file that is used to break out of an 
+    # infinite while loop in the C testbench. ap_uint wasn't properly handling 
+    # the case where there's nothing to read (i.e. end of file) so this is used 
+    # to exit instead of relying on when we can no longer read data.
+    dataFile_c.write("\nfinish 0 0 0")
 
     dataFile_c.close()
     dataFile_sv.close()
+
+################################################################################
 
 if __name__ == "__main__":
     for arg in sys.argv:
