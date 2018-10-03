@@ -68,12 +68,9 @@ Test_Vectors:
       - interface: {type: axis, name: axis_input, payload: [
         {loop: { start: 0, end: 1, body: [
           {loop: { start: 0, end: 1, body: [
-            {tdata: "0xABCD", tkeep: "KEEP_ALL", callTB: 2},
             {tdata: "0xABCD", tkeep: "KEEP_ALL", callTB: 2}
-          ]}},
-          {tdata: "0xABCD", tkeep: "KEEP_ALL", callTB: 2}
+          ]}}
         ]}}
-        # {tdata: "0xABCD", tkeep: "KEEP_ALL", callTB: 2}
       ]}
       - wait: {key: "ack", value: 1}
       - interface: {type: axis, name: axis_input, payload: [

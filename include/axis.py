@@ -40,14 +40,14 @@ from collections import OrderedDict
 
 sv_args = OrderedDict([
     ("tdata", 0),
-    ("tlast", 0),
-    ("tkeep", 0)
+    ("tlast", 1),
+    ("tkeep", 2)
 ])
 
 c_args = OrderedDict([
     ("tdata", 0),
-    ("tlast", 0),
-    ("tkeep", 0)
+    ("tlast", 1),
+    ("tkeep", 2)
 ])
 
 # defines an empty JSON structural object that is used as a template when writing
