@@ -31,7 +31,7 @@ def calculateSeeks(testData_sv, repeatCount, updateStr, seekStr, countStr, \
         for index, line in enumerate(testData_sv,0):
             charCount += len(line)
             if updateStr is not None and line.startswith(updateStr):
-                currentSectionCount = int(line.split()[2])
+                currentSectionCount = int(line.split()[2]) #store the # of sections
                 cumulativeSectionCount += currentSectionCount
             elif line.startswith(seekStr) and not sectionFound:
                 if continueCount2 < i:
@@ -42,11 +42,22 @@ def calculateSeeks(testData_sv, repeatCount, updateStr, seekStr, countStr, \
                     updated = True
                     indexToEdit = index
             elif line.startswith(countStr) and sectionFound and updated:
+                # This is needed to handle that there will be multiple parallel
+                # sections for each test vector and to ignore the first set(s) 
+                # when looking at the next set
+                # if cumulativeSectionCount - currentSectionCount > 0:
+                #     modulo = cumulativeSectionCount - currentSectionCount
+                # else:
+                #     modulo = repeatCount
+
+                # if continueCount < i % (modulo):
+                #     continueCount += 1
                 if cumulativeSectionCount - currentSectionCount > 0:
-                    modulo = cumulativeSectionCount - currentSectionCount
+                    modulo = i - cumulativeSectionCount + currentSectionCount
                 else:
-                    modulo = repeatCount
-                if continueCount < i % (modulo):
+                    modulo = i
+                
+                if continueCount < modulo:
                     continueCount += 1
                 else:
                     #account for new line characters and remove current line
@@ -57,6 +68,7 @@ def calculateSeeks(testData_sv, repeatCount, updateStr, seekStr, countStr, \
                     i += 1
                     continueCount = 0
                     updated = False
+                    # break
     return testData_sv, converged
 
 ################################################################################
@@ -71,6 +83,12 @@ def writeLine_c(dataFile_c, packet):
         elif packetType == 'end':
             dataFile_c.write("end " + str(packet['id']) + " 1 0 " + \
                 str(packet['value']) + "\n")
+        elif packetType == 'timestamp':
+            dataFile_c.write("timestamp " + str(packet['interface']) + " " + \
+                "1 0 " + str(packet['value']) + "\n")
+        elif packetType == 'display':
+            dataFile_c.write("display " + str(packet['interface']) + " " + \
+                "1 0 " + str(packet['value']) + "\n")
     else:
         for packet2 in packet:
             writeLine_c(dataFile_c, packet2)
@@ -107,6 +125,9 @@ def writeLine_sv(dataFile_sv, packet):
         elif packetType == 'end':
             dataFile_sv.append("end " + str(packet['interface']) + " " + \
                 str(1) + " " + str(packet['value']))
+        else:
+            printError(1, "Unhandled type in writeLine_sv: "+ packetType)
+            exit(1)
     else:
         for packet2 in packet:
             writeLine_sv(dataFile_sv, packet2)
@@ -167,17 +188,19 @@ def generate(mode, modeArg, filepath):
 #------------------------------------------------------------------------------#
 
     # resolve seek sizes for systemverilog data file
-    converged = False
-    while not converged:
-        converged = True
+    converged1 = False
+    converged2 = False
+    while not (converged1 and converged2):
+        converged1 = True
+        converged2 = True
         testVectorCount = 0
-        testData_sv, converged = calculateSeeks(testData_sv, \
+        testData_sv, converged1 = calculateSeeks(testData_sv, \
             absTestVectorCount, None, "TestVector seek", \
-            "ParallelSection count", converged)
+            "ParallelSection count", converged1)
         parallelSectionCount = 0
-        testData_sv, converged = calculateSeeks(testData_sv, \
+        testData_sv, converged2 = calculateSeeks(testData_sv, \
             absParallelSectionCount, "ParallelSection count", \
-            "ParallelSection seek", "Packet count", converged)
+            "ParallelSection seek", "Packet count", converged2)
 
     for line in testData_sv:
         dataFile_sv.write(line + "\n")          

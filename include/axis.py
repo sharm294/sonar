@@ -12,23 +12,34 @@ master_output_channels = {
 }
 
 # Defines the systemverilog commands to use for a master/slave command. 
-# - $name can be used to refer to the interface name.
+# - $$name can be used to refer to the interface name.
 # - To refer to any signals, use args[x] where x is the channel's index as 
 # defined in sv_args below.
 # - To repeat a command for a set of channels, use a dict to list which channels,
-# and use $channel to substitute the name. $i is used to refer to the channel's
+# and use $$channel to substitute the name. $$i is used to refer to the channel's
 # index in sv_args.
 master_action = [
-    "@(posedge $clock iff $name_tready && $name_tvalid);",
-    "assert($name_tdata == args[0]);"
+    "@(posedge $$clock iff $$name_tready && $$name_tvalid);",
+    "assert($$name_tdata == args[0]) begin",
+    "end else begin",
+    "    $error(\"AXI-S Assert failed at %t on $$name_tdata. Expected: %h, Received: %h\", $time, args[0], $$name_tdata);",
+    "    error = 1'b1;",
+    "end"
 ]
 
 slave_action = [
-    {"channels": {"tdata", "tlast", "tkeep"}, "commands": ["$name_$channel = args[$i];"]},
-    "$name_tvalid = 1'b1;",
-    "@(posedge $clock iff $name_tready);",
-    "@(posedge $clock);",
-    "$name_tvalid = 1'b0;"
+    {"channels": {"tdata", "tlast", "tkeep"}, "commands": ["$$name_$$channel = args[$$i];"]},
+    "$$name_tvalid = 1'b1;",
+    "fork",
+    "  begin",
+    "    @(posedge $$name_tready iff !$$clock);",
+    "  end",
+    "  begin",
+    "    @(negedge $$clock iff $$name_tready);",
+    "  end",
+    "join_any",
+    "@(negedge $$clock);",
+    "$$name_tvalid = 1'b0;"
 ]
 
 # These ordered dicts define what signals should be printed out to the data file

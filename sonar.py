@@ -188,31 +188,31 @@ def getIndentation(textStr):
 # This function replaces any $variables with their corresponding key from the 
 # YAML
 def commandVarReplaceSub(elseif_interfaceIn, command, interface, indent):
-    command = command.replace("$name", interface['name'])
-    regex_variable = re.compile("\$\w+")
+    command = command.replace("$$name", interface['name'])
+    regex_variable = re.compile("\$\$\w+")
     for variable in re.findall(regex_variable, command):
-        command = command.replace(variable, interface[variable[1:]])
+        command = command.replace(variable, interface[variable[2:]])
     elseif_interfaceIn += indent + command + "\n"
     return elseif_interfaceIn
 
 #This function replaces the variables in an interface action block. There are 
-#two named variables: $name (referring to the interface name) and $channel (
-#referring to a particular side channel). All other $ variables must be keys in
+#two named variables: $$name (referring to the interface name) and $$channel (
+#referring to a particular side channel). All other $$ variables must be keys in
 #the interface declaration in the configuration file
 def commandVarReplace(elseif_interfaceIn, interface, actions, indent, args):
     for action in actions:
         #check if there is a command to repeat for a set of channels
         if isinstance(action, dict):
             for command in action['commands']:
-                regex_channel = re.compile("\$channel")
-                if re.findall(regex_channel, command): #if $channel in command
+                regex_channel = re.compile("\$\$channel")
+                if re.findall(regex_channel, command): #if $$channel in command
                     index = 0
                     for channel in interface['channels']:
                         if channel['type'] in action['channels']:
                             commandCopy = copy.deepcopy(command)
-                            commandCopy = commandCopy.replace("$channel", 
+                            commandCopy = commandCopy.replace("$$channel", 
                                 channel['type'])
-                            commandCopy = commandCopy.replace("$i",
+                            commandCopy = commandCopy.replace("$$i",
                                 str(args[channel['type']]))
                             index += 1
                             elseif_interfaceIn = commandVarReplaceSub(
@@ -286,6 +286,13 @@ def sonar(mode, modeArg, filepath):
     dataFileName = buildPath + pathTuple[1].replace(fileType, '.json')
     tbFileName_sv = buildPath + pathTuple[1].replace(fileType, '_tb.sv')
     tbFileName_c = buildPath + pathTuple[1].replace(fileType, '_tb.cpp')
+
+    configFileTime = os.path.getmtime(userFileName)
+    tbTime = os.path.getmtime(tbFileName_sv)
+    if tbTime > configFileTime: #don't run sonar
+        configFile.close()
+        print("Sonar not run: testbench is newer than configuration file")
+        exit(0)
 
     templateTB_sv = getFilePath("env", "SONAR_PATH", "/include/template_tb.sv")
     templateTB_c = getFilePath("env", "SONAR_PATH", "/include/template_tb.cpp")
@@ -367,8 +374,9 @@ def sonar(mode, modeArg, filepath):
                 signals_out.append(portCopy)
 
     waitConditions = []
-    for condition in yamlData['Wait_Conditions']:
-        waitConditions.append(condition.copy())
+    if 'Wait_Conditions' in yamlData:
+        for condition in yamlData['Wait_Conditions']:
+            waitConditions.append(condition.copy())
 
     time_format = "$timeformat("
     with open(templateTB_sv,'r') as f:
@@ -617,7 +625,7 @@ def sonar(mode, modeArg, filepath):
             interface['name'] + "\") begin\n"
         elseif_interfaceIn = commandVarReplace(elseif_interfaceIn, interface, 
             currInterface.slave_action, leading_spaces + tabSize, currInterface.sv_args)
-    elseif_interfaceIn += leading_spaces + "end\n"
+        elseif_interfaceIn += leading_spaces + "end\n"
     templateTB_sv_str = templateTB_sv_str.replace("#ELSE_IF_INTERFACE_IN#", 
         elseif_interfaceIn[:-1])
 
@@ -633,7 +641,7 @@ def sonar(mode, modeArg, filepath):
             interface['name'] + "\") begin\n"
         elseif_interfaceOut = commandVarReplace(elseif_interfaceOut, interface, 
             currInterface.master_action, leading_spaces + tabSize, currInterface.sv_args)
-    elseif_interfaceOut += leading_spaces + "end\n"
+        elseif_interfaceOut += leading_spaces + "end\n"
     templateTB_sv_str = templateTB_sv_str.replace("#ELSE_IF_INTERFACE_OUT#", 
         elseif_interfaceOut[:-1])
 
@@ -648,7 +656,7 @@ def sonar(mode, modeArg, filepath):
         elseif_interfaceIn += "if(!strcmp(interfaceType,\"" + interface['name'] + \
             "\")){\n"
         elseif_interfaceIn += leading_spaces + tabSize + "WRITE(" + \
-            interface['name'] + ")\n"
+            interface['c_struct'] + ", " + interface['name'] + ")\n"
         elseif_interfaceIn += leading_spaces + "}\n"
     templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_INTERFACE_IN#", 
         elseif_interfaceIn[:-1])
@@ -667,7 +675,7 @@ def sonar(mode, modeArg, filepath):
             "\")){\n"
         elseif_interfaceOut += leading_spaces + tabSize + "read = true;\n"
         elseif_interfaceOut += leading_spaces + tabSize + "READ(" + \
-            interface['name'] + ")\n"
+            interface['c_struct'] + ", " + interface['name'] + ")\n"
         elseif_interfaceOut += leading_spaces + "}\n"
     templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_INTERFACE_OUT#", 
         elseif_interfaceOut[:-1])
@@ -715,7 +723,7 @@ def sonar(mode, modeArg, filepath):
 
 #------------------------------------------------------------------------------#
     # Create the if-else tree for waits
-
+    #TODO need to handle this if waitConditions is empty (sv will error out)
     if_else_wait = ""
     with open(templateTB_sv,'r') as f:
         lineStr = [line for line in f if "#IF_ELSE_WAIT#" in line]
@@ -866,7 +874,7 @@ def sonar(mode, modeArg, filepath):
     with open(templateTB_c,'r') as f:
         lineStr = [line for line in f if "#MAX_ARG_NUM#" in line]
     leading_spaces = getIndentation(lineStr)
-    templateTB_c_str = templateTB_c_str.replace("#MAX_STRING_SIZE#", str(maxCharLength))
+    templateTB_c_str = templateTB_c_str.replace("#MAX_STRING_SIZE#", str(maxCharLength+1)) #/0 char
 
     tbFile_sv.write(templateTB_sv_str)
     tbFile_sv.close()

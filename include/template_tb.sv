@@ -35,19 +35,22 @@ module exerciser (
     logic [MAX_SEEK_SIZE-1:0] parallelSections [MAX_PARALLEL];
 
     logic [MAX_PARALLEL-1:0] testVectorEnd = 0;
+    logic [MAX_PARALLEL-1:0] errorCheck = 0;
     logic updateEnd = 0;
 
     task automatic evaluateData(
         input logic [MAX_DATA_SIZE-1:0] args [MAX_ARG_NUM],
         input string packetType_par,
         input string interfaceType_par,
-        output logic done
+        output logic done,
+        output logic error
     );
         
         if (packetType_par == "wait") begin
             #IF_ELSE_WAIT#
             else begin
                 $display({"Unhandled case for wait type: ", interfaceType_par});
+                error = 1'b1;
             end
         end
         else if (packetType_par == "signal") begin
@@ -55,6 +58,7 @@ module exerciser (
             else begin
                 $display({"Unhandled case for signal type: ", 
                     interfaceType_par});
+                error = 1'b1;
             end
         end
         else if (packetType_par == "delay") begin
@@ -64,6 +68,7 @@ module exerciser (
             else begin
                 $display({"Unhandled case for delay type: ", 
                     interfaceType_par});
+                error = 1'b1;
             end
         end
         else if (packetType_par == "display") begin
@@ -82,6 +87,9 @@ module exerciser (
             if(interfaceType_par == "INIT") begin
                 timeRef = $time;
             end
+            else if(interfaceType_par == "PRINT") begin
+                $display("%t", $time);
+            end
             else begin
                 $display("%s: %t", interfaceType_par, $time - timeRef);
             end
@@ -95,6 +103,7 @@ module exerciser (
         else begin
             $display({"Unhandled case: ", packetType_par, " " , 
                 interfaceType_par});
+            error = 1'b1;
             $finish;
         end
     endtask
@@ -147,13 +156,23 @@ module exerciser (
                     $finish;
                 end
             end
-            $display("All tests completed!");
+            if (|errorCheck_latched) begin
+                $display("Not all tests completed successfully. See above.");
+            end else begin
+                $display("All tests completed successfully!");
+            end
+            $finish;
         end
         else begin
             $display("Bad data file - vector header");
             $finish;
         end
-    end    
+    end
+
+    logic [MAX_PARALLEL-1:0] errorCheck_latched = 0;
+    always_ff @(posedge #VECTOR_CLOCK#) begin
+        errorCheck_latched <= errorCheck | errorCheck_latched;
+    end
 
     generate;
         for(genvar gen_i = 0; gen_i < MAX_PARALLEL; gen_i++) begin
@@ -181,7 +200,7 @@ module exerciser (
                                 status_par = $fscanf(dataFile, "%d", args[l]);
                             end
                             evaluateData(args, packetType_par,
-                                interfaceType_par, testVectorEnd[gen_i]);
+                                interfaceType_par, testVectorEnd[gen_i], errorCheck[gen_i]);
                         end
                     end
                     wait(updateEnd == '0);
