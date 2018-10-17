@@ -212,7 +212,7 @@ module exerciser (
    
 endmodule
 
-module am_rx_tb();
+module #MODULE_NAME#_tb();
 
     #TB_SIGNAL_LIST#
 

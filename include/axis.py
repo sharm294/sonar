@@ -8,7 +8,8 @@ master_output_channels = {
     "tdata": {"size": 0, "required": True},
     "tvalid": {"size": 1, "required": True},
     "tlast": {"size": 1, "required": False},
-    "tkeep": {"size": 0, "required": False}
+    "tkeep": {"size": 0, "required": False},
+    "tdest": {"size": 0, "required": False}
 }
 
 # Defines the systemverilog commands to use for a master/slave command. 
@@ -37,6 +38,9 @@ slave_action = [
     "  begin",
     "    @(negedge $$clock iff $$name_tready);",
     "  end",
+    "  begin",
+    "    @(posedge $$clock iff $$name_tready);",
+    "  end",
     "join_any",
     "@(negedge $$clock);",
     "$$name_tvalid = 1'b0;"
@@ -52,24 +56,29 @@ from collections import OrderedDict
 sv_args = OrderedDict([
     ("tdata", 0),
     ("tlast", 1),
-    ("tkeep", 2)
+    ("tkeep", 2),
+    ("tdest", 3)
 ])
 
 c_args = OrderedDict([
     ("tdata", 0),
     ("tlast", 1),
-    ("tkeep", 2)
+    ("tkeep", 2),
+    ("tdest", 3)
 ])
 
 # defines an empty JSON structural object that is used as a template when writing
-json_struct = {"type": "axis", "interface": "", "width": 0, "id": "", "payload": []}
+json_struct = {"type": "axis", "interface": "", "width": 0, "id": "", \
+    "c_stream": "", "payload": []}
 
 # this function defines operations (if any) that should be performed at any keys
 # in the top level of the JSON struct object. If none, just use pass
-def json_top(json_struct, channels):
-    for channel in channels:
+def json_top(json_struct, interface):
+    for channel in interface['channels']:
         if channel['type'] == 'tdata':
             json_struct['width'] = channel['size']
+
+    json_struct['c_stream'] = interface['c_stream']
 
     return json_struct
 
@@ -90,6 +99,8 @@ def json_payload(payload):
             payload['callTB'] = 0
         if 'tlast' not in payload:
             payload['tlast'] = 0
+        if 'tdest' not in payload:
+            payload['tdest'] = 0
         return payload
 
 # This function is called by parse to resolve any macros or strings that remain
@@ -131,7 +142,8 @@ def write_sv(packet):
 def write_c(packet):
     line = ""
     for word in packet['payload']:
-        line += packet['interface']+ " " + str(word['id']) + " " + str(len(c_args)) + " " + \
+        line += packet['interface']+ " " + str(word['id']) + " " + \
+            str(packet['c_stream']) + " " + str(len(c_args)) + " " + \
             str(word['callTB'])
         for arg, value in c_args.iteritems():
             line += " " + str(word[arg])

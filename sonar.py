@@ -8,6 +8,7 @@ import importlib
 from shlex import split as quoteSplit
 
 from utilities import getFilePath
+from utilities import stripFileName
 from utilities import printError
 from generate import generate
 
@@ -128,11 +129,11 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
         for interface in interface_in:
             if interface['name'] == cur_interface_json['interface']:
                 cur_interface_json = currInterface.json_top(cur_interface_json, \
-                    interface['channels'])
+                    interface)
         for interface in interface_out:
             if interface['name'] == cur_interface_json['interface']:
                 cur_interface_json = currInterface.json_top(cur_interface_json, \
-                    interface['channels'])
+                    interface)
         cur_interface_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
             "_" + interface['type'] + "_" + str(interfaceCounter) + "_"
         interfaceCounter += 1
@@ -242,7 +243,7 @@ def setFromConfig(templateTB_sv_str, yamlData):
         if yamlData[tbMetadataTag] is None:
             replaceStr = ""
         else:
-            replaceStr = str(yamlData[tbMetadataTag]).replace("_", " ")
+            replaceStr = str(yamlData[tbMetadataTag])
         searchStr = "#" + tbMetadataTag.upper() + "#"
         templateTB_sv_str = templateTB_sv_str.replace(searchStr, replaceStr)
 
@@ -288,10 +289,14 @@ def sonar(mode, modeArg, filepath):
     tbFileName_c = buildPath + pathTuple[1].replace(fileType, '_tb.cpp')
 
     configFileTime = os.path.getmtime(userFileName)
-    tbTime = os.path.getmtime(tbFileName_sv)
+    if os.path.exists(tbFileName_sv):
+        tbTime = os.path.getmtime(tbFileName_sv)
+    else:
+        tbTime = 0
     if tbTime > configFileTime: #don't run sonar
         configFile.close()
-        print("Sonar not run: testbench is newer than configuration file")
+        print("Sonar not run: testbench is newer than configuration file " + 
+            stripFileName(mode, modeArg, userFileName))
         exit(0)
 
     templateTB_sv = getFilePath("env", "SONAR_PATH", "/include/template_tb.sv")
@@ -613,6 +618,8 @@ def sonar(mode, modeArg, filepath):
 #------------------------------------------------------------------------------#
     # Create the if-else tree for interfaces
 
+    # for SV
+
     elseif_interfaceIn = ""
     with open(templateTB_sv,'r') as f:
         lineStr = [line for line in f if "#ELSE_IF_INTERFACE_IN#" in line]
@@ -645,6 +652,8 @@ def sonar(mode, modeArg, filepath):
     templateTB_sv_str = templateTB_sv_str.replace("#ELSE_IF_INTERFACE_OUT#", 
         elseif_interfaceOut[:-1])
 
+    # for C++
+
     elseif_interfaceIn = ""
     with open(templateTB_c,'r') as f:
         lineStr = [line for line in f if "#ELSE_IF_INTERFACE_IN#" in line]
@@ -656,7 +665,8 @@ def sonar(mode, modeArg, filepath):
         elseif_interfaceIn += "if(!strcmp(interfaceType,\"" + interface['name'] + \
             "\")){\n"
         elseif_interfaceIn += leading_spaces + tabSize + "WRITE(" + \
-            interface['c_struct'] + ", " + interface['name'] + ")\n"
+            "" + interface['c_stream'] + ", " + interface['c_struct'] + ", " + \
+            interface['name'] + ")\n"
         elseif_interfaceIn += leading_spaces + "}\n"
     templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_INTERFACE_IN#", 
         elseif_interfaceIn[:-1])
@@ -675,7 +685,8 @@ def sonar(mode, modeArg, filepath):
             "\")){\n"
         elseif_interfaceOut += leading_spaces + tabSize + "read = true;\n"
         elseif_interfaceOut += leading_spaces + tabSize + "READ(" + \
-            interface['c_struct'] + ", " + interface['name'] + ")\n"
+            "" + interface['c_stream'] + ", " + interface['c_struct'] + ", " + \
+            interface['name'] + ")\n"
         elseif_interfaceOut += leading_spaces + "}\n"
     templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_INTERFACE_OUT#", 
         elseif_interfaceOut[:-1])
@@ -859,10 +870,13 @@ def sonar(mode, modeArg, filepath):
         while line:
             firstWord = line.split(' ')[0]
             secondWord = line.split(' ')[1]
+            thirdWord = line.split(' ')[2]
             if len(firstWord) > maxCharLength:
                 maxCharLength = len(firstWord)
             if len(secondWord) > maxCharLength:
                 maxCharLength = len(secondWord)
+            if len(thirdWord) > maxCharLength:
+                maxCharLength = len(thirdWord)
             line = f.readline()
     
     with open(templateTB_sv,'r') as f:

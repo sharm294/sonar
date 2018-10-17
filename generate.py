@@ -81,8 +81,9 @@ def writeLine_c(dataFile_c, packet):
             currInterface = importlib.import_module("include." + packet['type'])
             dataFile_c.write(currInterface.write_c(packet))
         elif packetType == 'end':
-            dataFile_c.write("end " + str(packet['id']) + " 1 0 " + \
-                str(packet['value']) + "\n")
+            # NULL is added as a dummy string
+            dataFile_c.write("end " + str(packet['id']) + " NULL 1 0 " + \
+            str(packet['value']) + "\n")
         elif packetType == 'timestamp':
             dataFile_c.write("timestamp " + str(packet['interface']) + " " + \
                 "1 0 " + str(packet['value']) + "\n")
@@ -213,7 +214,7 @@ def generate(mode, modeArg, filepath):
     # infinite while loop in the C testbench. ap_uint wasn't properly handling 
     # the case where there's nothing to read (i.e. end of file) so this is used 
     # to exit instead of relying on when we can no longer read data.
-    dataFile_c.write("\nfinish 0 0 0")
+    dataFile_c.write("\nfinish NULL NULL 0 0")
 
     dataFile_c.close()
     dataFile_sv.close()

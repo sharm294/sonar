@@ -13,7 +13,7 @@ int main(int argc, char* argv[]){
     bool printInterfaces = false;
     bool readInterfaces = false;
     for(i = 1; i < argc; i++){
-        if (std::string(argv[i]).compare("--printState") == 0){
+        if (std::string(argv[i]).compare("--printStates") == 0){
             printState = true;
         } else if(std::string(argv[i]).compare("--printMatches") == 0){
             printMatches = true;
@@ -34,6 +34,7 @@ int main(int argc, char* argv[]){
     std::cout << "\n*** Starting #FUNCTION#_TB ***\n\n";
 
     char interfaceType [#MAX_STRING_SIZE#];
+    char cStreamType [#MAX_STRING_SIZE#];
     char id [#MAX_STRING_SIZE#];
     int argCount;
     ap_uint<#MAX_DATA_SIZE#> readArgs [#MAX_ARG_NUM#];
@@ -46,7 +47,7 @@ int main(int argc, char* argv[]){
     while(1){
         bool read = false;
 
-        fscanf(dataFile, "%s %s %d %d", interfaceType, id, &argCount, &callTB);
+        fscanf(dataFile, "%s %s %s %d %d", interfaceType, id, cStreamType, &argCount, &callTB);
         for(int l = 0; l < argCount; l++){
             fscanf(dataFile, "%ld", args[l]); //C++ can only support 64bit args
         }
@@ -76,7 +77,7 @@ int main(int argc, char* argv[]){
         }
 
         if(read){
-            VERIFY
+            VERIFY(cStreamType)
             else if (printMatches){
                 std::cout << "Match at id: " << id << "\n";
                 std::cout << std::hex << "   Received: " << readArgs[0] << " " << 
