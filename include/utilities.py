@@ -1,8 +1,38 @@
 import sys
 import os
+import importlib
 
 sonar_types = ["delay", "wait", "signal", "end", "timestamp", "display", "flag"]
 
+################################################################################
+### getInterface ###
+# This function attempts to import an interface definition
+def getInterface(interfaceName):
+    # first check user's directory
+    try:
+        interface = importlib.import_module("user.interfaces." + interfaceName)
+    except ImportError:
+        pass
+    else:
+        return interface
+    
+    # then check Sonar directory
+    try:
+        interface = importlib.import_module("include.interfaces." + interfaceName)
+    except ImportError:
+        printError(1, "Unknown interface type: " + port['type'])
+        return None
+    else:
+        return interface
+
+################################################################################
+### getIndentation ###
+# This function extracts the indentation level of a line
+# Return: a string containing the leading whitespace
+def getIndentation(textStr):
+    return textStr[0][:len(textStr[0])-len(textStr[0].lstrip())]
+
+################################################################################
 ### GetFilePath ###
 # This function checks if a file exists and returns the absolute path to it
 # 
@@ -140,16 +170,6 @@ def extractNumber(numberStr):
            number = int(numberStr, 16)
         elif numberStr[:2] == "0b":
             number = int(numberStr, 2)
-        elif numberStr[:2] == "0s":
-            if numberStr[2:] == "dbgPrint":
-                number = 0
-            elif numberStr[2:] == "dbgState":
-                number = 1
-            elif numberStr[2:] == "dbgContinue":
-                number = 2
-            else:
-                printError(-1, "Unknown print 0s command: " + numberStr[2:])
-                number = -1
         else:
             number = int(numberStr, 10)
 

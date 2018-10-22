@@ -4,185 +4,15 @@ import json
 import datetime
 import re
 import copy
-import importlib
 from shlex import split as quoteSplit
 
-from utilities import getFilePath
-from utilities import stripFileName
-from utilities import printError
+from include.utilities import getFilePath
+from include.utilities import stripFileName
+from include.utilities import printError
+from include.utilities import getIndentation
+from include.utilities import getInterface
 from generate import generate
-
-################################################################################
-### writeJSONPacket ###
-# This function converts a YAML command into its equivalent JSON.
-
-def writeJSONPacket(parallelSection_json, packet, vectorIndex, parallelIndex, 
-signals_in, signals_out, interface_in, interface_out, usedInterfaces):
-    signal_json = {"type": "signal", "interface": "", "value": 0, "id": ""}
-    regex_int_str = re.compile("([0-9]+)([a-z]+)")
-    delayCounter = 0
-    interfaceCounter = 0
-    displayCounter = 0
-    waitCounter = 0
-    timestampCounter = 0
-    if 'macro' in packet:
-        if packet['macro'] == "INIT_SIGNALS":
-            for signal in signals_in:
-                cur_signal_json = copy.deepcopy(signal_json)
-                cur_signal_json['interface'] = signal['name']
-                cur_signal_json['id'] = str(vectorIndex) + "_" + \
-                    str(parallelIndex) + "_" + "init_" + signal['name']
-                parallelSection_json['data'].append(cur_signal_json)
-            for interface in interface_in:
-                currInterface = usedInterfaces[interface['type']]
-                for channel in interface['channels']:
-                    if channel['type'] in currInterface.master_output_channels:
-                        cur_signal_json = copy.deepcopy(signal_json)
-                        cur_signal_json['interface'] = interface['name'] + "_" \
-                            + channel['name']
-                        cur_signal_json['id'] = str(vectorIndex) + "_" + \
-                            str(parallelIndex) + "_" + "init_" + \
-                            cur_signal_json['interface']
-                        parallelSection_json['data'].append(cur_signal_json)
-            for interface in interface_out:
-                currInterface = usedInterfaces[interface['type']]
-                for channel in interface['channels']:
-                    if channel['type'] in currInterface.master_input_channels:
-                        cur_signal_json = copy.deepcopy(signal_json)
-                        cur_signal_json['interface'] = interface['name'] + "_" \
-                            + channel['name']
-                        cur_signal_json['id'] = str(vectorIndex) + "_" + \
-                            str(parallelIndex) + "_" + "init_" + \
-                            cur_signal_json['interface']
-                        parallelSection_json['data'].append(cur_signal_json)
-        elif packet['macro'] == "END":
-            cur_signal_json = copy.deepcopy(signal_json)
-            cur_signal_json['type'] = "end"
-            cur_signal_json['value'] = vectorIndex
-            cur_signal_json['interface'] = "Vector_" + str(vectorIndex)
-            cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) \
-                + "_" + "end"
-            parallelSection_json['data'].append(cur_signal_json)
-    elif 'delay' in packet:
-        m = regex_int_str.match(str(packet['delay']))
-        cur_signal_json = copy.deepcopy(signal_json)
-        cur_signal_json['type'] = 'delay'
-        cur_signal_json['interface'] = m.group(2)
-        cur_signal_json['value'] = m.group(1)
-        cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + "delay_" + str(delayCounter)
-        delayCounter += 1
-        parallelSection_json['data'].append(cur_signal_json)
-    elif 'signal' in packet:
-        for signal in packet['signal']:
-            cur_signal_json = copy.deepcopy(signal_json)
-            cur_signal_json['interface'] = signal['name']
-            cur_signal_json['value'] = signal['value']
-            cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) \
-                + "_" + "init_" + signal['name']
-            parallelSection_json['data'].append(cur_signal_json)
-    elif 'display' in packet:
-        cur_signal_json = copy.deepcopy(signal_json)
-        cur_signal_json['type'] = "display"
-        cur_signal_json['interface'] = "\"" + packet['display'] + "\""
-        cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + "display_" + str(displayCounter)
-        displayCounter += 1
-        parallelSection_json['data'].append(cur_signal_json)
-    elif 'timestamp' in packet:
-        cur_signal_json = copy.deepcopy(signal_json)
-        cur_signal_json['type'] = "timestamp"
-        cur_signal_json['interface'] = packet['timestamp']
-        cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + "timestamp_" + str(timestampCounter)
-        timestampCounter += 1
-        parallelSection_json['data'].append(cur_signal_json)
-    elif 'flag' in packet:
-        cur_signal_json = copy.deepcopy(signal_json)
-        cur_signal_json['type'] = "flag"
-        if "set_flag" in packet['flag']:
-            cur_signal_json['interface'] = "set"
-            cur_signal_json['value'] = packet['flag']['set_flag']
-        else:
-            cur_signal_json['interface'] = "clear"
-            cur_signal_json['value'] = packet['flag']['clear_flag']
-        cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + "flag_" + str(timestampCounter)
-        timestampCounter += 1
-        parallelSection_json['data'].append(cur_signal_json)
-    elif 'wait' in packet:
-        cur_signal_json = copy.deepcopy(signal_json)
-        cur_signal_json['type'] = "wait"
-        cur_signal_json['interface'] = packet['wait']['key']
-        cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + "wait_" + str(waitCounter)
-        if 'value' in packet['wait']:
-            cur_signal_json['value'] = packet['wait']['value']
-        else:
-            cur_signal_json['value'] = 0
-        waitCounter += 1
-        parallelSection_json['data'].append(cur_signal_json)
-    elif 'interface' in packet:
-        currInterface = usedInterfaces[packet['interface']['type']]
-        cur_interface_json = copy.deepcopy(currInterface.json_struct)
-        cur_interface_json['interface'] = packet['interface']['name']
-        for interface in interface_in:
-            if interface['name'] == cur_interface_json['interface']:
-                cur_interface_json = currInterface.json_top(cur_interface_json, \
-                    interface)
-        for interface in interface_out:
-            if interface['name'] == cur_interface_json['interface']:
-                cur_interface_json = currInterface.json_top(cur_interface_json, \
-                    interface)
-        cur_interface_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + interface['type'] + "_" + str(interfaceCounter) + "_"
-        interfaceCounter += 1
-        for payload in packet['interface']['payload']:
-            payloadCopy = payload.copy()
-            payloadCopy = currInterface.json_payload(payloadCopy)
-            cur_interface_json['payload'].append(payloadCopy)
-        parallelSection_json['data'].append(cur_interface_json.copy())
-    else:
-        printError(1, "Unknown packet type: ")
-        print(packet)
-        exit(1)
-
-################################################################################
-### writeJSON ###
-# This function converts the YAML test vectors to JSON and calls any interface 
-# specific functions to fill in the JSON structs
-def writeJSON(testVectors, dataFile, signals_in, signals_out, interface_in, 
-    interface_out, usedInterfaces):
-    parallelNum = 0
-    json_dict = {}
-    json_dict['data'] = []
-
-    #generate JSON file
-    for vectorIndex, testVector in enumerate(testVectors):
-        if len(testVector['Test_Vector_' + str(vectorIndex)]) > parallelNum:
-            parallelNum = len(testVector['Test_Vector_' + str(vectorIndex)])
-        testVector_json = {}
-        testVector_json['data'] = []
-        json_dict['data'].append(testVector_json)
-        testVectorInst = testVector['Test_Vector_' + str(vectorIndex)]
-        for parallelIndex, parallelSection in enumerate(testVectorInst):
-            parallelSection_json = {}
-            parallelSection_json['data'] = []
-            testVector_json['data'].append(parallelSection_json)
-            for packet in parallelSection['Parallel_Section_' + str(parallelIndex)]:
-                writeJSONPacket(parallelSection_json, packet, vectorIndex, \
-                    parallelIndex, signals_in, signals_out, interface_in, \
-                    interface_out, usedInterfaces)
-    
-    json.dump(json_dict, dataFile, indent=2)
-    return parallelNum
-
-################################################################################
-### getIndentation ###
-# This function extracts the indentation level of a line
-
-def getIndentation(textStr):
-    return textStr[0][:len(textStr[0])-len(textStr[0].lstrip())]
+from writeJSON import writeJSON
 
 ################################################################################
 ### commandVarReplaceSub ###
@@ -196,6 +26,22 @@ def commandVarReplaceSub(elseif_interfaceIn, command, interface, indent):
     elseif_interfaceIn += indent + command + "\n"
     return elseif_interfaceIn
 
+################################################################################
+### commandVarReplaceChannel ###
+# This function performs duplication and text replacement for $$channels
+def commandVarReplaceChannel(interface, action, command, elseif_interfaceIn, \
+    indent, args):
+    for channel in interface['channels']:
+        if channel['type'] in action['channels']:
+            commandCopy = copy.deepcopy(command)
+            commandCopy = commandCopy.replace("$$channel", 
+                channel['type'])
+            commandCopy = commandCopy.replace("$$i",
+                str(args[channel['type']]))
+            elseif_interfaceIn = commandVarReplaceSub(
+                elseif_interfaceIn, commandCopy, interface,
+                indent)
+
 #This function replaces the variables in an interface action block. There are 
 #two named variables: $$name (referring to the interface name) and $$channel (
 #referring to a particular side channel). All other $$ variables must be keys in
@@ -207,18 +53,8 @@ def commandVarReplace(elseif_interfaceIn, interface, actions, indent, args):
             for command in action['commands']:
                 regex_channel = re.compile("\$\$channel")
                 if re.findall(regex_channel, command): #if $$channel in command
-                    index = 0
-                    for channel in interface['channels']:
-                        if channel['type'] in action['channels']:
-                            commandCopy = copy.deepcopy(command)
-                            commandCopy = commandCopy.replace("$$channel", 
-                                channel['type'])
-                            commandCopy = commandCopy.replace("$$i",
-                                str(args[channel['type']]))
-                            index += 1
-                            elseif_interfaceIn = commandVarReplaceSub(
-                                elseif_interfaceIn, commandCopy, interface,
-                                indent)
+                    commandVarReplaceChannel(interface, action, command, 
+                        elseif_interfaceIn, indent, args)
                 else:
                     commandCopy = copy.deepcopy(command)
                     elseif_interfaceIn = commandVarReplaceSub(elseif_interfaceIn, 
@@ -299,8 +135,8 @@ def sonar(mode, modeArg, filepath):
             stripFileName(mode, modeArg, userFileName))
         exit(0)
 
-    templateTB_sv = getFilePath("env", "SONAR_PATH", "/include/template_tb.sv")
-    templateTB_c = getFilePath("env", "SONAR_PATH", "/include/template_tb.cpp")
+    templateTB_sv = getFilePath("env", "SONAR_PATH", "/templates/template_tb.sv")
+    templateTB_c = getFilePath("env", "SONAR_PATH", "/templates/template_tb.cpp")
 
     dataFile = open(dataFileName, "w+")
     
@@ -324,12 +160,12 @@ def sonar(mode, modeArg, filepath):
         yamlData['Module_Name']+".hpp\"")
 
     #insert all the interface systemverilog definitions in the testbench
-    usedInterfaces = {}
-    include_interfaces = ""
-    for interface in yamlData['Interfaces']:
-        usedInterfaces[interface] = importlib.import_module("include." + \
-            interface)
-        include_interfaces += "`include \"" + interface + ".sv\"\n"
+    # usedInterfaces = {}
+    # include_interfaces = ""
+    # for interface in yamlData['Interfaces']:
+    #     usedInterfaces[interface] = importlib.import_module("include." + \
+    #         interface)
+    #     include_interfaces += "`include \"" + interface + ".sv\"\n"
 
     # templateTB_sv_str = templateTB_sv_str.replace("#INCLUDE_INTERFACES#", 
     #     include_interfaces[:-1])
@@ -357,7 +193,21 @@ def sonar(mode, modeArg, filepath):
                     portCopy['size'] = 1
                 del portCopy['type']
                 clocks_in.append(portCopy)
-            elif port['type'] in usedInterfaces:
+            # elif port['type'] in usedInterfaces:
+            #     portCopy = port.copy()
+            #     for channel in portCopy['channels']:
+            #         if 'size' not in channel:
+            #             channel['size'] = 1
+            #     if portCopy['direction'] == "slave":
+            #         interface_in.append(portCopy)
+            #     else:
+            #         interface_out.append(portCopy)
+            else:
+                # printError(1, "Unknown port type: " + port['type'])
+                # exit(1)
+                usedInterfaces[port['type']] = getInterface(port['type'])
+                if usedInterfaces[port['type']] is None:
+                    exit(1)
                 portCopy = port.copy()
                 for channel in portCopy['channels']:
                     if 'size' not in channel:
@@ -366,9 +216,6 @@ def sonar(mode, modeArg, filepath):
                     interface_in.append(portCopy)
                 else:
                     interface_out.append(portCopy)
-            else:
-                printError(1, "Unknown port type: " + port['type'])
-                exit(1)                
         else:
             portCopy = port.copy()
             if 'size' not in portCopy:
@@ -578,42 +425,54 @@ def sonar(mode, modeArg, filepath):
 #------------------------------------------------------------------------------#
     # Create the if-else tree to set individual signals
 
+    # for SV
+
     ifelse_signal = ""
     with open(templateTB_sv,'r') as f:
         lineStr = [line for line in f if "#IF_ELSE_SIGNAL#" in line]
     leading_spaces = getIndentation(lineStr)
     for signal in signals_in:
-        if ifelse_signal == "":
-            ifelse_signal += "if(interfaceType_par == \"" + signal['name'] + \
-                "\") begin\n" + leading_spaces + tabSize + signal['name'] + \
-                " = args[0];\n" + leading_spaces + "end\n"
-        else:
-            ifelse_signal += leading_spaces + "else if(interfaceType_par == \"" \
-                + signal['name'] + "\") begin\n" + leading_spaces + tabSize + \
-                signal['name'] + " = args[0];\n" + leading_spaces + "end\n"
+        if ifelse_signal != "":
+            ifelse_signal += leading_spaces + "else "
+        ifelse_signal += "if(interfaceType_par == \"" + signal['name'] + \
+            "\") begin\n" + leading_spaces + tabSize + signal['name'] + \
+            " = args[0];\n" + leading_spaces + "end\n"
     for interface in interface_in:
         currInterface = usedInterfaces[interface['type']]
         for channel in interface['channels']:
             if channel['type'] in currInterface.master_output_channels:
-                if ifelse_signal == "":
-                    ifelse_signal += "if(interfaceType_par == \""
-                else:
-                    ifelse_signal += leading_spaces + "else if(interfaceType_par == \""
-                ifelse_signal += interface['name'] + "_" + channel['name'] + \
+                if ifelse_signal != "":
+                    ifelse_signal += leading_spaces + "else " 
+                ifelse_signal += "if(interfaceType_par == \"" + interface['name'] + "_" + channel['name'] + \
                     "\") begin\n" + leading_spaces + tabSize + interface['name'] + \
                     "_" + channel['type'] + " = args[0];\n" + leading_spaces + "end\n"
     for interface in interface_out:
         interfaceType = interface['type']
         for channel in interface['channels']:
             if channel['type'] in currInterface.master_input_channels:
-                if ifelse_signal == "":
-                    ifelse_signal += "if(interfaceType_par == \""
-                else:
-                    ifelse_signal += leading_spaces + "else if(interfaceType_par == \""
-                ifelse_signal += interface['name'] + "_" + channel['name'] + \
+                if ifelse_signal != "":
+                    ifelse_signal += "else "
+                ifelse_signal += "if(interfaceType_par == \"" + interface['name'] + "_" + channel['name'] + \
                     "\") begin\n" + leading_spaces + tabSize + interface['name'] + \
                     "_" + channel['type'] + " = args[0];\n" + leading_spaces + "end\n"
     templateTB_sv_str = templateTB_sv_str.replace("#IF_ELSE_SIGNAL#", ifelse_signal[:-1])
+
+    # for C++
+
+    ifelse_signal = ""
+    with open(templateTB_c,'r') as f:
+        lineStr = [line for line in f if "#IF_ELSE_SIGNAL#" in line]
+    leading_spaces = getIndentation(lineStr)
+    for signal in signals_in:
+        currInterface = usedInterfaces[interface['type']]
+        if ifelse_signal != "":
+            ifelse_signal += leading_spaces + "else "
+        ifelse_signal += "if(!strcmp(interfaceType,\"" + signal['name'] + \
+            "\")){\n"
+        ifelse_signal += leading_spaces + tabSize + signal['name'] + " = args[0];\n"
+        ifelse_signal += leading_spaces + "}\n"
+    templateTB_c_str = templateTB_c_str.replace("#IF_ELSE_SIGNAL#", 
+        ifelse_signal[:-1])
 
 #------------------------------------------------------------------------------#
     # Create the if-else tree for interfaces

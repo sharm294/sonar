@@ -14,9 +14,6 @@
 // 
 ////////////////////////////////////////////////////////////////////////////////
 
-//defines the interfaces
-// #INCLUDE_INTERFACES#
-
 //filename for the input data file
 string dataFileName = #DATA_FILE#;
 
@@ -62,14 +59,7 @@ module exerciser (
             end
         end
         else if (packetType_par == "delay") begin
-            if(interfaceType_par == "ns") begin
-                #(args[0]);
-            end
-            else begin
-                $display({"Unhandled case for delay type: ", 
-                    interfaceType_par});
-                error = 1'b1;
-            end
+            #(interfaceType_par)
         end
         else if (packetType_par == "display") begin
             $display("%s", interfaceType_par);

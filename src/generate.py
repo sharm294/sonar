@@ -1,12 +1,12 @@
 import os
 import json
 import sys
-import importlib
 
-from utilities import printError
-from utilities import trimFinalLine
-from utilities import getFilePath
-from utilities import sonar_types
+from include.utilities import printError
+from include.utilities import trimFinalLine
+from include.utilities import getFilePath
+from include.utilities import sonar_types
+from include.utilities import getInterface
 from parse import parseJSON
 
 ################################################################################
@@ -78,7 +78,9 @@ def writeLine_c(dataFile_c, packet):
     if 'type' in packet:
         packetType = packet['type']
         if packet['type'] not in sonar_types:
-            currInterface = importlib.import_module("include." + packet['type'])
+            currInterface = getInterface(packet['type'])
+            if currInterface is None:
+                exit(1)
             dataFile_c.write(currInterface.write_c(packet))
         elif packetType == 'end':
             # NULL is added as a dummy string
@@ -101,7 +103,9 @@ def writeLine_sv(dataFile_sv, packet):
     if 'type' in packet:
         packetType = packet['type']
         if packet['type'] not in sonar_types:
-            currInterface = importlib.import_module("include." + packet['type'])
+            currInterface = getInterface(packet['type'])
+            if currInterface is None:
+                exit(1)
             line = currInterface.write_sv(packet)
             if line != "":
                 dataFile_sv.append(line)

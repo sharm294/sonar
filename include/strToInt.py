@@ -1,5 +1,5 @@
-from utilities import printError
-from utilities import extractNumber
+from include.utilities import printError
+from include.utilities import extractNumber
 import importlib
 
 ### strToInt ###
@@ -21,11 +21,11 @@ def strToInt(packet):
     packetArgs = packet[1:-1].split(",")
 
     try:
-        user_utilities = importlib.import_module("user_utilities")
+        user_strToInt = importlib.import_module("user.user_strToInt")
     except ImportError:
         pass
     else:
-        intVal = user_utilities.user_strToInt(packet)
+        intVal = user_strToInt.strToInt(packet)
         if intVal is not None:
             return intVal
 

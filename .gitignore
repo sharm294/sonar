@@ -3,10 +3,9 @@
 *.code-workspace
 vivado*.log
 vivado*.jou
-build/
 *.pyc
 .vscode/
-user_utilities.py
+user/
 .Xil/
 
 # Prerequisites

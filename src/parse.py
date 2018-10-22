@@ -2,15 +2,15 @@ import os
 import sys
 import json
 import re
-import importlib
 
 from include.strToInt import strToInt
-from utilities import extractNumber
-from utilities import printError
-from utilities import printWarning
-from utilities import getFilePath
-from utilities import stripFileName
-from utilities import sonar_types
+from include.utilities import extractNumber
+from include.utilities import printError
+from include.utilities import printWarning
+from include.utilities import getFilePath
+from include.utilities import stripFileName
+from include.utilities import sonar_types
+from include.utilities import getInterface
 
 ################################################################################
 ### expandLoops ###
@@ -257,7 +257,9 @@ def parseJSON(mode, modeArg, filepath):
                 if packet['type'] in sonar_types:
                     sv_count += 1
                 elif 'interface' in packet:
-                    currInterface = importlib.import_module("include." + packet['type'])
+                    currInterface = getInterface(packet['type'])
+                    if currInterface is None:
+                        exit(1)
                     svPacket = currInterface.count(packet)
                     sv_count += svPacket
                 else:

@@ -21,5 +21,5 @@ This software is provided "as is" with no warranties or guarantees of support.
 
 This Agreement shall be governed by the laws of Province of Ontario, Canada.
 
-If you are interested in commercial use of Galapagos, please contact 
+If you are interested in commercial use of Sonar, please contact 
 Varun Sharma at varuns.sharma@mail.utoronto.ca.

@@ -54,6 +54,7 @@ int main(int argc, char* argv[]){
 
         #ELSE_IF_INTERFACE_IN#
         #ELSE_IF_INTERFACE_OUT#
+        #ELSE_IF_SIGNAL#
         else if((!strcmp(interfaceType,"timestamp")) || (!strcmp(interfaceType,"display"))){
             if(strcmp(id,"INIT")){
                 std::cout << id << "\n";
