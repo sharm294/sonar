@@ -25,11 +25,12 @@ master_action = [
     "end else begin",
     "    $error(\"AXI-S Assert failed at %t on $$name_tdata. Expected: %h, Received: %h\", $time, args[0], $$name_tdata);",
     "    error = 1'b1;",
+    "    $stop;",
     "end"
 ]
 
 slave_action = [
-    {"channels": {"tdata", "tlast", "tkeep"}, "commands": ["$$name_$$channel = args[$$i];"]},
+    {"channels": {"tdata", "tlast", "tkeep", "tdest"}, "commands": ["$$name_$$channel = args[$$i];"]},
     "$$name_tvalid = 1'b1;",
     "fork",
     "  begin",

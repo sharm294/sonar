@@ -41,6 +41,7 @@ def commandVarReplaceChannel(interface, action, command, elseif_interfaceIn, \
             elseif_interfaceIn = commandVarReplaceSub(
                 elseif_interfaceIn, commandCopy, interface,
                 indent)
+    return elseif_interfaceIn
 
 #This function replaces the variables in an interface action block. There are 
 #two named variables: $$name (referring to the interface name) and $$channel (
@@ -53,7 +54,7 @@ def commandVarReplace(elseif_interfaceIn, interface, actions, indent, args):
             for command in action['commands']:
                 regex_channel = re.compile("\$\$channel")
                 if re.findall(regex_channel, command): #if $$channel in command
-                    commandVarReplaceChannel(interface, action, command, 
+                    elseif_interfaceIn = commandVarReplaceChannel(interface, action, command, 
                         elseif_interfaceIn, indent, args)
                 else:
                     commandCopy = copy.deepcopy(command)
@@ -160,7 +161,7 @@ def sonar(mode, modeArg, filepath):
         yamlData['Module_Name']+".hpp\"")
 
     #insert all the interface systemverilog definitions in the testbench
-    # usedInterfaces = {}
+    usedInterfaces = {}
     # include_interfaces = ""
     # for interface in yamlData['Interfaces']:
     #     usedInterfaces[interface] = importlib.import_module("include." + \
@@ -193,6 +194,15 @@ def sonar(mode, modeArg, filepath):
                     portCopy['size'] = 1
                 del portCopy['type']
                 clocks_in.append(portCopy)
+            elif port['type'] == "reset":
+                portCopy = port.copy()
+                del portCopy['type']
+                if 'size' not in portCopy:
+                    portCopy['size'] = 1
+                if portCopy['direction'] == "input":
+                    signals_in.append(portCopy)
+                else:
+                    signals_out.append(portCopy)
             # elif port['type'] in usedInterfaces:
             #     portCopy = port.copy()
             #     for channel in portCopy['channels']:
@@ -451,27 +461,30 @@ def sonar(mode, modeArg, filepath):
         for channel in interface['channels']:
             if channel['type'] in currInterface.master_input_channels:
                 if ifelse_signal != "":
-                    ifelse_signal += "else "
+                    ifelse_signal += leading_spaces + "else "
                 ifelse_signal += "if(interfaceType_par == \"" + interface['name'] + "_" + channel['name'] + \
                     "\") begin\n" + leading_spaces + tabSize + interface['name'] + \
                     "_" + channel['type'] + " = args[0];\n" + leading_spaces + "end\n"
     templateTB_sv_str = templateTB_sv_str.replace("#IF_ELSE_SIGNAL#", ifelse_signal[:-1])
 
-    # for C++
+    # for C++ - not currently used since it's not being written to C data file
 
     ifelse_signal = ""
     with open(templateTB_c,'r') as f:
-        lineStr = [line for line in f if "#IF_ELSE_SIGNAL#" in line]
+        lineStr = [line for line in f if "#ELSE_IF_SIGNAL#" in line]
     leading_spaces = getIndentation(lineStr)
     for signal in signals_in:
-        currInterface = usedInterfaces[interface['type']]
-        if ifelse_signal != "":
-            ifelse_signal += leading_spaces + "else "
-        ifelse_signal += "if(!strcmp(interfaceType,\"" + signal['name'] + \
-            "\")){\n"
-        ifelse_signal += leading_spaces + tabSize + signal['name'] + " = args[0];\n"
-        ifelse_signal += leading_spaces + "}\n"
-    templateTB_c_str = templateTB_c_str.replace("#IF_ELSE_SIGNAL#", 
+        if 'type' not in signal:
+            if ifelse_signal != "":
+                ifelse_signal += leading_spaces + "else "
+            ifelse_signal += "if(!strcmp(interfaceType,\"" + signal['name'] + \
+                "\")){\n"
+            ifelse_signal += leading_spaces + tabSize + signal['name'] + " = args[0];\n"
+            ifelse_signal += leading_spaces + "}\n"
+
+    ifelse_signal = "" # clear this since it's not being used right now
+    
+    templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_SIGNAL#", 
         ifelse_signal[:-1])
 
 #------------------------------------------------------------------------------#
@@ -521,6 +534,8 @@ def sonar(mode, modeArg, filepath):
         currInterface = usedInterfaces[interface['type']]
         if elseif_interfaceIn != "":
             elseif_interfaceIn += leading_spaces + "else "
+        if ifelse_signal != "" and elseif_interfaceIn == "":
+            elseif_interfaceIn += "else "
         elseif_interfaceIn += "if(!strcmp(interfaceType,\"" + interface['name'] + \
             "\")){\n"
         elseif_interfaceIn += leading_spaces + tabSize + "WRITE(" + \

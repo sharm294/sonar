@@ -20,7 +20,7 @@ def getInterface(interfaceName):
     try:
         interface = importlib.import_module("include.interfaces." + interfaceName)
     except ImportError:
-        printError(1, "Unknown interface type: " + port['type'])
+        printError(1, "Unknown interface type: " + interfaceName)
         return None
     else:
         return interface
@@ -30,7 +30,13 @@ def getInterface(interfaceName):
 # This function extracts the indentation level of a line
 # Return: a string containing the leading whitespace
 def getIndentation(textStr):
-    return textStr[0][:len(textStr[0])-len(textStr[0].lstrip())]
+    try:
+        indent = textStr[0][:len(textStr[0])-len(textStr[0].lstrip())]
+    except IndexError:
+        printError(1, "String " + textStr + " not found")
+        exit(1)
+    else:
+        return indent
 
 ################################################################################
 ### GetFilePath ###

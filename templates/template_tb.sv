@@ -59,7 +59,13 @@ module exerciser (
             end
         end
         else if (packetType_par == "delay") begin
-            #(interfaceType_par)
+            if (interfaceType_par == "ns") begin
+                #(args[0]);
+            end
+            else begin
+                $display("Unhandled delay unit: %s", interfaceType_par);
+                $finish;
+            end
         end
         else if (packetType_par == "display") begin
             $display("%s", interfaceType_par);

@@ -20,6 +20,8 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
         if packet['macro'] == "INIT_SIGNALS":
             for signal in signals_in:
                 cur_signal_json = copy.deepcopy(signal_json)
+                if 'type' in signal:
+                    cur_signal_json['type'] = "signal_" + signal['type']
                 cur_signal_json['interface'] = signal['name']
                 cur_signal_json['id'] = str(vectorIndex) + "_" + \
                     str(parallelIndex) + "_" + "init_" + signal['name']
@@ -29,6 +31,7 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
                 for channel in interface['channels']:
                     if channel['type'] in currInterface.master_output_channels:
                         cur_signal_json = copy.deepcopy(signal_json)
+                        cur_signal_json['type'] = "signal_" + interface['name']
                         cur_signal_json['interface'] = interface['name'] + "_" \
                             + channel['name']
                         cur_signal_json['id'] = str(vectorIndex) + "_" + \
@@ -40,6 +43,7 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
                 for channel in interface['channels']:
                     if channel['type'] in currInterface.master_input_channels:
                         cur_signal_json = copy.deepcopy(signal_json)
+                        cur_signal_json['type'] = "signal_" + interface['name']
                         cur_signal_json['interface'] = interface['name'] + "_" \
                             + channel['name']
                         cur_signal_json['id'] = str(vectorIndex) + "_" + \
@@ -58,11 +62,11 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
         m = regex_int_str.match(str(packet['delay']))
         cur_signal_json = copy.deepcopy(signal_json)
         cur_signal_json['type'] = 'delay'
-        cur_signal_json['interface'] = str(packet['delay'])
+        cur_signal_json['interface'] = str(m.group(2))
         if m.group(2) not in ["fs", "ps", "ns", "us", "ms", "s"]:
             printError(1, "Unknown time format: " + m.group(2))
             exit(1)
-        cur_signal_json['value'] = 0
+        cur_signal_json['value'] = str(m.group(1))
         cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
             "_" + "delay_" + str(delayCounter)
         delayCounter += 1

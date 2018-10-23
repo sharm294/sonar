@@ -77,8 +77,8 @@ def calculateSeeks(testData_sv, repeatCount, updateStr, seekStr, countStr, \
 def writeLine_c(dataFile_c, packet):
     if 'type' in packet:
         packetType = packet['type']
-        if packet['type'] not in sonar_types:
-            currInterface = getInterface(packet['type'])
+        if packetType not in sonar_types and not packetType.startswith("signal"):
+            currInterface = getInterface(packetType)
             if currInterface is None:
                 exit(1)
             dataFile_c.write(currInterface.write_c(packet))
@@ -88,10 +88,16 @@ def writeLine_c(dataFile_c, packet):
             str(packet['value']) + "\n")
         elif packetType == 'timestamp':
             dataFile_c.write("timestamp " + str(packet['interface']) + " " + \
-                "1 0 " + str(packet['value']) + "\n")
+                "NULL 1 0 " + str(packet['value']) + "\n")
+        # TODO Supporting signal assignment in C++ became more complex so it's
+        # TODO just been commented out of the final C++ data file but there are 
+        # TODO hooks in Sonar to partially handle it (i.e. signal_* types)
+        # elif packetType == 'signal':
+        #     dataFile_c.write(str(packet['interface']) + " " + str(packet['id']) + \
+        #         " NULL 1 0 " + str(packet['value']) + "\n")
         elif packetType == 'display':
             dataFile_c.write("display " + str(packet['interface']) + " " + \
-                "1 0 " + str(packet['value']) + "\n")
+                "NULL 1 0 " + str(packet['value']) + "\n")
     else:
         for packet2 in packet:
             writeLine_c(dataFile_c, packet2)
@@ -102,7 +108,7 @@ def writeLine_c(dataFile_c, packet):
 def writeLine_sv(dataFile_sv, packet):
     if 'type' in packet:
         packetType = packet['type']
-        if packet['type'] not in sonar_types:
+        if packetType not in sonar_types and not packetType.startswith("signal"):
             currInterface = getInterface(packet['type'])
             if currInterface is None:
                 exit(1)
@@ -112,7 +118,7 @@ def writeLine_sv(dataFile_sv, packet):
         elif packetType == 'wait':
             dataFile_sv.append("wait " + str(packet['interface']) + " " + \
                 str(1) + " " + str(packet['value']))
-        elif packetType == 'signal':
+        elif packetType.startswith('signal'): # hook for different signal types
             dataFile_sv.append("signal " + str(packet['interface']) + " " + \
                 str(1) + " " + str(packet['value']))
         elif packetType == 'delay':

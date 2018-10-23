@@ -254,7 +254,7 @@ def parseJSON(mode, modeArg, filepath):
         for parallelSection in testVector['data']:
             sv_count = 0
             for packet in parallelSection['data']:
-                if packet['type'] in sonar_types:
+                if packet['type'] in sonar_types or packet['type'].startswith("signal"):
                     sv_count += 1
                 elif 'interface' in packet:
                     currInterface = getInterface(packet['type'])
@@ -289,7 +289,7 @@ def parseJSON(mode, modeArg, filepath):
         for parallelSection in testVector['data']:
             for packet in parallelSection['data']:
                 packetType = packet['type']
-                if packetType not in sonar_types:
+                if packetType not in sonar_types and not packetType.startswith("signal"):
                     currInterface.convert(packet)
                 convertValue(packet)
                 convertPayload(packet)

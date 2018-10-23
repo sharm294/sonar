@@ -5,8 +5,10 @@ vivado*.log
 vivado*.jou
 *.pyc
 .vscode/
-user/
+user/**
+!user/__init__.py
 .Xil/
+sample/build
 
 # Prerequisites
 *.d

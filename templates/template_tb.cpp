@@ -7,7 +7,6 @@
 
 int main(int argc, char* argv[]){
     int i;
-    int verbose = 0;
     bool printState = false;
     bool printMatches = false;
     bool printInterfaces = false;
@@ -52,9 +51,9 @@ int main(int argc, char* argv[]){
             fscanf(dataFile, "%ld", args[l]); //C++ can only support 64bit args
         }
 
+        #ELSE_IF_SIGNAL#
         #ELSE_IF_INTERFACE_IN#
         #ELSE_IF_INTERFACE_OUT#
-        #ELSE_IF_SIGNAL#
         else if((!strcmp(interfaceType,"timestamp")) || (!strcmp(interfaceType,"display"))){
             if(strcmp(id,"INIT")){
                 std::cout << id << "\n";
@@ -89,7 +88,7 @@ int main(int argc, char* argv[]){
         if(callTB > 0){
             for(int l = 0; l < callTB; l++){
                 CALL_TB
-                #ifdef DEBUG
+                #if defined(DEBUG) && defined(FSM_EXISTS)
                 if (printState){
                     std::cout << "Current State is " + stateParse(dbg_currentState) << "\n";
                 }
