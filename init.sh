@@ -7,6 +7,7 @@
 
 if [[ $# !=  1 && $# != 2 ]]; then
     echo "Usage: init.sh /abs/path/to/repository [/abs/path/to/vivado_hls/include]"
+    echo "Note: remove trailing slashes in the paths"
     return 0
 fi
 

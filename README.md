@@ -5,7 +5,7 @@ hardware. The only user input required is a YAML configuration file which
 defines the ports of the device-under-test (DUT), test vectors, and optionally,
 a set of wait conditions. With the configuration file, *sonar* will generate a
 .sv testbench and an associated .dat file containing the user specified test
-vectors. It will also generate a CSIM data file + testbench though that is not 
+vectors. It will also generate a C++ data file + testbench though that is not 
 quite as sophisticated.
 
 All generated files are placed in a newly created ./build/ directory relative
@@ -15,7 +15,7 @@ to the path of the configuration file.
 ``source init.sh`` with the correct arguments (run without args for help) to
 initialize repository first. Provide the absolute path to the cloned repository 
 and, optionally, the path to the Vivado HLS include folder (usually 
-Xilinx/Vivado_HLS/year/include). Remove any trailing slashes from the path. 
+Xilinx/Vivado_HLS/\<year\>/include). Remove any trailing slashes from the path. 
 Then use the make commands to create the sample or run scripts on your own 
 designs. 
 

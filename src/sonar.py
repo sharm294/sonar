@@ -99,7 +99,7 @@ def setFromConfig(templateTB_sv_str, yamlData):
 ### sonar ###
 # This function uses a configuration file to generate testbenches, data for the 
 # the testbenches to use, and a number of JSON files (for legacy reasons).
-def sonar(mode, modeArg, filepath):
+def sonar(mode, modeArg, filepath, languages):
 
 #------------------------------------------------------------------------------#
     # Open all the relevant files and make the simple text substitutions
@@ -116,6 +116,18 @@ def sonar(mode, modeArg, filepath):
         fileType = ".yaml"
     else:
         printError(1, "Unsupported configuration file")
+        configFile.close()
+        exit(1)
+
+    if languages == "all":
+        enable_SV = True
+        enable_C = True
+    elif languages == "sv":
+        enable_SV = True
+        enable_C = False
+    else:
+        printError(1, "Unsupported language: " + languages)
+        configFile.close()
         exit(1)
 
     buildPath = pathTuple[0] + "/build/"
@@ -123,11 +135,14 @@ def sonar(mode, modeArg, filepath):
         os.makedirs(buildPath)
     dataFileName = buildPath + pathTuple[1].replace(fileType, '.json')
     tbFileName_sv = buildPath + pathTuple[1].replace(fileType, '_tb.sv')
-    tbFileName_c = buildPath + pathTuple[1].replace(fileType, '_tb.cpp')
+    if enable_C:
+        tbFileName_c = buildPath + pathTuple[1].replace(fileType, '_tb.cpp')
 
     configFileTime = os.path.getmtime(userFileName)
     if os.path.exists(tbFileName_sv):
         tbTime = os.path.getmtime(tbFileName_sv)
+    elif enable_C and os.path.exists(tbFileName_c):
+        tbTime = os.path.getmtime(tbFileName_c)
     else:
         tbTime = 0
     if tbTime > configFileTime: #don't run sonar
@@ -136,29 +151,30 @@ def sonar(mode, modeArg, filepath):
             stripFileName(mode, modeArg, userFileName))
         exit(0)
 
-    templateTB_sv = getFilePath("env", "SONAR_PATH", "/templates/template_tb.sv")
-    templateTB_c = getFilePath("env", "SONAR_PATH", "/templates/template_tb.cpp")
-
     dataFile = open(dataFileName, "w+")
     
+    templateTB_sv = getFilePath("env", "SONAR_PATH", "/templates/template_tb.sv")
     with open(templateTB_sv, "r") as templateFile:
         templateTB_sv_str = templateFile.read()
     tbFile_sv = open(tbFileName_sv, "w+")
 
-    with open(templateTB_c, "r") as templateFile:
-        templateTB_c_str = templateFile.read()
-    tbFile_c = open(tbFileName_c, "w+")
+    if enable_C:
+        templateTB_c = getFilePath("env", "SONAR_PATH", "/templates/template_tb.cpp")
+        with open(templateTB_c, "r") as templateFile:
+            templateTB_c_str = templateFile.read()
+        tbFile_c = open(tbFileName_c, "w+")
 
     # set the directly replaceable text into the testbench
     templateTB_sv_str = setFromConfig(templateTB_sv_str, yamlData)
 
-    templateTB_c_str = templateTB_c_str.replace("#FUNCTION#", 
-        yamlData['Module_Name'].upper())
-    dataFile_c = dataFileName.replace(".json", "_c.dat")
-    templateTB_c_str = templateTB_c_str.replace("#DATA_FILE#", "\"" + \
-        dataFile_c + "\"")
-    templateTB_c_str = templateTB_c_str.replace("#HEADER_FILE#", "\"" + \
-        yamlData['Module_Name']+".hpp\"")
+    if enable_C:
+        templateTB_c_str = templateTB_c_str.replace("#FUNCTION#", 
+            yamlData['Module_Name'].upper())
+        dataFile_c = dataFileName.replace(".json", "_c.dat")
+        templateTB_c_str = templateTB_c_str.replace("#DATA_FILE#", "\"" + \
+            dataFile_c + "\"")
+        templateTB_c_str = templateTB_c_str.replace("#HEADER_FILE#", "\"" + \
+            yamlData['Module_Name']+".hpp\"")
 
     #insert all the interface systemverilog definitions in the testbench
     usedInterfaces = {}
@@ -429,8 +445,9 @@ def sonar(mode, modeArg, filepath):
         tb_signal_list[:-1])
     templateTB_sv_str = templateTB_sv_str.replace("#MAX_DATA_SIZE#", \
         str(maxSignalSize))
-    templateTB_c_str = templateTB_c_str.replace("#MAX_DATA_SIZE#", \
-        str(maxSignalSize))
+    if enable_C:
+        templateTB_c_str = templateTB_c_str.replace("#MAX_DATA_SIZE#", \
+            str(maxSignalSize))
 
 #------------------------------------------------------------------------------#
     # Create the if-else tree to set individual signals
@@ -469,23 +486,24 @@ def sonar(mode, modeArg, filepath):
 
     # for C++ - not currently used since it's not being written to C data file
 
-    ifelse_signal = ""
-    with open(templateTB_c,'r') as f:
-        lineStr = [line for line in f if "#ELSE_IF_SIGNAL#" in line]
-    leading_spaces = getIndentation(lineStr)
-    for signal in signals_in:
-        if 'type' not in signal:
-            if ifelse_signal != "":
-                ifelse_signal += leading_spaces + "else "
-            ifelse_signal += "if(!strcmp(interfaceType,\"" + signal['name'] + \
-                "\")){\n"
-            ifelse_signal += leading_spaces + tabSize + signal['name'] + " = args[0];\n"
-            ifelse_signal += leading_spaces + "}\n"
+    if enable_C:
+        ifelse_signal = ""
+        with open(templateTB_c,'r') as f:
+            lineStr = [line for line in f if "#ELSE_IF_SIGNAL#" in line]
+        leading_spaces = getIndentation(lineStr)
+        for signal in signals_in:
+            if 'type' not in signal:
+                if ifelse_signal != "":
+                    ifelse_signal += leading_spaces + "else "
+                ifelse_signal += "if(!strcmp(interfaceType,\"" + signal['name'] + \
+                    "\")){\n"
+                ifelse_signal += leading_spaces + tabSize + signal['name'] + " = args[0];\n"
+                ifelse_signal += leading_spaces + "}\n"
 
-    ifelse_signal = "" # clear this since it's not being used right now
-    
-    templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_SIGNAL#", 
-        ifelse_signal[:-1])
+        ifelse_signal = "" # clear this since it's not being used right now
+        
+        templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_SIGNAL#", 
+            ifelse_signal[:-1])
 
 #------------------------------------------------------------------------------#
     # Create the if-else tree for interfaces
@@ -526,44 +544,45 @@ def sonar(mode, modeArg, filepath):
 
     # for C++
 
-    elseif_interfaceIn = ""
-    with open(templateTB_c,'r') as f:
-        lineStr = [line for line in f if "#ELSE_IF_INTERFACE_IN#" in line]
-    leading_spaces = getIndentation(lineStr)
-    for interface in interface_in:
-        currInterface = usedInterfaces[interface['type']]
-        if elseif_interfaceIn != "":
-            elseif_interfaceIn += leading_spaces + "else "
-        if ifelse_signal != "" and elseif_interfaceIn == "":
-            elseif_interfaceIn += "else "
-        elseif_interfaceIn += "if(!strcmp(interfaceType,\"" + interface['name'] + \
-            "\")){\n"
-        elseif_interfaceIn += leading_spaces + tabSize + "WRITE(" + \
-            "" + interface['c_stream'] + ", " + interface['c_struct'] + ", " + \
-            interface['name'] + ")\n"
-        elseif_interfaceIn += leading_spaces + "}\n"
-    templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_INTERFACE_IN#", 
-        elseif_interfaceIn[:-1])
+    if enable_C:
+        elseif_interfaceIn = ""
+        with open(templateTB_c,'r') as f:
+            lineStr = [line for line in f if "#ELSE_IF_INTERFACE_IN#" in line]
+        leading_spaces = getIndentation(lineStr)
+        for interface in interface_in:
+            currInterface = usedInterfaces[interface['type']]
+            if elseif_interfaceIn != "":
+                elseif_interfaceIn += leading_spaces + "else "
+            if ifelse_signal != "" and elseif_interfaceIn == "":
+                elseif_interfaceIn += "else "
+            elseif_interfaceIn += "if(!strcmp(interfaceType,\"" + interface['name'] + \
+                "\")){\n"
+            elseif_interfaceIn += leading_spaces + tabSize + "WRITE(" + \
+                "" + interface['c_stream'] + ", " + interface['c_struct'] + ", " + \
+                interface['name'] + ")\n"
+            elseif_interfaceIn += leading_spaces + "}\n"
+        templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_INTERFACE_IN#", 
+            elseif_interfaceIn[:-1])
 
-    elseif_interfaceOut = ""
-    with open(templateTB_c,'r') as f:
-        lineStr = [line for line in f if "#ELSE_IF_INTERFACE_OUT#" in line]
-    leading_spaces = getIndentation(lineStr)
-    for interface in interface_out:
-        currInterface = usedInterfaces[interface['type']]
-        if elseif_interfaceOut != "":
-            elseif_interfaceOut += leading_spaces + "else "
-        if elseif_interfaceIn != "" and elseif_interfaceOut == "":
-            elseif_interfaceOut += "else "
-        elseif_interfaceOut += "if(!strcmp(interfaceType,\"" + interface['name'] + \
-            "\")){\n"
-        elseif_interfaceOut += leading_spaces + tabSize + "read = true;\n"
-        elseif_interfaceOut += leading_spaces + tabSize + "READ(" + \
-            "" + interface['c_stream'] + ", " + interface['c_struct'] + ", " + \
-            interface['name'] + ")\n"
-        elseif_interfaceOut += leading_spaces + "}\n"
-    templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_INTERFACE_OUT#", 
-        elseif_interfaceOut[:-1])
+        elseif_interfaceOut = ""
+        with open(templateTB_c,'r') as f:
+            lineStr = [line for line in f if "#ELSE_IF_INTERFACE_OUT#" in line]
+        leading_spaces = getIndentation(lineStr)
+        for interface in interface_out:
+            currInterface = usedInterfaces[interface['type']]
+            if elseif_interfaceOut != "":
+                elseif_interfaceOut += leading_spaces + "else "
+            if elseif_interfaceIn != "" and elseif_interfaceOut == "":
+                elseif_interfaceOut += "else "
+            elseif_interfaceOut += "if(!strcmp(interfaceType,\"" + interface['name'] + \
+                "\")){\n"
+            elseif_interfaceOut += leading_spaces + tabSize + "read = true;\n"
+            elseif_interfaceOut += leading_spaces + tabSize + "READ(" + \
+                "" + interface['c_stream'] + ", " + interface['c_struct'] + ", " + \
+                interface['name'] + ")\n"
+            elseif_interfaceOut += leading_spaces + "}\n"
+        templateTB_c_str = templateTB_c_str.replace("#ELSE_IF_INTERFACE_OUT#", 
+            elseif_interfaceOut[:-1])
 
 #------------------------------------------------------------------------------#
     # Create all testbench-generated clocks. Use the clock with the largest 
@@ -738,51 +757,55 @@ def sonar(mode, modeArg, filepath):
                     maxArgs = argCount
             line = f.readline()
 
-    with open(tbFileName_c.replace("tb.cpp", "c.dat")) as f:
-        line = f.readline()
-        maxCharLength = 0
-        while line:
-            firstWord = line.split(' ')[0]
-            secondWord = line.split(' ')[1]
-            thirdWord = line.split(' ')[2]
-            if len(firstWord) > maxCharLength:
-                maxCharLength = len(firstWord)
-            if len(secondWord) > maxCharLength:
-                maxCharLength = len(secondWord)
-            if len(thirdWord) > maxCharLength:
-                maxCharLength = len(thirdWord)
+    if enable_C:
+        with open(tbFileName_c.replace("tb.cpp", "c.dat")) as f:
             line = f.readline()
+            maxCharLength = 0
+            while line:
+                firstWord = line.split(' ')[0]
+                secondWord = line.split(' ')[1]
+                thirdWord = line.split(' ')[2]
+                if len(firstWord) > maxCharLength:
+                    maxCharLength = len(firstWord)
+                if len(secondWord) > maxCharLength:
+                    maxCharLength = len(secondWord)
+                if len(thirdWord) > maxCharLength:
+                    maxCharLength = len(thirdWord)
+                line = f.readline()
     
     with open(templateTB_sv,'r') as f:
         lineStr = [line for line in f if "#MAX_ARG_NUM#" in line]
     leading_spaces = getIndentation(lineStr)
     templateTB_sv_str = templateTB_sv_str.replace("#MAX_ARG_NUM#", str(maxArgs))
-    templateTB_c_str = templateTB_c_str.replace("#MAX_ARG_NUM#", str(maxArgs))
 
-    with open(templateTB_c,'r') as f:
-        lineStr = [line for line in f if "#MAX_ARG_NUM#" in line]
-    leading_spaces = getIndentation(lineStr)
-    templateTB_c_str = templateTB_c_str.replace("#MAX_STRING_SIZE#", str(maxCharLength+1)) #/0 char
+    if enable_C:
+        templateTB_c_str = templateTB_c_str.replace("#MAX_ARG_NUM#", str(maxArgs))
+        with open(templateTB_c,'r') as f:
+            lineStr = [line for line in f if "#MAX_ARG_NUM#" in line]
+        leading_spaces = getIndentation(lineStr)
+        templateTB_c_str = templateTB_c_str.replace("#MAX_STRING_SIZE#", str(maxCharLength+1)) #/0 char
 
     tbFile_sv.write(templateTB_sv_str)
     tbFile_sv.close()
 
-    tbFile_c.write(templateTB_c_str)
-    tbFile_c.close()
+    if enable_C:
+        tbFile_c.write(templateTB_c_str)
+        tbFile_c.close()
 
 ################################################################################
 
 if __name__ == "__main__":
     for arg in sys.argv:
         if arg == "-h" or arg == "--help":
-            print("Usage: python sonar.py mode modeArg filename")
+            print("Usage: python sonar.py mode modeArg filename languages")
             print("  mode: env - use relative path from an environment variable")
             print("        path - use relative path from a string")
             print("        absolute - use absolute filepath")
             print("  modeArg: environment variable or path string. None otherwise")
             print("  filename: user file to read")
+            print("  languages: all (SV + C) or sv (just SV)")
 
-    if (len(sys.argv) == 4):
-        sonar(sys.argv[1], sys.argv[2], sys.argv[3])
+    if (len(sys.argv) == 5):
+        sonar(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
     else:
         print("Incorrect number of arguments. Use -h or --help")

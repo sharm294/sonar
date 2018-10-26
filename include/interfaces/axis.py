@@ -79,7 +79,8 @@ def json_top(json_struct, interface):
         if channel['type'] == 'tdata':
             json_struct['width'] = channel['size']
 
-    json_struct['c_stream'] = interface['c_stream']
+    if 'c_stream' in interface:
+        json_struct['c_stream'] = interface['c_stream']
 
     return json_struct
 

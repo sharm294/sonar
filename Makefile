@@ -31,36 +31,41 @@ sort -k 1nr | cut -f2-)
 dep = $(obj:%.o=$(obj_dir)/%.d)
 
 CC = g++
+ifdef SONAR_VIVADO_HLS
 CFLAGS = -g -Wall -I$(SONAR_VIVADO_HLS) \
 	-Wno-unknown-pragmas -Wno-comment -MMD -MP
+else
+CFLAGS = -g -Wall \
+	-Wno-unknown-pragmas -Wno-comment -MMD -MP
+endif
 
 ###############################################################################
 # Body
 ###############################################################################
 
-.PHONY: sample hw sim clean purge sample_gen sample_csim
+.PHONY: sample sample_hw sample_sim clean purge sample_gen sample_csim
 
 #------------------------------------------------------------------------------
 # Main
 #------------------------------------------------------------------------------
 
-sample: hw sample_gen sample_csim sim
+sample: sample_hw sample_gen sample_csim sample_sim
 
 # creates a Vivado HLS project and export Sample to RTL
-hw:
+sample_hw:
 	@$(sample_dir)/sample_hls.sh
 
 # generate the testbenches and data files
 sample_gen:
-	@python $(SONAR_PATH)/sonar.py env SONAR_PATH /sample/sample.yaml
+	@python $(SONAR_PATH)/src/sonar.py env SONAR_PATH /sample/sample.yaml all
 
 # performs C-simulation on sample
 sample_csim: $(sample_bin_dir)/sample_tb
 	@$(sample_bin_dir)/sample_tb
 
 # creates a Vivado project, adds all the files and opens Vivado for simulation
-sim:
-	@vivado -source $(sample_dir)/sample_vivado.tcl
+sample_sim:
+	@vivado -mode batch -notrace -source $(sample_dir)/sample_vivado.tcl
 
 #------------------------------------------------------------------------------
 # Executables
