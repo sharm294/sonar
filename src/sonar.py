@@ -95,6 +95,8 @@ def setFromConfig(templateTB_sv_str, yamlData):
 #TODO make seek size programmatic
 #TODO add comments
 #TODO clean up code and add functions
+#TODO allow loops for commands (repeat)
+#TODO allow delays by clock cycles
 ################################################################################
 ### sonar ###
 # This function uses a configuration file to generate testbenches, data for the 
@@ -114,6 +116,9 @@ def sonar(mode, modeArg, filepath, languages):
         import yaml
         yamlData = yaml.load(configFile)
         fileType = ".yaml"
+    elif userFileName.endswith(".json"):
+        yamlData = json.load(configFile)
+        fileType = ".json"
     else:
         printError(1, "Unsupported configuration file")
         configFile.close()
@@ -587,7 +592,7 @@ def sonar(mode, modeArg, filepath, languages):
 #------------------------------------------------------------------------------#
     # Create all testbench-generated clocks. Use the clock with the largest 
     # period between test vectors (not sure if necessary to use the largest)
-
+    #TODO make the initial state of the clock configurable (i.e. for diff. clocks)
     initial_clock = ""
     largestClock = ""
     largestPeriod = 0
