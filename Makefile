@@ -57,7 +57,7 @@ sample_hw:
 
 # generate the testbenches and data files
 sample_gen:
-	@python $(SONAR_PATH)/src/sonar.py env SONAR_PATH /sample/sample.yaml all
+	@python $(SONAR_PATH)/src/sonar.py env SONAR_PATH /sample/sample.yaml sv 
 
 # performs C-simulation on sample
 sample_csim: $(sample_bin_dir)/sample_tb
