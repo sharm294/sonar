@@ -8,14 +8,10 @@ from include.utilities import printError
 # This function converts a YAML command into its equivalent JSON.
 
 def writeJSONPacket(parallelSection_json, packet, vectorIndex, parallelIndex, 
-signals_in, signals_out, interface_in, interface_out, usedInterfaces):
+signals_in, signals_out, interface_in, interface_out, usedInterfaces, counters):
     signal_json = {"type": "signal", "interface": "", "value": 0, "id": ""}
     regex_int_str = re.compile("([0-9]+)([a-z]+)")
-    delayCounter = 0
-    interfaceCounter = 0
-    displayCounter = 0
-    waitCounter = 0
-    timestampCounter = 0
+    
     if 'macro' in packet:
         if packet['macro'] == "INIT_SIGNALS":
             for signal in signals_in:
@@ -27,29 +23,31 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
                     str(parallelIndex) + "_" + "init_" + signal['name']
                 parallelSection_json['data'].append(cur_signal_json)
             for interface in interface_in:
-                currInterface = usedInterfaces[interface['type']]
-                for channel in interface['channels']:
-                    if channel['type'] in currInterface.master_output_channels:
-                        cur_signal_json = copy.deepcopy(signal_json)
-                        cur_signal_json['type'] = "signal_" + interface['name']
-                        cur_signal_json['interface'] = interface['name'] + "_" \
-                            + channel['name']
-                        cur_signal_json['id'] = str(vectorIndex) + "_" + \
-                            str(parallelIndex) + "_" + "init_" + \
-                            cur_signal_json['interface']
-                        parallelSection_json['data'].append(cur_signal_json)
+                if interface['connectionMode'] == 'native':
+                    currInterface = usedInterfaces[interface['type']]
+                    for channel in interface['channels']:
+                        if channel['type'] in currInterface.master_output_channels:
+                            cur_signal_json = copy.deepcopy(signal_json)
+                            cur_signal_json['type'] = "signal_" + interface['name']
+                            cur_signal_json['interface'] = interface['name'] + "_" \
+                                + channel['name']
+                            cur_signal_json['id'] = str(vectorIndex) + "_" + \
+                                str(parallelIndex) + "_" + "init_" + \
+                                cur_signal_json['interface']
+                            parallelSection_json['data'].append(cur_signal_json)
             for interface in interface_out:
-                currInterface = usedInterfaces[interface['type']]
-                for channel in interface['channels']:
-                    if channel['type'] in currInterface.master_input_channels:
-                        cur_signal_json = copy.deepcopy(signal_json)
-                        cur_signal_json['type'] = "signal_" + interface['name']
-                        cur_signal_json['interface'] = interface['name'] + "_" \
-                            + channel['name']
-                        cur_signal_json['id'] = str(vectorIndex) + "_" + \
-                            str(parallelIndex) + "_" + "init_" + \
-                            cur_signal_json['interface']
-                        parallelSection_json['data'].append(cur_signal_json)
+                if interface['connectionMode'] == 'native':
+                    currInterface = usedInterfaces[interface['type']]
+                    for channel in interface['channels']:
+                        if channel['type'] in currInterface.master_input_channels:
+                            cur_signal_json = copy.deepcopy(signal_json)
+                            cur_signal_json['type'] = "signal_" + interface['name']
+                            cur_signal_json['interface'] = interface['name'] + "_" \
+                                + channel['name']
+                            cur_signal_json['id'] = str(vectorIndex) + "_" + \
+                                str(parallelIndex) + "_" + "init_" + \
+                                cur_signal_json['interface']
+                            parallelSection_json['data'].append(cur_signal_json)
         elif packet['macro'] == "END":
             cur_signal_json = copy.deepcopy(signal_json)
             cur_signal_json['type'] = "end"
@@ -68,8 +66,8 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
             exit(1)
         cur_signal_json['value'] = str(m.group(1))
         cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + "delay_" + str(delayCounter)
-        delayCounter += 1
+            "_" + "delay_" + str(counters['delayCounter'])
+        counters['delayCounter'] += 1
         parallelSection_json['data'].append(cur_signal_json)
     elif 'signal' in packet:
         for signal in packet['signal']:
@@ -84,16 +82,16 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
         cur_signal_json['type'] = "display"
         cur_signal_json['interface'] = "\"" + packet['display'] + "\""
         cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + "display_" + str(displayCounter)
-        displayCounter += 1
+            "_" + "display_" + str(counters['displayCounter'])
+        counters['displayCounter'] += 1
         parallelSection_json['data'].append(cur_signal_json)
     elif 'timestamp' in packet:
         cur_signal_json = copy.deepcopy(signal_json)
         cur_signal_json['type'] = "timestamp"
         cur_signal_json['interface'] = packet['timestamp']
         cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + "timestamp_" + str(timestampCounter)
-        timestampCounter += 1
+            "_" + "timestamp_" + str(counters['timestampCounter'])
+        counters['timestampCounter'] += 1
         parallelSection_json['data'].append(cur_signal_json)
     elif 'flag' in packet:
         cur_signal_json = copy.deepcopy(signal_json)
@@ -105,20 +103,20 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
             cur_signal_json['interface'] = "clear"
             cur_signal_json['value'] = packet['flag']['clear_flag']
         cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + "flag_" + str(timestampCounter)
-        timestampCounter += 1
+            "_" + "flag_" + str(counters['flagCounter'])
+        counters['flagCounter'] += 1
         parallelSection_json['data'].append(cur_signal_json)
     elif 'wait' in packet:
         cur_signal_json = copy.deepcopy(signal_json)
         cur_signal_json['type'] = "wait"
         cur_signal_json['interface'] = packet['wait']['key']
         cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + "wait_" + str(waitCounter)
+            "_" + "wait_" + str(counters['waitCounter'])
         if 'value' in packet['wait']:
             cur_signal_json['value'] = packet['wait']['value']
         else:
             cur_signal_json['value'] = 0
-        waitCounter += 1
+        counters['waitCounter'] += 1
         parallelSection_json['data'].append(cur_signal_json)
     elif 'interface' in packet:
         currInterface = usedInterfaces[packet['interface']['type']]
@@ -133,8 +131,8 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
                 cur_interface_json = currInterface.json_top(cur_interface_json, \
                     interface)
         cur_interface_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \
-            "_" + interface['type'] + "_" + str(interfaceCounter) + "_"
-        interfaceCounter += 1
+            "_" + cur_interface_json['interface'] + "_" + str(counters['interfaceCounter']) + "_"
+        counters['interfaceCounter'] += 1
         for payload in packet['interface']['payload']:
             payloadCopy = payload.copy()
             payloadCopy = currInterface.json_payload(payloadCopy)
@@ -144,6 +142,8 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces):
         printError(1, "Unknown packet type: ")
         print(packet)
         exit(1)
+
+    return counters
 
 ################################################################################
 ### writeJSON ###
@@ -167,10 +167,17 @@ def writeJSON(testVectors, dataFile, signals_in, signals_out, interface_in,
             parallelSection_json = {}
             parallelSection_json['data'] = []
             testVector_json['data'].append(parallelSection_json)
+            counters = {}
+            counters['delayCounter'] = 0
+            counters['interfaceCounter'] = 0
+            counters['displayCounter'] = 0
+            counters['waitCounter'] = 0
+            counters['timestampCounter'] = 0
+            counters['flagCounter'] = 0
             for packet in parallelSection['Parallel_Section_' + str(parallelIndex)]:
-                writeJSONPacket(parallelSection_json, packet, vectorIndex, \
+                counters = writeJSONPacket(parallelSection_json, packet, vectorIndex, \
                     parallelIndex, signals_in, signals_out, interface_in, \
-                    interface_out, usedInterfaces)
+                    interface_out, usedInterfaces, counters)
     
     json.dump(json_dict, dataFile, indent=2)
     return parallelNum

@@ -33,7 +33,7 @@ def getIndentation(textStr):
     try:
         indent = textStr[0][:len(textStr[0])-len(textStr[0].lstrip())]
     except IndexError:
-        printError(1, "String " + textStr + " not found")
+        printError(1, "String " + str(textStr) + " not found")
         exit(1)
     else:
         return indent
