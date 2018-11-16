@@ -136,13 +136,15 @@ def source_tcl(interface, path):
         tclFile = tclFile.replace("#DATA_WIDTH#", str(interface['dataWidth']))
         tclFile = tclFile.replace("#ADDRESS#", str(interface['address_range']))
         tclFile = tclFile.replace("#ADDRESS_OFFSET#", str(interface['address_offset']))
-        tclFile_gen = open(path + "s_axilite_vip.tcl", "w+")
+        tclFile_gen = open(path + "s_axilite_vip_" + str(interface['index']) + ".tcl", "w+")
         tclFile_gen.write(tclFile)
         tclFile_gen.close()
 
 def instantiate(ip_inst, interface, indent, tabSize):
     index = str(interface['index'])
     oneTab = indent + tabSize
+    if ip_inst != "":
+        ip_inst += indent
     ip_inst += "vip_bd_" + index + " vip_bd_" + index + "_i(\n"
     ip_inst += oneTab + ".aclk(" + interface['clock'] + "),\n"
     ip_inst += oneTab + ".aresetn(" + interface['reset'] + "),\n"

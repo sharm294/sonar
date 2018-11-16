@@ -146,7 +146,17 @@ def writeLine_sv(dataFile_sv, packet):
 ################################################################################
 ### generate ###
 # This function generates the data files for C and systemverilog testbenches.
-def generate(mode, modeArg, filepath):
+def generate(mode, modeArg, filepath, languages):
+
+    if languages == "all":
+        enable_SV = True
+        enable_C = True
+    elif languages == "sv":
+        enable_SV = True
+        enable_C = False
+    else:
+        printError(1, "Unsupported language: " + languages)
+        exit(1)
 
     # sanitize the JSON and continue processing
     outFileName = parseJSON(mode, modeArg, filepath)
@@ -163,7 +173,8 @@ def generate(mode, modeArg, filepath):
 
     filename_c = currentDirectory + "_c.dat"
     filename_sv = currentDirectory + "_sv.dat"
-    dataFile_c = open(filename_c, "w+")
+    if enable_C:
+        dataFile_c = open(filename_c, "w+")
     dataFile_sv = open(filename_sv, "w+")
 
     absTestVectorCount = testFile['count']
@@ -193,7 +204,8 @@ def generate(mode, modeArg, filepath):
                 testData_sv.append("Packet seek " + \
                     str(parallelSection['seek']))
             for packet in parallelSection['data']:
-                writeLine_c(dataFile_c, packet)
+                if enable_C:
+                    writeLine_c(dataFile_c, packet)
                 writeLine_sv(testData_sv, packet)
 
 #------------------------------------------------------------------------------#
@@ -217,16 +229,18 @@ def generate(mode, modeArg, filepath):
         dataFile_sv.write(line + "\n")          
 
     # remove final new line character
-    trimFinalLine(dataFile_c)
+    if enable_C:
+        trimFinalLine(dataFile_c)
     trimFinalLine(dataFile_sv)
 
     # append a finish tag to the C data file that is used to break out of an 
     # infinite while loop in the C testbench. ap_uint wasn't properly handling 
     # the case where there's nothing to read (i.e. end of file) so this is used 
     # to exit instead of relying on when we can no longer read data.
-    dataFile_c.write("\nfinish NULL NULL 0 0")
-
-    dataFile_c.close()
+    if enable_C:
+        dataFile_c.write("\nfinish NULL NULL 0 0")
+        dataFile_c.close()
+    
     dataFile_sv.close()
 
 ################################################################################

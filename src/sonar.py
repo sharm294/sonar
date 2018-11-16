@@ -15,6 +15,28 @@ from generate import generate
 from writeJSON import writeJSON
 
 ################################################################################
+### _byteify ###
+# This function returns the string object when reading JSON instead of 
+# Unicode coded strings which cause key errors when parsing. This is taken from 
+# stackoverflow.com/questions/956867/how-to-get-string-objects-instead-of-unicode-from-json
+def _byteify(data, ignore_dicts = False):
+    # if this is a unicode string, return its string representation
+    if isinstance(data, unicode):
+        return data.encode('utf-8')
+    # if this is a list of values, return list of byteified values
+    if isinstance(data, list):
+        return [ _byteify(item, ignore_dicts=True) for item in data ]
+    # if this is a dictionary, return dictionary of byteified keys and values
+    # but only if we haven't already byteified it
+    if isinstance(data, dict) and not ignore_dicts:
+        return {
+            _byteify(key, ignore_dicts=True): _byteify(value, ignore_dicts=True)
+            for key, value in data.iteritems()
+        }
+    # if it's anything else, return it in its original form
+    return data
+
+################################################################################
 ### channelToIndex ###
 # This function finds the index of a particular channel based on its name
 def channelToIndex(channelType, args):
@@ -92,23 +114,23 @@ def commandVarReplace(elseif_interfaceIn, interface, actions, indent, args):
 ### setFromConfig ###
 #This function performs all the direct substititions from the configuration file 
 #to the testbench file
-def setFromConfig(templateTB_sv_str, yamlData):
+def setFromConfig(templateTB_sv_str, configFileData):
     tbMetadataTags = ["Company","Engineer","Project_Name","Target_Devices",\
         "Tool_Versions", "Description","Dependencies","Module_Name","Timescale",\
         "Flag_Count"]
 
     for tbMetadataTag in tbMetadataTags:
-        if yamlData[tbMetadataTag] is None:
+        if configFileData[tbMetadataTag] is None:
             replaceStr = ""
         else:
-            replaceStr = str(yamlData[tbMetadataTag])
+            replaceStr = str(configFileData[tbMetadataTag])
         searchStr = "#" + tbMetadataTag.upper() + "#"
         templateTB_sv_str = templateTB_sv_str.replace(searchStr, replaceStr)
 
     templateTB_sv_str = templateTB_sv_str.replace("#CURR_DATE#", \
         str(datetime.datetime.now()))
     templateTB_sv_str = templateTB_sv_str.replace("#DATA_FILE#", "\"" + \
-        yamlData['Module_Name']+"_sv.dat\"")
+        configFileData['Module_Name']+"_sv.dat\"")
 
     return templateTB_sv_str
 
@@ -135,10 +157,10 @@ def sonar(mode, modeArg, filepath, languages):
     configFile = open(userFileName, "r")
     if userFileName.endswith(".yaml"):
         import yaml
-        yamlData = yaml.load(configFile)
+        configFileData = yaml.load(configFile)
         fileType = ".yaml"
     elif userFileName.endswith(".json"):
-        yamlData = json.load(configFile)
+        configFileData = json.load(configFile, object_hook=_byteify)
         fileType = ".json"
     else:
         printError(1, "Unsupported configuration file")
@@ -191,18 +213,18 @@ def sonar(mode, modeArg, filepath, languages):
         tbFile_c = open(tbFileName_c, "w+")
 
     # set the directly replaceable text into the testbench
-    templateTB_sv_str = setFromConfig(templateTB_sv_str, yamlData)
+    templateTB_sv_str = setFromConfig(templateTB_sv_str, configFileData)
 
     if enable_C:
         templateTB_c_str = templateTB_c_str.replace("#FUNCTION#", 
-            yamlData['Module_Name'].upper())
+            configFileData['Module_Name'].upper())
         dataFile_c = dataFileName.replace(".json", "_c.dat")
         templateTB_c_str = templateTB_c_str.replace("#DATA_FILE#", "\"" + \
             dataFile_c + "\"")
         templateTB_c_str = templateTB_c_str.replace("#HEADER_FILE#", "\"" + \
-            yamlData['Module_Name']+".hpp\"")
+            configFileData['Module_Name']+".hpp\"")
 
-    vectorNum = len(yamlData['Test_Vectors'])
+    vectorNum = len(configFileData['Test_Vectors'])
     templateTB_sv_str = templateTB_sv_str.replace("#MAX_VECTORS#", str(vectorNum))
 
 #------------------------------------------------------------------------------#
@@ -220,7 +242,7 @@ def sonar(mode, modeArg, filepath, languages):
 
     tabSize = "    "
 
-    for port in yamlData['DUT']:
+    for port in configFileData['DUT']:
         if 'type' in port:
             if port['type'] == "clock" and port['direction'] == "input":
                 portCopy = port.copy()
@@ -271,16 +293,16 @@ def sonar(mode, modeArg, filepath, languages):
                 signals_out.append(portCopy)
 
     waitConditions = []
-    if 'Wait_Conditions' in yamlData:
-        for condition in yamlData['Wait_Conditions']:
+    if 'Wait_Conditions' in configFileData:
+        for condition in configFileData['Wait_Conditions']:
             waitConditions.append(condition.copy())
 
     time_format = "$timeformat("
     with open(templateTB_sv,'r') as f:
         l = [line for line in f if "#TIME_FORMAT#" in line]
     leading_spaces = getIndentation(l)
-    precision = str(yamlData['Time_Format']['precision'])
-    timeFormat = yamlData['Time_Format']['unit']
+    precision = str(configFileData['Time_Format']['precision'])
+    timeFormat = configFileData['Time_Format']['unit']
     if timeFormat.endswith("fs"):
         time_format += "-15, " + precision + ", \" fs\", 0);"
     elif timeFormat.endswith("ps"):
@@ -294,7 +316,7 @@ def sonar(mode, modeArg, filepath, languages):
     elif timeFormat.endswith("s"):
         time_format += "0, " + precision + ", \" s\", 0);"
     else:
-        printError(1, "Unknown time format: " + yamlData['Time_Format'])
+        printError(1, "Unknown time format: " + configFileData['Time_Format'])
         exit(1)
     templateTB_sv_str = templateTB_sv_str.replace("#TIME_FORMAT#", time_format)
 
@@ -410,7 +432,7 @@ def sonar(mode, modeArg, filepath, languages):
     with open(templateTB_sv,'r') as f:
         lineStr = [line for line in f if "#DUT_INST#" in line]
     leading_spaces = getIndentation(lineStr)
-    dut_inst += yamlData['Module_Name'] + " " + yamlData['Module_Name'] + "_i(\n"
+    dut_inst += configFileData['Module_Name'] + " " + configFileData['Module_Name'] + "_i(\n"
     for clock in clocks_in:
         dut_inst += leading_spaces + tabSize + "." + clock['name'] + "(" + \
             clock['name'] + "),\n"
@@ -820,7 +842,7 @@ def sonar(mode, modeArg, filepath, languages):
     # Create a JSON file (for legacy reasons) for the next script to work with.
     # i.e. expand all the YAML macros, fill in missing interface signal keys etc
 
-    parallelNum = writeJSON(yamlData['Test_Vectors'], dataFile, signals_in, 
+    parallelNum = writeJSON(configFileData['Test_Vectors'], dataFile, signals_in, 
     signals_out, interface_in, interface_out, usedInterfaces)
                      
     templateTB_sv_str = templateTB_sv_str.replace("#MAX_PARALLEL#", str(parallelNum))
@@ -829,7 +851,7 @@ def sonar(mode, modeArg, filepath, languages):
     configFile.close()
     # tbFile_sv.close()
 
-    generate("absolute", None, dataFileName) #parse the JSON and continue
+    generate("absolute", None, dataFileName, languages) #parse the JSON and continue
 
     with open(tbFileName_sv.replace("tb.sv", "sv.dat")) as f:
         line = f.readline()
