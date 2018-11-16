@@ -68,22 +68,27 @@ if __name__=="__main__":
                                                         ]
                                                                             
                 }
-    
+   
+
+    #make an axis interface and stream input binary into it
     axisIn = axis( axisIn_desc)
     retList = axisIn.binToStream(dataArray, None)
 
+
+    #make a parallel section
     sec = ParallelSection()
-
-
     sec.addWait("mem_ready", "wait(mem_ready);")
     sec.addMacro("INIT_SIGNALS")
     sec.addDelay("40ns")
+    #add burst stream of binary to axis into parallel section
     sec.addBurst(retList)
+
+    #make a test vector and add parallel section to test vector
     testVector0 = TestVector()
     testVector0.addSection(sec)
 
+    #make a module and add a port (axis) and a single test vector
     module = Module('top_sim')
     module.addPort(axisIn_desc)
     module.addVec(testVector0)
-
     print module.getJSON()
