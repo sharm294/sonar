@@ -24,6 +24,8 @@ localparam MAX_SEEK_SIZE = 64; //base 2 log of the max number to fseek
 localparam MAX_ARG_NUM = #MAX_ARG_NUM#;
 localparam MAX_ARG_SIZE = $clog2(MAX_ARG_NUM) + 1;
 
+#IMPORT_PACKAGES#
+
 //This module provides the stimulus for the DUT by reading the data file
 module exerciser (
     #EXERCISER_PORTS#
@@ -34,6 +36,7 @@ module exerciser (
     logic [MAX_PARALLEL-1:0] testVectorEnd = 0;
     logic [MAX_PARALLEL-1:0] errorCheck = 0;
     logic updateEnd = 0;
+    logic fileReady = 0;
 
     task automatic evaluateData(
         input logic [MAX_DATA_SIZE-1:0] args [MAX_ARG_NUM],
@@ -111,6 +114,8 @@ module exerciser (
     time timeRef;
     logic [#FLAG_COUNT#-1:0] flags;
 
+    #EXERCISER_PROLOGUE#
+
     initial begin
         int status;
         string packetType;
@@ -121,9 +126,12 @@ module exerciser (
         int dataFile_0;
         int parallelSectionCount;
 
+        #INITIAL_PROLOGUE#
+
         dataFile_0 = $fopen(dataFileName, "r");
         status = $fscanf(dataFile_0, "%s %s %d\n", packetType, interfaceType, 
             vectorCount);
+        fileReady = 1;
         if (packetType == "TestVector" && interfaceType == "count") begin
             for(int i = 0; i < vectorCount; i++) begin
                 status = $fscanf(dataFile_0, "%s %s %d\n", packetType, 
@@ -182,6 +190,7 @@ module exerciser (
                 int packetCount;
                 
                 dataFile = $fopen(dataFileName, "r");
+                wait(fileReady == 1);
                 for(int w = 0; w < vectorCount; w++) begin
                     wait(updateEnd == 1'b1);
                     if (parallelSections[gen_i] != 0) begin
@@ -212,13 +221,9 @@ module #MODULE_NAME#_tb();
 
     #TB_SIGNAL_LIST#
 
-    // #TB_AXIS_LIST#
-
     #EXERCISER_INT#
     
-    // always_comb begin
-    //     #AXIS_ASSIGN#
-    // end
+    #IP_INST#
 
     //initialize DUT
     #DUT_INST#

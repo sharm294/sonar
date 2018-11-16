@@ -19,7 +19,7 @@ master_output_channels = {
 # - To repeat a command for a set of channels, use a dict to list which channels,
 # and use $$channel to substitute the name. $$i is used to refer to the channel's
 # index in sv_args.
-master_action = [
+slave_action = [
     "@(posedge $$clock iff $$name_tready && $$name_tvalid);",
     "assert($$name_tdata == args[0]) begin",
     "end else begin",
@@ -29,7 +29,7 @@ master_action = [
     "end"
 ]
 
-slave_action = [
+master_action = [
     {"channels": {"tdata", "tlast", "tkeep", "tdest"}, "commands": ["$$name_$$channel = args[$$i];"]},
     "$$name_tvalid = 1'b1;",
     "fork",
@@ -47,26 +47,23 @@ slave_action = [
     "$$name_tvalid = 1'b0;"
 ]
 
-# These ordered dicts define what signals should be printed out to the data file
-# The order is needed to enforce that the data is written in the same order 
+# These array define what signals should be printed out to the data file
+# Arrays are needed to enforce that the data is written in the same order 
 # every time.
-# TODO rethink need for this. It could be done with an array + for loop
 
-from collections import OrderedDict
+sv_args = [
+    "tdata",
+    "tlast",
+    "tkeep",
+    "tdest"
+]
 
-sv_args = OrderedDict([
-    ("tdata", 0),
-    ("tlast", 1),
-    ("tkeep", 2),
-    ("tdest", 3)
-])
-
-c_args = OrderedDict([
-    ("tdata", 0),
-    ("tlast", 1),
-    ("tkeep", 2),
-    ("tdest", 3)
-])
+c_args = [
+    "tdata",
+    "tlast",
+    "tkeep",
+    "tdest"
+]
 
 # defines an empty JSON structural object that is used as a template when writing
 json_struct = {"type": "axis", "interface": "", "width": 0, "id": "", \
@@ -136,7 +133,7 @@ def write_sv(packet):
     for word in packet['payload']:
         if word['tkeep'] != 0: #exclude debug statements
             line += packet['type'] + " " + packet['interface']+ " " + str(len(sv_args))
-            for arg, value in sv_args.iteritems():
+            for arg in sv_args:
                 line += " " + str(word[arg])
             line += "\n"
     return line[:-1]
@@ -147,10 +144,37 @@ def write_c(packet):
         line += packet['interface']+ " " + str(word['id']) + " " + \
             str(packet['c_stream']) + " " + str(len(c_args)) + " " + \
             str(word['callTB'])
-        for arg, value in c_args.iteritems():
+        for arg in c_args:
             line += " " + str(word[arg])
         line += "\n"
     return line
+
+def c_interface_in(tb_str, prev_str, interface, indent, tabSize):
+    if tb_str != "":
+        tb_str += indent + "else "
+    if prev_str != "" and tb_str == "":
+        tb_str += "else "
+    tb_str += "if(!strcmp(interfaceType,\"" + interface['name'] + \
+        "\")){\n"
+    tb_str += indent + tabSize + "WRITE(" + \
+        "" + interface['c_stream'] + ", " + interface['c_struct'] + ", " + \
+        interface['name'] + ")\n"
+    tb_str += indent + "}\n"
+    return tb_str
+
+def c_interface_out(tb_str, prev_str, interface, indent, tabSize):
+    if tb_str != "":
+        tb_str += indent + "else "
+    if prev_str != "" and tb_str == "":
+        tb_str += "else "
+    tb_str += "if(!strcmp(interfaceType,\"" + interface['name'] + \
+        "\")){\n"
+    tb_str += indent + tabSize + "read = true;\n"
+    tb_str += indent + tabSize + "READ(" + \
+        "" + interface['c_stream'] + ", " + interface['c_struct'] + ", " + \
+        interface['name'] + ")\n"
+    tb_str += indent + "}\n"
+    return tb_str
 
 # Not currently used or supported
 # interface = {"name": "axi_stream", "parameters": ["tdata"]}

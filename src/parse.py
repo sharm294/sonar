@@ -290,6 +290,7 @@ def parseJSON(mode, modeArg, filepath):
             for packet in parallelSection['data']:
                 packetType = packet['type']
                 if packetType not in sonar_types and not packetType.startswith("signal"):
+                    currInterface = getInterface(packet['type'])
                     currInterface.convert(packet)
                 convertValue(packet)
                 convertPayload(packet)
