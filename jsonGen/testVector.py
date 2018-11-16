@@ -2,7 +2,7 @@ from axis import axis
 from parallelSection import ParallelSection
 
 
-class TestVector:
+class TestVector(object):
     def __init__(self):
         self.sections = []
 

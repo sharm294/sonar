@@ -1,7 +1,7 @@
 from axis import axis
 
 
-class ParallelSection:
+class ParallelSection(object):
     def __init__(self):
         self.dict = []
         self.waitConditions = {}

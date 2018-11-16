@@ -5,7 +5,7 @@ import json
 
 
 
-class Module:
+class Module(object):
     def __init__(self, name):
         self.name = name
         self.ports = []

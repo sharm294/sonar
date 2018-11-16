@@ -2,7 +2,7 @@ import sys
 import math
 import inspect
 
-class axis:
+class axis(object):
     
     def __init__(self, parameters):
 
