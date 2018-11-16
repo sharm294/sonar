@@ -42,19 +42,27 @@ class axis(object):
         return dictElement
 
 
-    def tkeepFunction(self, binArray, transIndex):
+    def tkeepFunction(self, binArray, transIndex, endian):
 
         if transIndex < ((math.ceil(len(binArray)/8.0) - 1) * 8.0) :
             tkeep = "KEEP_ALL"
         else:
             sizeofLastTransaction = len(binArray) % self.streamLen 
             if sizeofLastTransaction != self.streamLen:
-                tkeep = "0b"
+                tkeep = ''
                 for i in range(0, self.streamLen - sizeofLastTransaction):
-                    tkeep = tkeep + "0"
-                    
+                    if endian == 'big':
+                        tkeep = "0" + tkeep 
+                    else: #little endian
+                        tkeep = tkeep + "0" 
+
                 for i in range(self.streamLen - sizeofLastTransaction, self.streamLen):
-                    tkeep = tkeep + "1"
+                    if endian == 'big':
+                        tkeep = "1" + tkeep 
+                    else: #little endian
+                        tkeep = tkeep + "1" 
+                
+                tkeep = "0b" + tkeep
 
             else:
                 tkeep = "KEEP_ALL"
@@ -62,7 +70,7 @@ class axis(object):
 
         return tkeep
 
-    def tlastFunction(self, binArray, transIndex):
+    def tlastFunction(self, binArray, transIndex, endian):
 
         if transIndex < ((math.ceil(len(binArray)/8.0) - 1) * 8) :
             tlast = 0
@@ -72,29 +80,36 @@ class axis(object):
         return tlast
 
 
-    def binToStream(self, binArray, functionsDict):
+    def binToStream(self, binArray, functionsDict, endian='little'):
         retList = []
         transIndex = 0
         axisName = self.parameters['name']
 
 
-        tdata = 0
         while transIndex < ((math.ceil(len(binArray)/8.0)) * 8):
             
+            tdata = 0
             for i in range(transIndex, transIndex + self.streamLen ):
-                if i < len(binArray):
-                    tdata = (tdata >> 8) | ( binArray [i] << 56) 
-                elif i < transIndex + self.streamLen:
-                    tdata = tdata >> 8
-            
+                if endian == 'little':
+                    if i < len(binArray):
+                        tdata = (tdata >> 8) | ( binArray [i] << 56) 
+                    elif i < transIndex + self.streamLen:
+                        tdata = tdata >> 8
+                else: #big endian
+                    if i < len(binArray):
+                        tdata = (tdata << 8) | ( binArray [i]) 
+                    elif i < transIndex + self.streamLen:
+                        tdata = tdata << 8
+
+
             payload = {"tdata": "0x" + format(tdata, '08x')}
             for item in self.parameters['channels']:
                 #print item
                 if functionsDict != None and  item['type'] in functionsDict:
-                    val = functionsDict[item['type']](binArray, transIndex)
+                    val = functionsDict[item['type']](binArray, transIndex, endian)
                 elif item['type'] != 'tdata' and item['type'] != 'tvalid' and item['type'] != 'tready':
                     func=getattr(self, item['type'] + "Function")
-                    val=func(binArray, transIndex)
+                    val=func(binArray, transIndex, endian)
                     payload.update({item['type'] : val})
 
             
