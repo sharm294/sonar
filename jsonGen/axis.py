@@ -1,4 +1,3 @@
-import json
 import sys
 import math
 import inspect
@@ -115,7 +114,7 @@ if __name__=="__main__":
     
     
     #writing random garbage data to test.txt
-    with open("test.txt", "wb") as binary_file:
+    with open("test_axis.bin", "wb") as binary_file:
         num_bytes_written = binary_file.write(b'\xDE\xAD\xBE\xEF\xFA\xCE\xFA\xCE')
         num_bytes_written = binary_file.write(b'\x11\x22\x33\x44\x55\x66\x77\x88')
         num_bytes_written = binary_file.write(b'\x00\xaa\xbb\xcc\xdd\xee\xff\x12')
@@ -124,7 +123,7 @@ if __name__=="__main__":
     
 
     #reading back random garbage data from test.txt
-    with open("test.txt", "rb") as binary_file:
+    with open("test_axis.bin", "rb") as binary_file:
         data = binary_file.read()
    
     #now have data in byte array
@@ -145,6 +144,6 @@ if __name__=="__main__":
                 })
     retList = axisIn.binToStream(dataArray, None)
 
-    print "Printing the JSON for binary transaction"
+    print "Printing the Dict for binary transaction"
     for item in retList:
         print item
