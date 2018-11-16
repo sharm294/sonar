@@ -38,7 +38,7 @@ class axis:
 
     def streamTransaction(self, payload):
         axisName = self.parameters['name']
-        dictElement = {"interface" : {"type": "axis", "name": axisName, "payload" : payload}}
+        dictElement = {"interface" : {"type": "axis", "name": axisName, "payload" : [payload]}}
         return dictElement
 
 
@@ -49,12 +49,12 @@ class axis:
         else:
             sizeofLastTransaction = len(binArray) % self.streamLen 
             if sizeofLastTransaction != self.streamLen:
-                tkeep = "0x"
+                tkeep = "0b"
                 for i in range(0, self.streamLen - sizeofLastTransaction):
-                    tkeep = tkeep + "00"
+                    tkeep = tkeep + "0"
                     
                 for i in range(self.streamLen - sizeofLastTransaction, self.streamLen):
-                    tkeep = tkeep + "FF"
+                    tkeep = tkeep + "1"
 
             else:
                 tkeep = "KEEP_ALL"

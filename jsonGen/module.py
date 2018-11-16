@@ -67,7 +67,7 @@ if __name__=="__main__":
     dataArray.extend(data)
    
 
-    axisIn_desc = {"name":"axisIn", "direction":"slave", "channels": [
+    axisIn_desc = {"name":"axisIn", "type": "axis", "direction":"slave", "clock": "clk", "channels": [
                                                         {"name":"data", "type": "tdata", "size": 64},
                                                         {"name":"keep", "type": "tkeep"},
                                                         {"name":"valid", "type": "tvalid"},
@@ -98,5 +98,8 @@ if __name__=="__main__":
     #make a module and add a port (axis) and a single test vector
     module = Module('top_sim')
     module.addPort(axisIn_desc)
+    module.addPort({"direction": "input", "name": "clk", "type": "clock", "period": "20ns"})
+    module.addPort({"direction": "input", "name": "mem_sys_clk_p", "type": "clock", "period": "5ns"})
+    module.addPort({"direction": "input", "name": "sys_resetn", "type": "reset"})
     module.addVec(testVector0)
     print module.getJSON()
