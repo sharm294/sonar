@@ -20,7 +20,15 @@ class Module:
     
     def getJSON(self):
 
-        retDict = {"Flag_Count" : 4, 
+        retDict = {
+                   "Company" : None, 
+                   "Engineer" : None,
+                   "Project_Name" : None,
+                   "Target_Devices" : None,
+                   "Tool_Versions" : None,
+                   "Description" : None,
+                   "Dependencies" : None,
+                   "Flag_Count" : 4, 
                    "Project_Name": None, 
                    "Time_Format": {"precision":3, "unit":"1us"},
                    "Module_Name": self.name,
