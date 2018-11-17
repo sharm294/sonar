@@ -13,9 +13,9 @@ Dependencies:
 
 # Required Data #
 Module_Name: sample
-Timescale: 1ns / 1ps #the default timescale of the simulation
-Time_Format: {unit: "1us", precision: 3} #can be one of s, ms, us, ns, ps, fs
-Flag_Count: 4 #even if not using, must be non zero for now
+Timescale: 1ns / 1ps # the default timescale of the simulation
+Time_Format: {unit: "1us", precision: 3} # can be one of s, ms, us, ns, ps, fs
+Flag_Count: 4 # even if not using, must be non zero for now
 ################################################################################
 
 # This defines the DUT. The type:clock must be specified only on clocks that the
@@ -33,18 +33,39 @@ DUT:
   - {direction: input, name: ap_rst_n, type: reset}
   - {direction: output, size: 3, name: state_out_V}
   - {direction: master, name: axis_output, type: axis, clock: ap_clk, 
-c_struct: axis_word, c_stream: uaxis_l, channels: [
+    c_struct: axis_word, c_stream: uaxis_l, channels: [
       {name: "TDATA", type: "tdata", size: 64},
       {name: "TVALID", type: "tvalid"},
       {name: "TREADY", type: "tready"},
       {name: "TLAST", type: "tlast"}
     ]}
   - {direction: slave, name: axis_input, type: axis, clock: ap_clk, 
-c_struct: axis_word, c_stream: uaxis_l, channels: [
+    c_struct: axis_word, c_stream: uaxis_l, channels: [
       {name: "TDATA", type: "tdata", size: 64},
       {name: "TVALID", type: "tvalid"},
       {name: "TREADY", type: "tready"},
       {name: "TLAST", type: "tlast"}
+    ]}
+  - {direction: mixed, name: s_axi_ctrl_bus, type: s_axilite, clock: ap_clk, 
+    reset: ap_rst_n, registers: [enable], regAddrs: [0x10], address_range: 4K, 
+    address_offset: 0, connectionMode: ip, channels: [
+      {name: AWVALID, type: awvalid},
+      {name: AWREADY, type: awready},
+      {name: AWADDR, type: awaddr, size: 5},
+      {name: WVALID, type: wvalid},
+      {name: WREADY, type: wready},
+      {name: WDATA, type: wdata, size: 32},
+      {name: WSTRB, type: wstrb, size: 4},
+      {name: ARVALID, type: arvalid},
+      {name: ARREADY, type: arready},
+      {name: ARADDR, type: araddr, size: 5},
+      {name: RVALID, type: rvalid},
+      {name: RREADY, type: rready},
+      {name: RDATA, type: rdata, size: 32},
+      {name: RRESP, type: rresp, size: 2},
+      {name: BVALID, type: bvalid},
+      {name: BREADY, type: bready},
+      {name: BRESP, type: bresp, size: 2}
     ]}
   - {direction: output, name: ack_V}
 
@@ -69,12 +90,15 @@ Initialize: &Initialize
 # This is one test vector that is defined. Whether it gets run is determined by 
 # enabling it below under Test_Vectors.
 Example: &Example
-  - Parallel_Section_0: *Initialize
+  - Parallel_Section_0: *Initialize # YAML syntax for a reference/pointer
   - Parallel_Section_1:
     - delay: 100ns
     - timestamp: INIT # INIT sets a reference point to compare time to
+    - interface: {type: s_axilite, name: s_axi_ctrl_bus, payload: [
+      {mode: 1, data: 0x1, addr: 0x10} # write is mode = 1
+    ]}
     - interface: {type: axis, name: axis_input, payload: [
-      {loop: { start: 0, end: 1, body: [ # Dummy loop as an example
+      {loop: { start: 0, end: 1, body: [ # Trivial loop as an example
         {loop: { start: 0, end: 1, body: [
           {tdata: "0xABCD", tkeep: "KEEP_ALL", callTB: 2}
         ]}}
@@ -93,6 +117,9 @@ Example: &Example
     ]}
     - wait: {key: "flag", value: 0}
     - flag: {clear_flag: 0} # flags must be cleared to reuse
+    - interface: {type: s_axilite, name: s_axi_ctrl_bus, payload: [
+      {mode: 0, data: 0x1, addr: 0x10} # read is mode = 0
+    ]}
     - timestamp: End # prints the elapsed time since INIT + the str argument
     - display: "The_simulation_is_finished."
     - macro: END # for C++, the parallel section with this macro must be last

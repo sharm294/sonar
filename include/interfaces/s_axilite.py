@@ -94,6 +94,8 @@ def yaml_top(interface):
         if channel['type'] == 'wdata' or channel['type'] == 'rdata':
             interface['dataWidth'] = channel['size']
         if channel['type'] == 'awaddr' or channel['type'] == 'araddr':
+            if channel['size'] < 12:
+                channel['size'] = 12 # Required by AXI standard for 4K memory
             interface['addrWidth'] = channel['size']
 
     if 'readResp' not in interface:

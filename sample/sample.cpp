@@ -4,12 +4,14 @@ void sample(
     axis_t &axis_input,
     axis_t &axis_output,
     uint_1_t &ack,
+    uint_1_t enable,
     volatile uint_3_t * state_out
 ){
 
     #pragma HLS INTERFACE axis port=axis_input
     #pragma HLS INTERFACE axis port=axis_output
     #pragma HLS INTERFACE ap_none port=state_out
+    #pragma HLS INTERFACE s_axilite port=enable bundle=ctrl_bus
     #pragma HLS INTERFACE ap_ctrl_none port=return
     #pragma HLS INTERFACE ap_none port=ack
     #pragma HLS PIPELINE II=1    
@@ -28,7 +30,7 @@ void sample(
 
     switch(currentState){
         case st_header:{
-            if(!axis_input.empty()){
+            if(!axis_input.empty() && enable == 1){
                 axis_input.read(axis_word);
                 currentState = ack1;
             }
