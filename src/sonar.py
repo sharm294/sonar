@@ -19,6 +19,13 @@ from writeJSON import writeJSON
 # This function returns the string object when reading JSON instead of 
 # Unicode coded strings which cause key errors when parsing. This is taken from 
 # stackoverflow.com/questions/956867/how-to-get-string-objects-instead-of-unicode-from-json
+
+def json_load_byteified(file_handle):
+    return _byteify(
+        json.load(file_handle, object_hook=_byteify),
+        ignore_dicts=True
+    )
+
 def _byteify(data, ignore_dicts = False):
     # if this is a unicode string, return its string representation
     if isinstance(data, unicode):
@@ -156,11 +163,16 @@ def sonar(mode, modeArg, filepath, languages):
     pathTuple = os.path.split(userFileName)
     configFile = open(userFileName, "r")
     if userFileName.endswith(".yaml"):
-        import yaml
+        try:
+            import yaml
+        except ImportError:
+            printError(1, "YAML module not installed in Python")
+            configFile.close()
+            exit(1)
         configFileData = yaml.load(configFile)
         fileType = ".yaml"
     elif userFileName.endswith(".json"):
-        configFileData = json.load(configFile, object_hook=_byteify)
+        configFileData = json_load_byteified(configFile)
         fileType = ".json"
     else:
         printError(1, "Unsupported configuration file")

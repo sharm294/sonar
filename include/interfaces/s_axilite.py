@@ -72,16 +72,19 @@ json_struct = {"type": "s_axilite", "interface": "", "width": 0, "id": "", \
 def import_packages_global(imports):
     import subprocess
     from include.utilities import printError
+    from include.utilities import printWarning
 
     versionInfo = subprocess.check_output("vivado -version", shell=True)
     version = versionInfo.split()[1]
 
-    if version == "v2017.2.1":
+    if version.startswith("v2017.2"):
         imports += "import axi_vip_v1_0_2_pkg::*;\n"
         return imports
     else:
-        printError(1, "Unhandled Vivado version " + version + " for AXI VIP")
-        exit(1)
+        printWarning("Vivado version " + version + " not supported " + \
+            "for AXI VIP. There may be errors with importing VIP packages.")
+        imports += "import axi_vip_v1_0_2_pkg::*;\n"
+        return imports
 
 def import_packages_local(imports, interface):
     imports += "import vip_bd_" + str(interface['index']) + "_axi_vip_0_0_pkg::*;\n"

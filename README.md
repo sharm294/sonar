@@ -7,10 +7,9 @@ conditions. With the configuration file, *sonar* will generate a *.sv* testbench
 and an associated *.dat* file containing the user specified test vectors. It can 
 also optionally generate a C++ data file and testbench though that is not quite 
 as sophisticated. Some prelimanary work has gone into an object-oriented python 
-script approach to generating a configuration file (seen in ``jsonGen/``) which is 
-a work in progress.
+script approach to generating a configuration file (seen in ``jsonGen/``).
 
-All generated files are placed in a newly created ./build/ directory relative
+All generated files are placed in a newly created ``./build/`` directory relative
 to the path of the configuration file. To simulate the SV file, add the TB, the 
 *.dat* file and the the DUT file(s) to the simulator of your choice. To simulate 
 the C++ file, make a testbench executable using the generated TB file and run 
@@ -25,8 +24,8 @@ adds the *sonar* directory to the PYTHONPATH environment variable so the Python
 scripts can be run from anywhere. These variables are added to the .bashrc for 
 the current user. The package *python-yaml* is required if you want to use a 
 YAML-based configuration file (it may be called something different on your 
-distro. Basically, you need something that will let you open YAML files in 
-Python with *yaml.load*). 
+distro. You need something that will let you open YAML files in Python with 
+*yaml.load*). 
 
 ## Usage
 ``source init.sh`` with the correct arguments (run without arguments for help)
@@ -62,14 +61,17 @@ Lite 4) and any associated files. Other interfaces can also be added in ``user/`
 ### jsonGen
 This folder contains the preliminary work to use an object oriented Python 
 script to create a configuration file, rather than writing one out manually. 
-It's currently under development.
+It's currently under development. Some exciting things available that *sonar* 
+enables is the ability to stream a binary file over AXI-Stream to your TB.
 
 ### sample
-These are the files included in ``sample/``:  
+This is an example project for *sonar*. There are two configuration files
+included: a YAML and JSON. Both contain the same information though only the 
+YAML has comments as JSON doesn't support comments. Refer to the YAML for more
+information about the different keys and dicts. The other files included in 
+``sample/`` are:  
 * ``sample.cpp``: HLS DUT code
 * ``sample.hpp`` and ``utilities.hpp``: headers for ``sample.cpp``
-* ``sample.yaml``: example YAML configuration file (same content as the JSON)
-* ``sample.json``: example JSON configuration file (same content as the YAML)
 * ``sample.sh``: creates the HLS project by calling ``sample.tcl``
 * ``sample_hls.tcl``: creates an HLS project for ``sample.cpp``
 * ``sample_vivado.tcl``: creates a Vivado project for simulating the generated
@@ -80,8 +82,8 @@ The core *sonar* modules are here. ``sonar.py`` is the top level file which
 calls the other scripts.
 
 ### templates
-For each language that *sonar* supports in testbench generation, a template 
-file is included here.
+A template file is included here for each language that *sonar* supports in 
+testbench generation.
 
 ### user
 All the contents of this directory (with the exception of ``__init__.py``) are
@@ -89,7 +91,7 @@ excluded from Git. This is intended to support custom user extension to *sonar*
 without requiring modifications elsewhere. For example, ``strToInt.py`` will 
 look for a file called ``user_strToInt.py`` in this directory and a function in
 it called ``strToInt()`` for custom headers. Similarly, user-specific interfaces 
-can be added to ``user/interfaces/``. Thus, ``user/`` functions as a user-
+can be added to ``user/interfaces/``. Essentially, ``user/`` functions as a user-
 defined version of ``include/``
 
 ## Caveats
@@ -103,7 +105,7 @@ approaches.
 
 ## Contributing
 
-Users are welcomed to make their own branches to experiment. I encourage pull 
-requests to improve functionality, error handling, and style. If you find a
-bug, please raise an issue and make the problem and reproduction steps/code 
-clear.
+I encourage pull requests to improve functionality, error handling, and style. 
+If you find a bug, please raise an issue and make the problem and reproduction 
+steps/code clear. I also plan to move some of this content to the wiki in the 
+future.

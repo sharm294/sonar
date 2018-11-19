@@ -108,12 +108,13 @@ if {[string equal [get_filesets -quiet sources_1] ""]} {
 set obj [get_filesets sources_1]
 set files [list \
  "[file normalize "$origin_dir/build/vivado_hls/sample/Virtex_Ultrascale/impl/verilog/sample.v"]"\
- "[file normalize "$origin_dir/build/sample_sv.dat"]"\
+ "[file normalize "$origin_dir/build/vivado_hls/sample/Virtex_Ultrascale/impl/verilog/sample_ctrl_bus_s_axi.v"]"\
+ "[file normalize "$origin_dir/build/sample/sample_sv.dat"]"\
 ]
 add_files -norecurse -fileset $obj $files
 
 # Set 'sources_1' fileset file properties for remote files
-set file "$origin_dir/build/sample_sv.dat"
+set file "$origin_dir/build/sample/sample_sv.dat"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "Data Files" -objects $file_obj
@@ -147,12 +148,12 @@ if {[string equal [get_filesets -quiet sim_1] ""]} {
 # Set 'sim_1' fileset object
 set obj [get_filesets sim_1]
 set files [list \
- "[file normalize "$origin_dir/build/sample_tb.sv"]"\
+ "[file normalize "$origin_dir/build/sample/sample_tb.sv"]"\
 ]
 add_files -norecurse -fileset $obj $files
 
 # Set 'sim_1' fileset file properties for remote files
-set file "$origin_dir/build/sample_tb.sv"
+set file "$origin_dir/build/sample/sample_tb.sv"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets sim_1] [list "*$file"]]
 set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
@@ -164,6 +165,13 @@ set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
 # Set 'sim_1' fileset properties
 set obj [get_filesets sim_1]
 set_property -name "top" -value "sample_tb" -objects $obj
+
+if {! [catch {glob -directory "$origin_dir/build/sample" *.tcl} yikes] } {
+  set files [glob -directory "$origin_dir/build/sample" *.tcl]
+  foreach tclFile $files {
+    source $tclFile
+  }
+}
 
 # Create 'synth_1' run (if not found)
 if {[string equal [get_runs -quiet synth_1] ""]} {
