@@ -1,13 +1,3 @@
-# namespace eval _tcl {
-# proc get_script_folder {} {
-#    set script_path [file normalize [info script]]
-#    set script_folder [file dirname $script_path]
-#    return $script_folder
-# }
-# }
-# variable script_folder
-# set script_folder [_tcl::get_script_folder]
-
 proc get_design_name {design_name} {
   set cur_design [current_bd_design -quiet]
   set list_cells [get_bd_cells -quiet]
@@ -178,6 +168,9 @@ proc create_VIP {bd_name addr_width data_width address address_offset} {
     [get_bd_addr_spaces axi_vip_0/Master_AXI] \
     [get_bd_addr_segs m_axi/Reg] SEG_M_AXI_Reg
 
+  generate_target Simulation [get_files $bd_name.bd]
+  export_ip_user_files -of_objects [get_files $bd_name.bd] -no_script -force -quiet
+
   # Restore current instance
   current_bd_instance $oldCurInst
 
@@ -196,8 +189,8 @@ if { [string first 2017.2 $current_vivado_version] != -1 } {
   2017_2::create_VIP #DESIGN_NAME# #ADDR_WIDTH# #DATA_WIDTH# #ADDRESS# #ADDRESS_OFFSET#
 } else {
   puts ""
-  catch {common::send_msg_id "BD_TCL-109" "ERROR" "Unsupported Vivado version:\
+  catch {common::send_msg_id "BD_TCL-109" "WARNING" "Unsupported Vivado version:\
     $current_vivado_version for AXI VIP for s_axilite interface"}
-
+  2017_2::create_VIP #DESIGN_NAME# #ADDR_WIDTH# #DATA_WIDTH# #ADDRESS# #ADDRESS_OFFSET#
   return 1
 }

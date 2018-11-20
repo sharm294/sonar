@@ -22,6 +22,7 @@ void sample(
     axis_t &axis_input,
     axis_t &axis_output,
     uint_1_t &ack,
+    uint_1_t enable,
     volatile uint_3_t * state_out
 );
 
@@ -29,10 +30,11 @@ void sample(
     axis_t axis_input;\
     axis_t axis_output;\
     uint_1_t ack;\
+    uint_1_t enable = 1;\
     uint_3_t state_out;\
     axis_word_t axis_word;
 
-#define CALL_TB sample(axis_input, axis_output, ack, &state_out);
+#define CALL_TB sample(axis_input, axis_output, ack, enable, &state_out);
 
 #define COMPARE_uaxis_l(x) x
 

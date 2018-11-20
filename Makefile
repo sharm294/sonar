@@ -57,7 +57,7 @@ sample_hw:
 
 # generate the testbenches and data files
 sample_gen:
-	@python $(SONAR_PATH)/src/sonar.py env SONAR_PATH /sample/sample.yaml all 
+	@python $(SONAR_PATH)/src/sonar.py env SONAR_PATH /sample/sample.json all 
 
 # performs C-simulation on sample
 sample_csim: $(sample_bin_dir)/sample_tb
@@ -79,9 +79,9 @@ $(sample_bin_dir)/sample_tb: $(sample_obj_dir)/sample_tb.o $(sample_obj_dir)/sam
 # Object Files
 #------------------------------------------------------------------------------
 
-$(sample_obj_dir)/sample_tb.o: $(sample_dir)/build/sample_tb.cpp
+$(sample_obj_dir)/sample_tb.o: $(sample_dir)/build/sample/sample_tb.cpp
 	$(CC) $(CFLAGS) -I$(SONAR_PATH)/sample -o $(sample_obj_dir)/sample_tb.o \
-		-c $(sample_dir)/build/sample_tb.cpp
+		-c $(sample_dir)/build/sample/sample_tb.cpp
 
 $(sample_obj_dir)/sample.o: $(sample_dir)/sample.cpp
 	$(CC) $(CFLAGS) -I$(SONAR_PATH)/sample -o $(sample_obj_dir)/sample.o \

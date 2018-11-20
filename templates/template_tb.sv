@@ -67,6 +67,7 @@ module exerciser (
             end
             else begin
                 $display("Unhandled delay unit: %s", interfaceType_par);
+                $display("\n*** Finishing RTL Simulation *** \n");
                 $finish;
             end
         end
@@ -103,6 +104,7 @@ module exerciser (
             $display({"Unhandled case: ", packetType_par, " " , 
                 interfaceType_par});
             error = 1'b1;
+            $display("\n*** Finishing RTL Simulation *** \n");
             $finish;
         end
     endtask
@@ -132,6 +134,7 @@ module exerciser (
         status = $fscanf(dataFile_0, "%s %s %d\n", packetType, interfaceType, 
             vectorCount);
         fileReady = 1;
+        $display("\n*** Starting RTL Simulation *** \n");
         if (packetType == "TestVector" && interfaceType == "count") begin
             for(int i = 0; i < vectorCount; i++) begin
                 status = $fscanf(dataFile_0, "%s %s %d\n", packetType, 
@@ -157,6 +160,7 @@ module exerciser (
                 end
                 else begin
                     $display("Bad data file - parallelsection header");
+                    $display("\n*** Finishing RTL Simulation *** \n");
                     $finish;
                 end
             end
@@ -165,10 +169,12 @@ module exerciser (
             end else begin
                 $display("All tests completed successfully!");
             end
+            $display("\n*** Finishing RTL Simulation *** \n");
             $finish;
         end
         else begin
             $display("Bad data file - vector header");
+            $display("\n*** Finishing RTL Simulation *** \n");
             $finish;
         end
     end
