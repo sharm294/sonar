@@ -2,8 +2,7 @@ import sys
 import os
 import math
 import inspect
-sys.path.append(os.environ['SONAR_PATH'] + '/jsonGen')
-from ethernet import Ethernet
+from jsonGen.ethernet import Ethernet
 from galapagosNet import GalapagosNet
 
 

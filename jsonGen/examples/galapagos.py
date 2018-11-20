@@ -2,10 +2,9 @@
 import sys
 import os
 
-sys.path.append(os.environ['SONAR_PATH'] + '/jsonGen')
-from parallelSection import ParallelSection
-from testVector import TestVector
-from module import Module
+from jsonGen.parallelSection import ParallelSection
+from jsonGen.testVector import TestVector
+from jsonGen.module import Module
 from galapagosNet import GalapagosNet
 import json
 

@@ -30,6 +30,7 @@ slave_action = [
 ]
 
 master_action = [
+    "wait($$clock == 0);",
     {"channels": {"tdata", "tlast", "tkeep", "tdest"}, "commands": ["$$name_$$channel = args[$$i];"]},
     "$$name_tvalid = 1'b1;",
     "fork",

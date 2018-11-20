@@ -62,7 +62,9 @@ Lite 4) and any associated files. Other interfaces can also be added in ``user/`
 This folder contains the preliminary work to use an object oriented Python 
 script to create a configuration file, rather than writing one out manually. 
 It's currently under development. Some exciting things available that *sonar* 
-enables is the ability to stream a binary file over AXI-Stream to your TB.
+enables is the ability to stream a binary file over AXI-Stream to your TB. 
+There are also some application-specific examples available in ``jsonGen/examples/``
+that demonstrate one active use case for higher custom abstractions above *sonar*.
 
 ### sample
 This is an example project for *sonar*. There are two configuration files

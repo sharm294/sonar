@@ -5,9 +5,8 @@ import os
 import math
 import inspect
 
-sys.path.append(os.environ['SONAR_PATH'] + '/jsonGen')
-from parallelSection import ParallelSection
-from ethernet import Ethernet
+from jsonGen.parallelSection import ParallelSection
+from jsonGen.ethernet import Ethernet
 
 
 class GalapagosNet(ParallelSection):
