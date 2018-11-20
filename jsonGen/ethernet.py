@@ -56,6 +56,8 @@ class Ethernet(axis):
 
 
     def binToStream(self, binArray, functionsDict):
+        waitlist = None
+
 
         if not(self.prefix == None):
             binArray[0:0] = bytearray.fromhex(self.prefix[2:])
@@ -73,6 +75,54 @@ class Ethernet(axis):
         return retList
 
 
+    def getHeader(self):
+
+
+        binArray = bytearray.fromhex(self.mac_addr_dst[2:])
+        binArray.extend(bytearray.fromhex(self.mac_addr_src[2:]))
+        binArray.extend(bytearray.fromhex(self.ether_type[2:]))
+        
+        if not(self.prefix == None):
+            binArray.extend(bytearray.fromhex(self.prefix[2:]))
+
+        return binArray 
+
+
+
+    def waitForHeader(self, key):
+        retList = []
+
+        for dictItem in self.parameters['channels']:
+            if dictItem['type'] == 'tdata':
+                axisName = dictItem['name']
+                break
+
+
+        
+        retList.append({"key": key + "_0", "condition": "wait(" + self.name + "_" + axisName + "[63:56]==8'h" + self.mac_addr_src[2:3]
+            + " && " + self.name + "_" + axisName + "[55:48]==8'h" + self.mac_addr_src[3:4] 
+            + " && " + self.name + "_" + axisName + "[47:40]==8'h" + self.mac_addr_dst[12:13] 
+            + " && " + self.name + "_" + axisName + "[39:32]==8'h" + self.mac_addr_dst[10:11] 
+            + " && " + self.name + "_" + axisName + "[32:23]==8'h" + self.mac_addr_dst[8:9] 
+            + " && " + self.name + "_" + axisName + "[23:16]==8'h" + self.mac_addr_dst[6:7] 
+            + " && " + self.name + "_" + axisName + "[15:8]==8'h" + self.mac_addr_dst[4:5] 
+            + " && " + self.name + "_" + axisName + "[7:0]==8'h" + self.mac_addr_dst[2:3] 
+            + ");"
+            
+            })
+        
+        retList.append({"key": key + "_1", "condition": "wait(" 
+            + " && " + self.name + "_" + axisName + "[47:40]==8'h" + self.ether_type[4:5] 
+            + " && " + self.name + "_" + axisName + "[39:32]==8'h" + self.ether_type[2:3] 
+            + " && " + self.name + "_" + axisName + "[32:23]==8'h" + self.mac_addr_src[12:13] 
+            + " && " + self.name + "_" + axisName + "[23:16]==8'h" + self.mac_addr_src[10:11] 
+            + " && " + self.name + "_" + axisName + "[15:8]==8'h" + self.mac_addr_src[8:9] 
+            + " && " + self.name + "_" + axisName + "[7:0]==8'h" + self.mac_addr_src[6:7] 
+            + ");"
+            })
+       
+
+        return retList
 
 
 
@@ -111,7 +161,8 @@ if __name__=="__main__":
                 })
     ethernetPort.setPrefix('0x0011')
     retList = ethernetPort.binToStream(dataArray, None)
-
-    print "Printing the Dict for binary transaction"
+    retList.append(ethernetPort.waitForHeader("test"))
+    
+    print "Printing the Dict for binary transaction and wait"
     for item in retList:
         print item

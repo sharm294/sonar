@@ -85,7 +85,7 @@ if __name__=="__main__":
 
     #make a parallel section
     sec = ParallelSection()
-    sec.addWait("mem_ready", "wait(mem_ready);")
+    sec.addWait({"key": "mem_ready", "condition": "wait(mem_ready);"})
     sec.addMacro("INIT_SIGNALS")
     sec.addDelay("40ns")
     #add burst stream of binary to axis into parallel section

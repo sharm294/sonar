@@ -8,10 +8,13 @@ class axis(object):
 
         if not('name' in parameters):
             raise ValueError('Name must exist')
+        else:
+            self.name = parameters['name']
 
         if not('direction' in parameters):
             raise ValueError('Direction must exist')
-
+        else:
+            self.direction = parameters['direction']
 
         #define a default axistream channel
         if not('channels' in parameters):
@@ -25,7 +28,7 @@ class axis(object):
         self.parameters = parameters
                                             
         for dictItem in self.parameters['channels']:
-            if dictItem['name'] == 'data':
+            if dictItem['type'] == 'tdata':
                 if 'size' in dictItem:
                     size = dictItem['size']
                 else:

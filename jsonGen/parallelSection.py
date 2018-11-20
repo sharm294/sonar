@@ -6,9 +6,10 @@ class ParallelSection(object):
         self.dict = []
         self.waitConditions = {}
 
-    def addWait(self, key, condition):
-        self.dict.append({"wait": {"key" : key}})
-        self.waitConditions.update({key : condition})
+    def addWait(self, waitDict):
+        
+        self.dict.append({"wait": {"key" : waitDict['key']}})
+        self.waitConditions.update({waitDict['key'] : waitDict['condition']})
 
     def addMacro(self, macro):
         self.dict.append({"macro": macro})
@@ -65,7 +66,7 @@ if __name__=="__main__":
     sec = ParallelSection()
 
 
-    sec.addWait("mem_ready", "wait(mem_ready);")
+    sec.addWait({"key": "mem_ready", "condition": "wait(mem_ready);"})
     sec.addMacro("INIT_SIGNALS")
     sec.addDelay("40ns")
     sec.addBurst(retList)
