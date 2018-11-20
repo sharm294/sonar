@@ -1,7 +1,6 @@
 
 import sys
 import os
-from axis import axis
 
 sys.path.append(os.environ['SONAR_PATH'] + '/jsonGen')
 from parallelSection import ParallelSection

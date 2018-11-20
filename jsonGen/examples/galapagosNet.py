@@ -89,7 +89,6 @@ class GalapagosNet(ParallelSection):
         return macAddr 
 
     def setRankDst(self, rank):
-        print 'rank to set is ' + rank
         macAddr = self.getMacAddr(rank)
         if macAddr == None:
             raise ValueError('Rank not in mac table')
