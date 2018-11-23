@@ -114,7 +114,7 @@ module exerciser (
     
     int vectorCount;
     time timeRef;
-    logic [#FLAG_COUNT#-1:0] flags;
+    logic [#FLAG_COUNT#-1:0] flags = 0;
 
     #EXERCISER_PROLOGUE#
 
