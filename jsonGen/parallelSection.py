@@ -71,3 +71,4 @@ if __name__=="__main__":
     sec.addDelay("40ns")
     sec.addBurst(retList)
     sec.printDict()
+    print sec.waitConditions

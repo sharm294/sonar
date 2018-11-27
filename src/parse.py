@@ -238,7 +238,7 @@ def parseJSON(mode, modeArg, filepath):
     fRaw = commentRemover(fRaw_commented.read())
     try:
         rawData = json.loads(fRaw)
-    except ValueError, e:
+    except ValueError as e:
         fTmp.write(fRaw)
         message = "Invalid JSON file. Use " + filepath + \
             " to find errors and fix source file."

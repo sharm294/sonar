@@ -163,7 +163,7 @@ def generate(mode, modeArg, filepath, languages):
     try:
         with open(outFileName, "r") as outFile:
             testFile = json.load(outFile)
-    except ValueError, e:
+    except ValueError as e:
         printError(1, "Unable to open JSON file. See errors above")
         exit(1)
 

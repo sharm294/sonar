@@ -2,7 +2,7 @@ import sys
 import math
 import inspect
 
-class axis(object):
+class ap_fifo(object):
     
     def __init__(self, parameters):
 
@@ -16,7 +16,7 @@ class axis(object):
         else:
             self.direction = parameters['direction']
 
-        #define a default axistream channel
+        #define a default ap_fifo channel
         if not('channels' in parameters):
             parameters.update({"channels": [
                                             {'name':'data', 'type':'tdata', 'size': 8},
@@ -28,7 +28,7 @@ class axis(object):
         self.parameters = parameters
                                             
         for dictItem in self.parameters['channels']:
-            if dictItem['type'] == 'tdata':
+            if dictItem['type'] == 'rd_data' or dictItem['type'] == 'wr_data':
                 if 'size' in dictItem:
                     size = int(dictItem['size'])
                 else:
@@ -40,18 +40,48 @@ class axis(object):
 
 
     def streamTransaction(self, payload):
-        axisName = self.parameters['name']
-        dictElement = {"interface" : {"type": "axis", "name": axisName, "payload" : [payload]}}
+        fifo_name = self.parameters['name']
+        dictElement = {"interface" : {"type": "ap_fifo", "name": fifo_name, "payload" : [payload]}}
         return dictElement
 
 
-    @staticmethod
-    def compute_num_transfers(binArray, stream_size):
-        return int((math.ceil(len(binArray)/float(stream_size))) * stream_size)
+    def rd_enFunction(self, binArray, transIndex, endian):
+        return 1
+    
+    def rd_dataFunction(self, binArray, transIndex, endian):
+        tdata_bytes = [binArray[i] for i in range(transIndex, transIndex + self.streamLen) if (i < len(binArray))]
+        tdata_bytes += [0]*(self.streamLen-len(tdata_bytes)) ## Pad the byte list if the last word isn't "filled" all the way
+
+        if endian == 'little':
+            tdata_bytes.reverse()
+
+        tdata = reduce((lambda x, y: (x << 8) | y), tdata_bytes)
+        return tdata
+    
+    def empty_nFunction(self, binArray, transIndex, endian):
+        return 1
+    
+    def wr_enFunction(self, binArray, transIndex, endian):
+        return 1
+    
+    def wr_dataFunction(self, binArray, transIndex, endian):
+        tdata_bytes = [binArray[i] for i in range(transIndex, transIndex + self.streamLen) if (i < len(binArray))]
+        tdata_bytes += [0]*(self.streamLen-len(tdata_bytes)) ## Pad the byte list if the last word isn't "filled" all the way
+
+        if endian == 'little':
+            tdata_bytes.reverse()
+
+        tdata = reduce((lambda x, y: (x << 8) | y), tdata_bytes)
+        return tdata
+    
+    def full_nFunction(self, binArray, transIndex, endian):
+        return 1
+    
 
 
     def tkeepFunction(self, binArray, transIndex, endian):
-        if transIndex < axis.compute_num_transfers(binArray, self.streamLen) - 1:
+
+        if transIndex < ((math.ceil(len(binArray)/8.0) - 1) * 8.0) :
             tkeep = "KEEP_ALL"
         else:
             sizeofLastTransaction = len(binArray) % self.streamLen 
@@ -90,9 +120,17 @@ class axis(object):
     def binToStream(self, binArray, functionsDict, endian='little'):
         retList = []
         transIndex = 0
-        axisName = self.parameters['name']
+        fifo_name = self.parameters['name']
 
-        while transIndex < axis.compute_num_transfers(binArray, self.streamLen):
+        # direction = self.parameters['direction']
+        # if (direction == 'read'): 
+        #     self.parameters['wr_en'] = 
+        # elif(direction == 'write'):
+        #     self.parameters['rd_en'] = 
+
+
+        bin_array_len = len(binArray)
+        while transIndex < (math.ceil(bin_array_len/float(self.streamLen)) * self.streamLen):
             
             tdata_bytes = [binArray[i] for i in range(transIndex, transIndex + self.streamLen) if (i < len(binArray))]
             tdata_bytes += [0]*(self.streamLen-len(tdata_bytes)) ## Pad the byte list if the last word isn't "filled" all the way
@@ -130,7 +168,7 @@ if __name__=="__main__":
     
     
     #writing random garbage data to test.txt
-    with open("test_axis.bin", "wb") as binary_file:
+    with open("test_ap_fifo.bin", "wb") as binary_file:
         num_bytes_written = binary_file.write(b'\xDE\xAD\xBE\xEF\xFA\xCE\xFA\xCE')
         num_bytes_written = binary_file.write(b'\x11\x22\x33\x44\x55\x66\x77\x88')
         num_bytes_written = binary_file.write(b'\x00\xaa\xbb\xcc\xdd\xee\xff\x12')
@@ -139,7 +177,7 @@ if __name__=="__main__":
     
 
     #reading back random garbage data from test.txt
-    with open("test_axis.bin", "rb") as binary_file:
+    with open("test_ap_fifo.bin", "rb") as binary_file:
         data = binary_file.read()
    
     #now have data in byte array
@@ -149,7 +187,7 @@ if __name__=="__main__":
 
 
 
-    axisIn = axis({"name":"axisIn", "direction":"slave", "channels": [
+    ap_fifo_in = ap_fifo({"name":"ap_fifo_in", "direction":"read", "channels": [
                                                         {"name":"data", "type": "tdata", "size": 64},
                                                         {"name":"keep", "type": "tkeep"},
                                                         {"name":"valid", "type": "tvalid"},
@@ -158,7 +196,7 @@ if __name__=="__main__":
                                                         ]
                                                                             
                 })
-    retList = axisIn.binToStream(dataArray, None)
+    retList = ap_fifo_in.binToStream(dataArray, None)
 
     print "Printing the Dict for binary transaction"
     for item in retList:

@@ -1,0 +1,29 @@
+[
+    [
+        { "port":"serialized_data_in_stream", "data_location":"inline", "data":"deadbeefdeadbeefdeadbeef" }
+    ],
+    [
+        { "port":"serializer_lookup_request_stream_V_V", "data_location":"inline", "data":"05" }
+    ],
+    [
+        { "port":"serializer_lookup_response_stream_V_V", "data_location":"inline", "data":"06" }
+    ],
+    [
+        { "port":"serializer_lookup_request_stream_V_V", "data_location":"inline", "data":"01" }
+    ],
+    [
+        { "port":"serializer_lookup_response_stream_V_V", "data_location":"inline", "data":"04" }
+    ],
+    [
+        { "port":"deserialization_complete_stream_out_V_V", "data_location":"inline", "data":"01" }
+    ],
+    [
+        { "port":"deserialization_complete_stream_out_V_V", "data_location":"inline", "data":"01" }
+    ],
+    [
+        { "port":"request_data_dump_V_V", "data_location":"inline", "data":"01" }
+    ],
+    [
+        { "port":"output_stream", "data_location":"inline", "data":"baddeaddad" }
+    ]
+]

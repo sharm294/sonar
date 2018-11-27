@@ -2,7 +2,7 @@ import sys
 import math
 import inspect
 
-class axis(object):
+class axi4stream(object):
     
     def __init__(self, parameters):
 
@@ -41,7 +41,7 @@ class axis(object):
 
     def streamTransaction(self, payload):
         axisName = self.parameters['name']
-        dictElement = {"interface" : {"type": "axis", "name": axisName, "payload" : [payload]}}
+        dictElement = {"interface" : {"type": "axi4stream", "name": axisName, "payload" : [payload]}}
         return dictElement
 
 
@@ -51,7 +51,8 @@ class axis(object):
 
 
     def tkeepFunction(self, binArray, transIndex, endian):
-        if transIndex < axis.compute_num_transfers(binArray, self.streamLen) - 1:
+
+        if transIndex < (axi4stream.compute_num_transfers(binArray, self.streamLen) - 1):
             tkeep = "KEEP_ALL"
         else:
             sizeofLastTransaction = len(binArray) % self.streamLen 
@@ -92,7 +93,8 @@ class axis(object):
         transIndex = 0
         axisName = self.parameters['name']
 
-        while transIndex < axis.compute_num_transfers(binArray, self.streamLen):
+
+        while transIndex < axi4stream.compute_num_transfers(binArray, self.streamLen):
             
             tdata_bytes = [binArray[i] for i in range(transIndex, transIndex + self.streamLen) if (i < len(binArray))]
             tdata_bytes += [0]*(self.streamLen-len(tdata_bytes)) ## Pad the byte list if the last word isn't "filled" all the way
