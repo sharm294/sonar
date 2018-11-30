@@ -28,13 +28,7 @@ distro. You need something that will let you open YAML files in Python with
 *yaml.load*). 
 
 ## Usage
-``source init.sh`` with the correct arguments (run without arguments for help)
-to initialize repository first. Provide the absolute path to the cloned 
-repository and, optionally, the path to the Vivado HLS include folder for HLS 
-header files (usually ``Xilinx/Vivado_HLS/<year>/include``). Remove any trailing 
-slashes from the path(s). Then use the make commands to create the sample. 
-Running *sonar* on your own designs is easy to do since the Makefile shows the 
-command syntax you need.
+``make init``
 
 To create the sample project, run ``make sample``. This will call a number of
 targets that create a Vivado HLS project, generate all the testbenches and data 

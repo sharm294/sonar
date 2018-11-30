@@ -49,6 +49,9 @@ endif
 # Main
 #------------------------------------------------------------------------------
 
+init:
+	@source init.sh
+
 sample: sample_hw sample_gen sample_csim sample_sim
 
 # creates a Vivado HLS project and export Sample to RTL
