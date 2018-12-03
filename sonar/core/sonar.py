@@ -6,13 +6,13 @@ import re
 import copy
 from shlex import split as quoteSplit
 
-from include.utilities import getFilePath
-from include.utilities import stripFileName
-from include.utilities import printError
-from include.utilities import getIndentation
-from include.utilities import getInterface
-from generate import generate
-from writeJSON import writeJSON
+from .include.utilities import getFilePath
+from .include.utilities import stripFileName
+from .include.utilities import printError
+from .include.utilities import getIndentation
+from .include.utilities import getInterface
+from .generate import generate
+from .writeJSON import writeJSON
 
 ################################################################################
 ### _byteify ###
@@ -127,17 +127,17 @@ def setFromConfig(templateTB_sv_str, configFileData):
         "Flag_Count"]
 
     for tbMetadataTag in tbMetadataTags:
-        if configFileData[tbMetadataTag] is None:
+        if configFileData['metadata'][tbMetadataTag] is None:
             replaceStr = ""
         else:
-            replaceStr = str(configFileData[tbMetadataTag])
+            replaceStr = str(configFileData['metadata'][tbMetadataTag])
         searchStr = "#" + tbMetadataTag.upper() + "#"
         templateTB_sv_str = templateTB_sv_str.replace(searchStr, replaceStr)
 
     templateTB_sv_str = templateTB_sv_str.replace("#CURR_DATE#", \
         str(datetime.datetime.now()))
     templateTB_sv_str = templateTB_sv_str.replace("#DATA_FILE#", "\"" + \
-        configFileData['Module_Name']+"_sv.dat\"")
+        configFileData['metadata']['Module_Name']+"_sv.dat\"")
 
     return templateTB_sv_str
 
@@ -190,10 +190,10 @@ def sonar(mode, modeArg, filepath, languages):
         configFile.close()
         exit(1)
 
-    buildPath = pathTuple[0] + "/build/" + pathTuple[1].replace(fileType, '') + "/"
+    buildPath = pathTuple[0] + "/"
     if not os.path.exists(buildPath):
         os.makedirs(buildPath)
-    dataFileName = buildPath + pathTuple[1].replace(fileType, '.json')
+    dataFileName = buildPath + pathTuple[1].replace(fileType, '_core.json')
     tbFileName_sv = buildPath + pathTuple[1].replace(fileType, '_tb.sv')
     if enable_C:
         tbFileName_c = buildPath + pathTuple[1].replace(fileType, '_tb.cpp')
@@ -213,13 +213,13 @@ def sonar(mode, modeArg, filepath, languages):
 
     dataFile = open(dataFileName, "w+")
     
-    templateTB_sv = getFilePath("env", "SONAR_PATH", "/templates/template_tb.sv")
+    templateTB_sv = os.path.join(os.path.dirname(__file__), 'templates/template_tb.sv')
     with open(templateTB_sv, "r") as templateFile:
         templateTB_sv_str = templateFile.read()
     tbFile_sv = open(tbFileName_sv, "w+")
 
     if enable_C:
-        templateTB_c = getFilePath("env", "SONAR_PATH", "/templates/template_tb.cpp")
+        templateTB_c = os.path.join(os.path.dirname(__file__), 'templates/template_tb.cpp')
         with open(templateTB_c, "r") as templateFile:
             templateTB_c_str = templateFile.read()
         tbFile_c = open(tbFileName_c, "w+")
@@ -229,14 +229,14 @@ def sonar(mode, modeArg, filepath, languages):
 
     if enable_C:
         templateTB_c_str = templateTB_c_str.replace("#FUNCTION#", 
-            configFileData['Module_Name'].upper())
+            configFileData['metadata']['Module_Name'].upper())
         dataFile_c = dataFileName.replace(".json", "_c.dat")
         templateTB_c_str = templateTB_c_str.replace("#DATA_FILE#", "\"" + \
             dataFile_c + "\"")
         templateTB_c_str = templateTB_c_str.replace("#HEADER_FILE#", "\"" + \
-            configFileData['Module_Name']+".hpp\"")
+            configFileData['metadata']['Module_Name']+".hpp\"")
 
-    vectorNum = len(configFileData['Test_Vectors'])
+    vectorNum = len(configFileData['vectors'])
     templateTB_sv_str = templateTB_sv_str.replace("#MAX_VECTORS#", str(vectorNum))
 
 #------------------------------------------------------------------------------#
@@ -254,67 +254,69 @@ def sonar(mode, modeArg, filepath, languages):
 
     tabSize = "    "
 
-    for port in configFileData['DUT']:
-        if 'type' in port:
-            if port['type'] == "clock" and port['direction'] == "input":
-                portCopy = port.copy()
-                if 'size' not in portCopy:
-                    portCopy['size'] = 1
-                del portCopy['type']
-                clocks_in.append(portCopy)
-            elif port['type'] == "reset":
-                portCopy = port.copy()
-                del portCopy['type']
-                if 'size' not in portCopy:
-                    portCopy['size'] = 1
-                if portCopy['direction'] == "input":
-                    signals_in.append(portCopy)
+    for module in configFileData['modules']:
+        if module['name'] == 'DUT':
+            for port in module['ports']:
+                if 'type' in port:
+                    if port['type'] == "clock" and port['direction'] == "input":
+                        portCopy = port.copy()
+                        if 'size' not in portCopy:
+                            portCopy['size'] = 1
+                        del portCopy['type']
+                        clocks_in.append(portCopy)
+                    elif port['type'] == "reset":
+                        portCopy = port.copy()
+                        del portCopy['type']
+                        if 'size' not in portCopy:
+                            portCopy['size'] = 1
+                        if portCopy['direction'] == "input":
+                            signals_in.append(portCopy)
+                        else:
+                            signals_out.append(portCopy)
+                    else:
+                        usedInterfaces[port['type']] = getInterface(port['type'])
+                        if usedInterfaces[port['type']] is None:
+                            exit(1)
+                        if port['type'] not in interface_indices:
+                            interface_indices[port['type']] = 0
+                        else:
+                            interface_indices[port['type']] += 1
+                        portCopy = port.copy()
+                        for channel in portCopy['channels']:
+                            if 'size' not in channel:
+                                channel['size'] = 1
+                        if 'connectionMode' not in portCopy:
+                            portCopy['connectionMode'] = "native"
+                        portCopy['index'] = interface_indices[port['type']]
+                        if hasattr(usedInterfaces[port['type']], 'yaml_top'):
+                            portCopy = usedInterfaces[port['type']].yaml_top(portCopy)
+                        if portCopy['direction'] in ["slave", "mixed"]:
+                            interface_in.append(portCopy)
+                        elif portCopy['direction'] == "master":
+                            interface_out.append(portCopy)
+                        else:
+                            printError(1, "Unknown interface direction: " + portCopy['direction'])
+                            exit(1)
                 else:
-                    signals_out.append(portCopy)
-            else:
-                usedInterfaces[port['type']] = getInterface(port['type'])
-                if usedInterfaces[port['type']] is None:
-                    exit(1)
-                if port['type'] not in interface_indices:
-                    interface_indices[port['type']] = 0
-                else:
-                    interface_indices[port['type']] += 1
-                portCopy = port.copy()
-                for channel in portCopy['channels']:
-                    if 'size' not in channel:
-                        channel['size'] = 1
-                if 'connectionMode' not in portCopy:
-                    portCopy['connectionMode'] = "native"
-                portCopy['index'] = interface_indices[port['type']]
-                if hasattr(usedInterfaces[port['type']], 'yaml_top'):
-                    portCopy = usedInterfaces[port['type']].yaml_top(portCopy)
-                if portCopy['direction'] in ["slave", "mixed"]:
-                    interface_in.append(portCopy)
-                elif portCopy['direction'] == "master":
-                    interface_out.append(portCopy)
-                else:
-                    printError(1, "Unknown interface direction: " + portCopy['direction'])
-                    exit(1)
-        else:
-            portCopy = port.copy()
-            if 'size' not in portCopy:
-                portCopy['size'] = 1
-            if portCopy['direction'] == "input":
-                signals_in.append(portCopy)
-            else:
-                signals_out.append(portCopy)
+                    portCopy = port.copy()
+                    if 'size' not in portCopy:
+                        portCopy['size'] = 1
+                    if portCopy['direction'] == "input":
+                        signals_in.append(portCopy)
+                    else:
+                        signals_out.append(portCopy)
 
     waitConditions = []
-    if 'Wait_Conditions' in configFileData:
-        for condition in configFileData['Wait_Conditions']:
+    if 'wait_conditions' in configFileData:
+        for condition in configFileData['wait_conditions']:
             waitConditions.append(condition.copy())
 
     time_format = "$timeformat("
     with open(templateTB_sv,'r') as f:
         l = [line for line in f if "#TIME_FORMAT#" in line]
     leading_spaces = getIndentation(l)
-    precision = str(configFileData['Time_Format']['precision'])
-    timeFormat = configFileData['Time_Format']['unit']
+    precision = str(configFileData['metadata']['Time_Format']['precision'])
+    timeFormat = configFileData['metadata']['Time_Format']['unit']
     if timeFormat.endswith("fs"):
         time_format += "-15, " + precision + ", \" fs\", 0);"
     elif timeFormat.endswith("ps"):
@@ -328,7 +330,7 @@ def sonar(mode, modeArg, filepath, languages):
     elif timeFormat.endswith("s"):
         time_format += "0, " + precision + ", \" s\", 0);"
     else:
-        printError(1, "Unknown time format: " + configFileData['Time_Format'])
+        printError(1, "Unknown time format: " + configFileData['metadata']['Time_Format'])
         exit(1)
     templateTB_sv_str = templateTB_sv_str.replace("#TIME_FORMAT#", time_format)
 
@@ -444,7 +446,7 @@ def sonar(mode, modeArg, filepath, languages):
     with open(templateTB_sv,'r') as f:
         lineStr = [line for line in f if "#DUT_INST#" in line]
     leading_spaces = getIndentation(lineStr)
-    dut_inst += configFileData['Module_Name'] + " " + configFileData['Module_Name'] + "_i(\n"
+    dut_inst += configFileData['metadata']['Module_Name'] + " " + configFileData['metadata']['Module_Name'] + "_i(\n"
     for clock in clocks_in:
         dut_inst += leading_spaces + tabSize + "." + clock['name'] + "(" + \
             clock['name'] + "),\n"
@@ -854,7 +856,7 @@ def sonar(mode, modeArg, filepath, languages):
     # Create a JSON file (for legacy reasons) for the next script to work with.
     # i.e. expand all the YAML macros, fill in missing interface signal keys etc
 
-    parallelNum = writeJSON(configFileData['Test_Vectors'], dataFile, signals_in, 
+    parallelNum = writeJSON(configFileData['vectors'], dataFile, signals_in, 
     signals_out, interface_in, interface_out, usedInterfaces)
                      
     templateTB_sv_str = templateTB_sv_str.replace("#MAX_PARALLEL#", str(parallelNum))
@@ -925,6 +927,6 @@ if __name__ == "__main__":
             print("  languages: all (SV + C) or sv (just SV)")
 
     if (len(sys.argv) == 5):
-        sonar(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+        core(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
     else:
         print("Incorrect number of arguments. Use -h or --help")

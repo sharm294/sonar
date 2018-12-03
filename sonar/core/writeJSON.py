@@ -1,7 +1,7 @@
 import copy
 import re
 import json
-from include.utilities import printError
+from .include.utilities import printError
 
 ################################################################################
 ### writeJSONPacket ###
@@ -156,14 +156,13 @@ def writeJSON(testVectors, dataFile, signals_in, signals_out, interface_in,
     json_dict['data'] = []
 
     #generate JSON file
-    for vectorIndex, testVector in enumerate(testVectors):
-        if len(testVector['Test_Vector_' + str(vectorIndex)]) > parallelNum:
-            parallelNum = len(testVector['Test_Vector_' + str(vectorIndex)])
+    for vectorIndex, vector in enumerate(testVectors):
+        if len(vector) > parallelNum:
+            parallelNum = len(vector)
         testVector_json = {}
         testVector_json['data'] = []
         json_dict['data'].append(testVector_json)
-        testVectorInst = testVector['Test_Vector_' + str(vectorIndex)]
-        for parallelIndex, parallelSection in enumerate(testVectorInst):
+        for parallelIndex, thread in enumerate(vector):
             parallelSection_json = {}
             parallelSection_json['data'] = []
             testVector_json['data'].append(parallelSection_json)
@@ -174,10 +173,33 @@ def writeJSON(testVectors, dataFile, signals_in, signals_out, interface_in,
             counters['waitCounter'] = 0
             counters['timestampCounter'] = 0
             counters['flagCounter'] = 0
-            for packet in parallelSection['Parallel_Section_' + str(parallelIndex)]:
+            for packet in thread:
                 counters = writeJSONPacket(parallelSection_json, packet, vectorIndex, \
                     parallelIndex, signals_in, signals_out, interface_in, \
                     interface_out, usedInterfaces, counters)
+        
+    # for vectorIndex, testVector in enumerate(testVectors):
+    #     if len(testVector['Test_Vector_' + str(vectorIndex)]) > parallelNum:
+    #         parallelNum = len(testVector['Test_Vector_' + str(vectorIndex)])
+    #     testVector_json = {}
+    #     testVector_json['data'] = []
+    #     json_dict['data'].append(testVector_json)
+    #     testVectorInst = testVector['Test_Vector_' + str(vectorIndex)]
+    #     for parallelIndex, parallelSection in enumerate(testVectorInst):
+    #         parallelSection_json = {}
+    #         parallelSection_json['data'] = []
+    #         testVector_json['data'].append(parallelSection_json)
+    #         counters = {}
+    #         counters['delayCounter'] = 0
+    #         counters['interfaceCounter'] = 0
+    #         counters['displayCounter'] = 0
+    #         counters['waitCounter'] = 0
+    #         counters['timestampCounter'] = 0
+    #         counters['flagCounter'] = 0
+    #         for packet in parallelSection['Parallel_Section_' + str(parallelIndex)]:
+    #             counters = writeJSONPacket(parallelSection_json, packet, vectorIndex, \
+    #                 parallelIndex, signals_in, signals_out, interface_in, \
+    #                 interface_out, usedInterfaces, counters)
     
     json.dump(json_dict, dataFile, indent=2)
     return parallelNum

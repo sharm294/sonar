@@ -1,5 +1,5 @@
-from include.utilities import printError
-from include.utilities import extractNumber
+from .utilities import printError
+from .utilities import extractNumber
 import importlib
 
 ### strToInt ###
@@ -20,14 +20,14 @@ def strToInt(packet):
 
     packetArgs = packet[1:-1].split(",")
 
-    try:
-        user_strToInt = importlib.import_module("user.user_strToInt")
-    except ImportError:
-        pass
-    else:
-        intVal = user_strToInt.strToInt(packet)
-        if intVal is not None:
-            return intVal
+    # try:
+    #     user_strToInt = importlib.import_module("user.user_strToInt")
+    # except ImportError:
+    #     pass
+    # else:
+    #     intVal = user_strToInt.strToInt(packet)
+    #     if intVal is not None:
+    #         return intVal
 
     # define common packet types: the following is included as an example
     # if packetArgs[0] == "AMHeader":

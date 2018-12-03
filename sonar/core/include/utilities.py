@@ -9,16 +9,16 @@ sonar_types = ["delay", "wait", "signal", "end", "timestamp", "display", "flag"]
 # This function attempts to import an interface definition
 def getInterface(interfaceName):
     # first check user's directory
-    try:
-        interface = importlib.import_module("user.interfaces." + interfaceName)
-    except ImportError:
-        pass
-    else:
-        return interface
+    # try:
+    #     interface = importlib.import_module("user.interfaces." + interfaceName)
+    # except ImportError:
+    #     pass
+    # else:
+    #     return interface
     
     # then check Sonar directory
     try:
-        interface = importlib.import_module("include.interfaces." + interfaceName)
+        interface = importlib.import_module("sonar.core.include.interfaces." + interfaceName)
     except ImportError:
         printError(1, "Unknown interface type: " + interfaceName)
         return None

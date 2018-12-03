@@ -3,14 +3,14 @@ import sys
 import json
 import re
 
-from include.strToInt import strToInt
-from include.utilities import extractNumber
-from include.utilities import printError
-from include.utilities import printWarning
-from include.utilities import getFilePath
-from include.utilities import stripFileName
-from include.utilities import sonar_types
-from include.utilities import getInterface
+from .include.strToInt import strToInt
+from .include.utilities import extractNumber
+from .include.utilities import printError
+from .include.utilities import printWarning
+from .include.utilities import getFilePath
+from .include.utilities import stripFileName
+from .include.utilities import sonar_types
+from .include.utilities import getInterface
 
 ################################################################################
 ### expandLoops ###

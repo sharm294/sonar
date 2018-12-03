@@ -2,12 +2,12 @@ import os
 import json
 import sys
 
-from include.utilities import printError
-from include.utilities import trimFinalLine
-from include.utilities import getFilePath
-from include.utilities import sonar_types
-from include.utilities import getInterface
-from parse import parseJSON
+from .include.utilities import printError
+from .include.utilities import trimFinalLine
+from .include.utilities import getFilePath
+from .include.utilities import sonar_types
+from .include.utilities import getInterface
+from .parse import parseJSON
 
 ################################################################################
 ### calculateSeeks ###
@@ -163,12 +163,12 @@ def generate(mode, modeArg, filepath, languages):
     try:
         with open(outFileName, "r") as outFile:
             testFile = json.load(outFile)
-    except ValueError, e:
+    except ValueError:
         printError(1, "Unable to open JSON file. See errors above")
         exit(1)
 
     pathTuple = os.path.split(outFileName)
-    currentDirectory = pathTuple[0] + "/" + pathTuple[1].replace('_out.json', \
+    currentDirectory = pathTuple[0] + "/" + pathTuple[1].replace('_core_out.json', \
         '')
 
     filename_c = currentDirectory + "_c.dat"

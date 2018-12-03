@@ -1,5 +1,10 @@
 ################################################################################
 # Sonar Configuration File
+#
+# DEPRECATED
+# This file is outdated and Sonar is no longer compatible with it. However, 
+# some of the contents of this file has potentially useful information about 
+# the core JSON format and so it is kept as old documentation.
 ################################################################################
 
 # Optional Meta Data #

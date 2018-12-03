@@ -1,3 +1,5 @@
+import os
+
 # This defines the input signals for an interface master
 master_input_channels = {
     "awready": {"size": 1, "required": True},
@@ -71,8 +73,8 @@ json_struct = {"type": "s_axilite", "interface": "", "width": 0, "id": "", \
 
 def import_packages_global(imports):
     import subprocess
-    from include.utilities import printError
-    from include.utilities import printWarning
+    from sonar.core.include.utilities import printError
+    from sonar.core.include.utilities import printWarning
 
     versionInfo = subprocess.check_output("vivado -version", shell=True)
     version = versionInfo.split()[1]
@@ -130,8 +132,9 @@ def exerciser_prologue(prologue, interface, indent):
     return prologue
 
 def source_tcl(interface, path):
-    from include.utilities import getFilePath
-    tclFileName = getFilePath("env", "SONAR_PATH", "/include/interfaces/s_axilite_vip.tcl")
+    from sonar.core.include.utilities import getFilePath
+    tclFileName = os.path.join(os.path.dirname(__file__), 's_axilite_vip.tcl')
+    # getFilePath("env", "SONAR_PATH", "/include/interfaces/s_axilite_vip.tcl")
     if tclFileName is None:
         exit(1)
     with open(tclFileName) as f:
@@ -139,8 +142,8 @@ def source_tcl(interface, path):
         tclFile = tclFile.replace("#DESIGN_NAME#", "vip_bd_" + str(interface['index']))
         tclFile = tclFile.replace("#ADDR_WIDTH#", str(interface['addrWidth']))
         tclFile = tclFile.replace("#DATA_WIDTH#", str(interface['dataWidth']))
-        tclFile = tclFile.replace("#ADDRESS#", str(interface['address_range']))
-        tclFile = tclFile.replace("#ADDRESS_OFFSET#", str(interface['address_offset']))
+        tclFile = tclFile.replace("#ADDRESS#", str(interface['addr_range']))
+        tclFile = tclFile.replace("#ADDRESS_OFFSET#", str(interface['addr_offset']))
         tclFile_gen = open(path + "s_axilite_vip_" + str(interface['index']) + ".tcl", "w+")
         tclFile_gen.write(tclFile)
         tclFile_gen.close()
@@ -222,7 +225,7 @@ def c_interface_in(tb_str, prev_str, interface, indent, tabSize):
         tb_str += "else "
     tb_str += "if(!strcmp(interfaceType,\"" + interface['name'] + \
         "\")){\n"
-    for idx, addr in enumerate(interface['regAddrs']):
+    for idx, addr in enumerate(interface['reg_addrs']):
         tb_str += indent + tabSize + "if(args[0] == " + str(addr) + "){\n"
         tb_str += indent + tabSize + tabSize + interface['registers'][idx] + " = args[1];\n"
         tb_str += indent + tabSize + "}\n"

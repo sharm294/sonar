@@ -1,15 +1,18 @@
 import json
+import math
+import sys
 
-class SonarObject(object):
-    def __str__(self):
-        return json.dumps(self.asdict())
-
-    def asdict(self):
-        raise NotImplementedError # overridden in the child class
+from .base_types import SonarObject
+from .base_types import InterfacePort
+from .core import sonar as sonarCore
 
 class Sonar(SonarObject):
 
     def __init__(self):
+        """
+        Initializes a Sonar object with empty attributes
+        """
+        
         self.metadata = {}
         self.wait_conditions = []
         self.modules = []
@@ -20,10 +23,13 @@ class Sonar(SonarObject):
         """
         Initializes a sonar testbench with default metadata values
 
-        :param module_name: The name of the module to create
-
-        :returns: A Sonar object
+        Args:
+            module_name (str): Name of the DUT module
+        
+        Returns:
+            Sonar: the Sonar object represents the whole testbench
         """
+
         sonar = cls()
         sonar.metadata = {
             'Module_Name': module_name,
@@ -41,22 +47,64 @@ class Sonar(SonarObject):
         return sonar
 
     def add_metadata(self, key, value):
+        """
+        Adds metadata to the Sonar object
+        
+        Args:
+            key (str): Key to store the value against
+            value (str): Metadata to store
+        
+        Raises:
+            KeyError: Raised if the requested key already exists
+        """
+
         if key in self.metadata:
             raise KeyError('Key ' + key + ' already exists in metadata')
         self.metadata[key] = value
 
     def set_metadata(self, key, value):
+        """
+        Sets the metadata value of the specified key to the provided value
+        
+        Args:
+            key (str): Key to update
+            value (str): Metadata value to store
+        
+        Raises:
+            KeyError: raised if the requested key doesn't exist
+        """
+
         if key not in self.metadata:
             raise KeyError('Key ' + key + ' does not exist in metadata')
         self.metadata[key] = value
 
     def add_module(self, module):
+        """
+        Adds a module to the testbench
+        
+        Args:
+            module (Module): Module to add to this testbench
+        """
+
         self.modules.append(module)
 
     def add_test_vector(self, vector):
+        """
+        Adds a test vector to the testbench
+        
+        Args:
+            vector (TestVector): Vector containing one or more non-empty threads
+        """
+
         self.vectors.append(vector)
 
     def finalize_waits(self):
+        """
+        Using the test vectors in the testbench, this method aggregates all the 
+        wait conditions as required for the Sonar backend. This method must be 
+        called after all test vectors have been added.
+        """
+
         waits = []
         conditions = []
         flagPresent = False
@@ -86,6 +134,13 @@ class Sonar(SonarObject):
         self.wait_conditions = waits
 
     def asdict(self):
+        """
+        Converts the object to a dictionary
+        
+        Returns:
+            dict: Dictionary representing the object
+        """
+
         sonar_dict = {}
         sonar_dict['metadata'] = self.metadata
         modules = []
@@ -99,26 +154,52 @@ class Sonar(SonarObject):
         sonar_dict['vectors'] = vectors
         return sonar_dict
 
+    def asjson(self):
+        return json.dumps(self.asdict(), indent=2)
+
+    def generateTB(self, directory_path, languages):
+        filename = self.metadata['Module_Name']
+        filepath = directory_path + filename + '.json'
+        with open(filepath, 'w+') as f:
+            json.dump(self.asdict(), f, indent=2)
+        sonarCore.sonar('absolute', None, filepath, languages)
+
 class Module(SonarObject):
 
     def __init__(self):
+        """
+        Initializes a module with empty attributes
+        """
+
         self.name = ""
         self.ports = []
 
     @classmethod
     def default(cls, name):
         """
-        Creates an empty Module
-
-        :param name: The name of the module to create
-
-        :returns: A Module object
+        Creates a default module with the given name
+        
+        Args:
+            name (str): Name of the module to create
+        
+        Returns:
+            Module: Object representing a module
         """
+
         module = cls()
         module.name = name
         return module
 
     def add_port(self, name, direction, size=1):
+        """
+        Adds a generic port for a signal to this module
+        
+        Args:
+            name (str): Name of the signal
+            direction (str): Must be one of (input|output)
+            size (int, optional): Defaults to 1. Width of the port in bits
+        """
+
         port = {}
         port['name'] = name
         port['size'] = size
@@ -126,6 +207,14 @@ class Module(SonarObject):
         self.ports.append(port)
 
     def add_clock_port(self, name, period):
+        """
+        Adds an input clock port to this module (only for TB generated clocks)
+        
+        Args:
+            name (str): Name of the clock signal
+            period (str): Period of the clock (e.g. 20ns, 10ps etc.)
+        """
+
         port = {}
         port['name'] = name
         port['size'] = 1
@@ -135,6 +224,13 @@ class Module(SonarObject):
         self.ports.append(port)
 
     def add_reset_port(self, name):
+        """
+        Adds an input reset port to this module
+        
+        Args:
+            name (str): Name of the reset signal
+        """
+
         port = {}
         port['name'] = name
         port['size'] = 1
@@ -143,9 +239,24 @@ class Module(SonarObject):
         self.ports.append(port)
 
     def add_interface(self, interface):
+        """
+        Adds an interface port to this module
+        
+        Args:
+            interface (InterfacePort->child): Represents the interface port and 
+                must be a child class of InterfacePort. An interface class will 
+                define its port at Interface.port
+        """
+
         self.ports.append(interface)
 
     def asdict(self):
+        """
+        Converts the object to a dictionary
+        
+        Returns:
+            dict: Dictionary representing the object
+        """
         module = {}
         module['name'] = self.name
         module['ports'] = []
@@ -156,231 +267,7 @@ class Module(SonarObject):
                 module['ports'].append(port)
         return module
 
-class InterfacePort(SonarObject):
 
-    def __init__(self, name, direction):
-        self.name = name
-        self.direction = direction
-        self.channels = []
-
-    def add_channel(self, name, channelType, size=1):
-        channel = {}
-        channel['name'] = name
-        channel['type'] = channelType
-        channel['size'] = size
-        self.channels.append(channel)
-
-    def add_channels(self, channels):
-        for channel in channels:
-            if isinstance(channel, list):
-                name = channel[0]
-                channelType = channel[1]
-                if len(channel) == 3:
-                    size = channel[2]
-                else:
-                    size = 1
-            elif isinstance(channel, dict):
-                name = channel['name']
-                channelType = channel['type']
-                if 'size' in channel:
-                    size = channel['size']
-                else:
-                    size = 1
-            else:
-                raise NotImplementedError()
-            self.add_channel(name, channelType, size)
-
-    def get_channel(self, channelType):
-        channel_dict = None
-        for channel in self.channels:
-            if channel['type'] == channelType:
-                channel_dict = channel
-                break
-        if channel_dict is None:
-            raise KeyError()
-        return channel_dict
-
-    def has_channel(self, channelType):
-        channel_exists = False
-        for channel in self.channels:
-            if channel['type'] == channelType:
-                channel_exists = True
-                break
-        return channel_exists
-
-    def asdict(self):
-        port = {}
-        port['name'] = self.name
-        port['direction'] = self.direction
-        port['channels'] = self.channels
-        return port
-
-class AXIS(SonarObject):
-
-    def __init__(self, name, direction, clock, c_struct=None, c_stream=None):
-        self.name = name
-        self.port = self._Port(name, direction, clock, c_struct, c_stream)
-
-    def write(self, **kwargs):
-        payload = {}
-        for key, value in kwargs.iteritems():
-            payload[key] = value
-        transaction = {'interface': {
-            'type': 'axis','name': self.name, 'payload': [payload]
-        }}
-        return transaction
-
-    def read(self, **kwargs):
-        transaction = self.write(**kwargs)
-        return transaction
-
-    def asdict(self):
-        return self._Port.asdict()        
-
-    # def fileToStream(self, dataFile, parsingFunction=None,)
-        
-
-    class _Port(InterfacePort):
-        def __init__(self, name, direction, clock, c_struct, c_stream):
-            super(AXIS._Port, self).__init__(name, direction)
-            self.type = 'axis'
-            self.clock = clock
-            self.c_struct = c_struct
-            self.c_stream = c_stream
-
-        def init_channels(self, mode, dataWidth, nameToUpperCase=True):
-            if mode == 'default':
-                channels = [
-                    {'name': 'tdata', 'type': 'tdata', 'size': dataWidth},
-                    {'name': 'tvalid', 'type': 'tvalid'},
-                    {'name': 'tready', 'type': 'tready'},
-                    {'name': 'tlast', 'type': 'tlast'}
-                ]
-            else:
-                raise NotImplementedError()
-            for channel in channels:
-                if nameToUpperCase:
-                    channel['name'] = channel['name'].upper()
-            self.add_channels(channels)
-        
-        def asdict(self):
-            port = super(AXIS._Port, self).asdict()
-            port['type'] = self.type
-            port['clock'] = self.clock
-            port['c_struct'] = self.c_struct
-            port['c_stream'] = self.c_stream
-            return port
-
-class SAXILite(SonarObject):
-    def __init__(self, name, clock, reset):
-        self.name = name
-        self.port = self._Port(name, clock, reset)
-
-    def set_address(self, addrRange, addrOffset):
-        self.port.set_address(addrRange, addrOffset)
-
-    def add_register(self, name, address):
-        self.port.add_register(name, address)
-
-    def delRegister(self, name):
-        self.port.delRegister(name)
-
-    def write(self, register, data):
-        address = None
-        for index, reg in enumerate(self.port.registers):
-            if reg == register:
-                address = self.port.reg_addrs[index]
-                break
-        transaction = {'interface': {
-            'type': 's_axilite','name': self.name, 'payload': [
-                {'mode': 1, 'data': data, 'addr': address}
-            ]
-        }}
-        return transaction
-
-    def read(self, register, expectedValue):
-        address = None
-        for index, reg in enumerate(self.port.registers):
-            if reg == register:
-                address = self.port.reg_addrs[index]
-                break
-        transaction = {'interface': {
-            'type': 's_axilite','name': self.name, 'payload': [
-                {'mode': 0, 'data': expectedValue, 'addr': address}
-            ]
-        }}
-        return transaction
-
-    def asdict(self):
-        return self._Port.asdict() 
-
-    class _Port(InterfacePort):
-
-        def __init__(self, name, clock, reset):
-            super(SAXILite._Port, self).__init__(name, 'mixed')
-            self.type = 's_axilite'
-            self.clock = clock
-            self.reset = reset
-            self.connection_mode = 'ip'
-            self.registers = []
-            self.reg_addrs = []
-            self.addr_range = ''
-            self.addr_offset = ''
-
-        def set_address(self, addrRange, addrOffset):
-            self.addr_range = addrRange
-            self.addr_offset = addrOffset
-
-        def add_register(self, name, address):
-            self.registers.append(name)
-            self.reg_addrs.append(address)
-
-        def delRegister(self, name):
-            for index, name_ in enumerate(self.registers):
-                if name_ == name:
-                    del self.registers[index]
-                    del self.reg_addrs[index]
-                    break
-
-        def init_channels(self, mode, dataWidth, addrWidth, nameToUpperCase=True):
-            if mode == 'default':
-                channels = [
-                    {'name': 'awvalid', 'type': 'awvalid'},
-                    {'name': 'awready', 'type': 'awready'},
-                    {'name': 'awaddr', 'type': 'awaddr', 'size': addrWidth},
-                    {'name': 'wvalid', 'type': 'wvalid'},
-                    {'name': 'wready', 'type': 'wready'},
-                    {'name': 'wdata', 'type': 'wdata', 'size': dataWidth},
-                    {'name': 'wstrb', 'type': 'wstrb', 'size': dataWidth/8},
-                    {'name': 'arvalid', 'type': 'arvalid'},
-                    {'name': 'arready', 'type': 'arready'},
-                    {'name': 'araddr', 'type': 'araddr', 'size': addrWidth},
-                    {'name': 'rvalid', 'type': 'rvalid'},
-                    {'name': 'rready', 'type': 'rready'},
-                    {'name': 'rdata', 'type': 'rdata', 'size': dataWidth},
-                    {'name': 'rresp', 'type': 'rresp', 'size': 2},
-                    {'name': 'bvalid', 'type': 'bvalid'},
-                    {'name': 'bready', 'type': 'bready'},
-                    {'name': 'bresp', 'type': 'bresp', 'size': 2}
-                ]
-            else:
-                raise NotImplementedError
-            for channel in channels:
-                if nameToUpperCase:
-                    channel['name'] = channel['name'].upper()
-            self.add_channels(channels)
-
-        def asdict(self):
-            port = port = super(SAXILite._Port, self).asdict()
-            port['type'] = self.type
-            port['clock'] = self.clock
-            port['reset'] = self.reset
-            port['registers'] = self.registers
-            port['reg_addrs'] = self.reg_addrs
-            port['addr_offset'] = self.addr_offset
-            port['addr_range'] = self.addr_range
-            port['connection_mode'] = self.connection_mode
-            return port
 
 class TestVector(SonarObject):
     
@@ -412,7 +299,7 @@ class Thread(SonarObject):
         self.commands.append({'delay': delay})
 
     def set_signal(self, name, value):
-        self.commands.append({'signal': {'name': name, 'value': value}})
+        self.commands.append({'signal': [{'name': name, 'value': value}]})
 
     def init_signals(self):
         self.commands.append({'macro': 'INIT_SIGNALS'})
@@ -472,13 +359,10 @@ class Thread(SonarObject):
 
 if __name__ == "__main__":
 
-    print("Sonar Test Module")
-    print("*****************\n")
-
     sonar = Sonar.default('sample')
     sonar.set_metadata('Module_Name', 'sample')
 
-    dut = Module.default("dut")
+    dut = Module.default("DUT")
     dut.add_clock_port("ap_clk", "20ns")
     dut.add_reset_port("ap_rst_n")
     dut.add_port("state_out_V", size=3, direction="output")
@@ -534,6 +418,10 @@ if __name__ == "__main__":
     sonar.add_test_vector(test_vector_0)
     sonar.finalize_waits()
 
-    import pprint
-    print(sonar)
-    pprint.pprint(sonar.asdict())
+    # import pprint
+    # sonar.asdict()
+    # pprint.pprint(sonar.asdict())
+    # print(sonar.asjson())
+
+    sonar.generateTB('/home/sharm294/Documents/TMD/', 'sv')
+    
