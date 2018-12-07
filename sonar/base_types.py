@@ -1,4 +1,4 @@
-
+import json
 
 class SonarObject(object):
     def __str__(self):

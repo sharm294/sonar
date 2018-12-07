@@ -285,8 +285,8 @@ def sonar(mode, modeArg, filepath, languages):
                         for channel in portCopy['channels']:
                             if 'size' not in channel:
                                 channel['size'] = 1
-                        if 'connectionMode' not in portCopy:
-                            portCopy['connectionMode'] = "native"
+                        if 'connection_mode' not in portCopy:
+                            portCopy['connection_mode'] = "native"
                         portCopy['index'] = interface_indices[port['type']]
                         if hasattr(usedInterfaces[port['type']], 'yaml_top'):
                             portCopy = usedInterfaces[port['type']].yaml_top(portCopy)
@@ -400,7 +400,7 @@ def sonar(mode, modeArg, filepath, languages):
             exerciserPorts += leading_spaces
         exerciserPorts += "output logic " + clock['name'] + ",\n"
     for interface in interface_in:
-        if interface['connectionMode'] == "native":
+        if interface['connection_mode'] == "native":
             currInterface = usedInterfaces[interface['type']]
             for channel in interface['channels']:
                 exerciserPorts += leading_spaces
@@ -414,7 +414,7 @@ def sonar(mode, modeArg, filepath, languages):
                 exerciserPorts += interface['name'] + "_" + channel['type'] + ",\n"
 
     for interface in interface_out:
-        if interface['connectionMode'] == "native":
+        if interface['connection_mode'] == "native":
             currInterface = usedInterfaces[interface['type']]
             for channel in interface['channels']:
                 exerciserPorts += leading_spaces
@@ -482,13 +482,13 @@ def sonar(mode, modeArg, filepath, languages):
         exerciser_int += leading_spaces + tabSize + "." + clock['name'] + "(" + \
             clock['name'] + "),\n"
     for interface in interface_in:
-        if interface['connectionMode'] == "native":
+        if interface['connection_mode'] == "native":
             for channel in interface['channels']:
                 exerciser_int += leading_spaces + tabSize + "." + interface['name'] \
                     + "_" + channel['type'] + "(" + interface['name'] + "_" + \
                     channel['type'] + "),\n"
     for interface in interface_out:
-        if interface['connectionMode'] == "native":
+        if interface['connection_mode'] == "native":
             for channel in interface['channels']:
                 exerciser_int += leading_spaces + tabSize + "." + interface['name'] \
                     + "_" + channel['type'] + "(" + interface['name'] + "_" + \
@@ -591,7 +591,7 @@ def sonar(mode, modeArg, filepath, languages):
             "\") begin\n" + leading_spaces + tabSize + signal['name'] + \
             " = args[0];\n" + leading_spaces + "end\n"
     for interface in interface_in:
-        if interface['connectionMode'] == "native":
+        if interface['connection_mode'] == "native":
             currInterface = usedInterfaces[interface['type']]
             for channel in interface['channels']:
                 if channel['type'] in currInterface.master_output_channels:
@@ -601,7 +601,7 @@ def sonar(mode, modeArg, filepath, languages):
                         "\") begin\n" + leading_spaces + tabSize + interface['name'] + \
                         "_" + channel['type'] + " = args[0];\n" + leading_spaces + "end\n"
     for interface in interface_out:
-        if interface['connectionMode'] == "native":
+        if interface['connection_mode'] == "native":
             interfaceType = interface['type']
             for channel in interface['channels']:
                 if channel['type'] in currInterface.master_input_channels:

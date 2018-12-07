@@ -1,33 +1,121 @@
+from math import ceil
+
 from .base_types import SonarObject
 from .base_types import InterfacePort
 
 class AXIS(SonarObject):
 
     def __init__(self, name, direction, clock, c_struct=None, c_stream=None):
+        """
+        Initializes an empty AXIS object
+        
+        Args:
+            name (str): Name of the AXIS interface
+            direction (str): master|slave
+            clock (str): Associated clock signal
+
+            c_struct (str, optional): Defaults to None. See below.
+            c_stream (str, optional): Defaults to None. See below
+                c_struct and c_stream are needed only for C++ simulation. They
+                represent information about the hls::stream objects used in HLS 
+                to define this AXIS interface. c_stream is the name of the 
+                struct itself and c_struct is a variable of the c_stream type:
+
+                template<int D>
+                struct uaxis_l{ <--------------------- uaxis_l would be c_stream
+                    ap_uint<D> data;
+                    ap_uint<1> last;
+                };
+                uaxis_l<64> axis_word; <------------ axis_word would be c_struct
+                typedef hls::stream<uaxis_l<64> > axis_t;
+        """
+
         self.name = name
         self.port = self._Port(name, direction, clock, c_struct, c_stream)
 
-    def write(self, payload=None, **kwargs):
-        if payload is None: 
-            payloadDict = {}
-            for key, value in kwargs.iteritems():
-                payloadDict[key] = value
-            payloadArg = [payloadDict]
-        else:
-            payloadArg = payload
+    def write(self, thread, data, **kwargs):
+        """
+        Writes the given command to the AXIS stream.
+
+        Args:
+            data (str): Data to write
+            kwargs (str): keyworded arguments where the keyword is the AXIS 
+                channel or special keyword and is assigned to the given value
+        Returns:
+            dict: Dictionary representing the data transaction
+        """
+        payloadDict = self.payload(data, **kwargs)
+        payloadArg = [payloadDict]
         transaction = {'interface': {
             'type': 'axis','name': self.name, 'payload': payloadArg
         }}
-        return transaction
+        thread.add_transaction(transaction)
+    
+    def writes(self, thread, payload):
+        """
+        Writes the given payload to the AXIS stream.
 
-    def read(self, **kwargs):
-        transaction = self.write(**kwargs)
-        return transaction
+        Args:
+            payload (list): Directly assigns a list containing valid 
+                transaction dicts to be written
+
+        Returns:
+            dict: Dictionary representing the data transaction
+        """
+
+        payloadArg = payload
+        transaction = {'interface': {
+            'type': 'axis','name': self.name, 'payload': payloadArg
+        }}
+        thread.add_transaction(transaction)
+
+    def payload(self, data, **kwargs):
+        payloadDict = {}
+        payloadDict['tdata'] = data
+        for key, value in kwargs.iteritems():
+            payloadDict[key] = value
+        return payloadDict
+
+    def read(self, thread, data, **kwargs):
+        """
+        Reads the given keyworded args from an AXIS stream to verify output. 
+        
+        Returns:
+            dict: Dictionary representing the data transaction
+        """
+
+        self.write(thread, data, **kwargs)
+        # thread.add_transaction(transaction)
 
     def asdict(self):
+        """
+        Returns this object as a dictionary
+        
+        Returns:
+            dict: The fields of this object as a dictionary
+        """
+
         return self._Port.asdict()        
 
-    def fileToStream(self, filePath, parsingFunc=None, endian='little'):
+    def file_to_stream(self, thread, filePath, parsingFunc=None, endian='little'):
+        """
+        Converts the provided file into a series of AXIS transactions.
+        
+        Args:
+            filePath (str): Path to the file to stream
+            parsingFunc (Func, optional): Defaults to None. Function that 
+                determines how the file is parsed. Must return a list of dicts
+                representing valid AXIS transactions. The default function 
+                assumes a binary file containing only tdata
+            endian (str, optional): Defaults to 'little'. Must be little|big
+        
+        Raises:
+            NotImplementedError: Unhandled exception
+        
+        Returns:
+            dict: Dictionary representing the data transaction
+        """
+
         transactions = []
         if parsingFunc is None:
             parsingFunc = self._f2sBinData
@@ -37,12 +125,29 @@ class AXIS(SonarObject):
         else:
             raise NotImplementedError()
 
-        return self.write(payload=transactions)
-    
-    def _f2sBinData(self, dataFile, endian):
+        self.writes(thread, transactions)
+
+    def _file_to_stream(self, thread, openFile, parsingFunc, endian):
         transactions = []
-        fileSize = len(dataFile)
-        beatCount = (math.ceil(fileSize/8.0)) * 8
+        transactions = parsingFunc(openFile, endian)
+        return self.writes(thread, transactions)
+    
+    def _f2sBinData(self, data, endian):
+        """
+        A file parsing function for file_to_stream. Assumes a binary file that 
+        contains only tdata
+        
+        Args:
+            data (file): Read data from the file
+            endian (str): little|big
+        
+        Returns:
+            list: Contains dicts representing each beat of AXIS transaction
+        """
+
+        transactions = []
+        fileSize = len(data)
+        beatCount = (ceil(fileSize/8.0)) * 8
         beat = 0
         tdataBytes = self.port.get_channel('tdata')['size'] / 8
         
@@ -53,12 +158,12 @@ class AXIS(SonarObject):
             for i in range(beat, beat + tdataBytes):
                 if endian == 'little':
                     if i < fileSize:
-                        tdata = (tdata >> 8) | ( dataFile[i] << 56) 
+                        tdata = (tdata >> 8) | ( data[i] << 56) 
                     elif i < beat + tdataBytes:
                         tdata = tdata >> 8
                 else: # big endian
                     if i < fileSize:
-                        tdata = (tdata << 8) | ( dataFile[i]) 
+                        tdata = (tdata << 8) | ( data[i]) 
                     elif i < beat + tdataBytes:
                         tdata = tdata << 8
             payload['tdata'] = "0x" + format(tdata, '08x')
@@ -79,22 +184,41 @@ class AXIS(SonarObject):
 
     @staticmethod
     def _f2sTkeep(fileSize, tdataBytes, beat, endian):
-        if beat < ((math.ceil(fileSize/8.0) - 1) * 8.0) :
+        """
+        Calculates tkeep for a particular beat for file_to_stream since the last 
+        beat may be smaller than a word.
+        
+        Args:
+            fileSize (int): Size of data in bytes to send over tdata
+            tdataBytes (int): Width of tdata in bytes
+            beat (int): Beat counter
+            endian (str): little|big
+        
+        Returns:
+            str: Tkeep value for the current beat
+        """
+
+        if beat < ((ceil(fileSize/8.0) - 1) * 8.0) :
             tkeep = "KEEP_ALL"
         else:
             sizeofLastTransaction = fileSize % tdataBytes 
             if sizeofLastTransaction != tdataBytes:
                 tkeep = ''
-                for i in range(0, tdataBytes - sizeofLastTransaction):
-                    if endian == 'little':
-                        tkeep = tkeep + "0" 
-                    else: # big endian
-                        tkeep = "0" + tkeep 
-                for i in range(tdataBytes - sizeofLastTransaction, tdataBytes):
-                    if endian == 'little':
-                        tkeep = tkeep + "1"
-                    else: # big endian
-                        tkeep = "1" + tkeep
+                for i in range(sizeofLastTransaction):
+                    tkeep = tkeep + '1'
+                if endian != 'little':
+                    for i in range(tdataBytes - sizeofLastTransaction):
+                        tkeep = tkeep + '0'
+                # for i in range(0, tdataBytes - sizeofLastTransaction):
+                #     if endian == 'little':
+                #         tkeep = tkeep + "0" 
+                #     else: # big endian
+                #         tkeep = "0" + tkeep 
+                # for i in range(tdataBytes - sizeofLastTransaction, tdataBytes):
+                #     if endian == 'little':
+                #         tkeep = tkeep + "1"
+                #     else: # big endian
+                #         tkeep = "1" + tkeep
                 tkeep = "0b" + tkeep
             else:
                 tkeep = "KEEP_ALL"
@@ -102,8 +226,20 @@ class AXIS(SonarObject):
 
     @staticmethod
     def _f2sTlast(fileSize, beat):
+        """
+        Calculates tlast for a particular beat for file_to_stream. The last beat 
+        must assert tlast
+        
+        Args:
+            fileSize (int): Size of data in bytes to send over tdata
+            beat (int): Beat counter
+        
+        Returns:
+            str: Tlast value for the current beat
+        """
+
         tlast = 0
-        if beat >= ((math.ceil(fileSize/8.0) - 1) * 8) :
+        if beat >= ((ceil(fileSize/8.0) - 1) * 8) :
             tlast = 1
         return tlast        
 
@@ -122,6 +258,14 @@ class AXIS(SonarObject):
                     {'name': 'tvalid', 'type': 'tvalid'},
                     {'name': 'tready', 'type': 'tready'},
                     {'name': 'tlast', 'type': 'tlast'}
+                ]
+            elif mode == 'tkeep':
+                channels = [
+                    {'name': 'tdata', 'type': 'tdata', 'size': dataWidth},
+                    {'name': 'tvalid', 'type': 'tvalid'},
+                    {'name': 'tready', 'type': 'tready'},
+                    {'name': 'tlast', 'type': 'tlast'},
+                    {'name': 'tkeep', 'type': 'tkeep', 'size': dataWidth/8}
                 ]
             else:
                 raise NotImplementedError()
@@ -154,7 +298,7 @@ class SAXILite(SonarObject):
     def delRegister(self, name):
         self.port.delRegister(name)
 
-    def write(self, register, data):
+    def write(self, thread, register, data):
         address = None
         for index, reg in enumerate(self.port.registers):
             if reg == register:
@@ -165,9 +309,9 @@ class SAXILite(SonarObject):
                 {'mode': 1, 'data': data, 'addr': address}
             ]
         }}
-        return transaction
+        thread.add_transaction(transaction)
 
-    def read(self, register, expectedValue):
+    def read(self, thread, register, expectedValue):
         address = None
         for index, reg in enumerate(self.port.registers):
             if reg == register:
@@ -178,7 +322,7 @@ class SAXILite(SonarObject):
                 {'mode': 0, 'data': expectedValue, 'addr': address}
             ]
         }}
-        return transaction
+        thread.add_transaction(transaction)
 
     def asdict(self):
         return self._Port.asdict() 

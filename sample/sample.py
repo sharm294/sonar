@@ -21,19 +21,19 @@ def sample(folderpath, languages):
     axis_out.port.c_stream = "uaxis_l"
     axis_out.port.c_struct = "axis_word"
     # axis_out.ports.addChannel('TKEEP', 'tkeep', 8) # e.g. to add a new channel
-    dut.add_interface(axis_out.port)
+    dut.add_interface(axis_out)
 
     axis_in = AXIS("axis_input", "slave", "ap_clk")
     axis_in.port.init_channels('default', 64)
     axis_in.port.c_stream = "uaxis_l"
     axis_in.port.c_struct = "axis_word"
-    dut.add_interface(axis_in.port)
+    dut.add_interface(axis_in)
 
     ctrl_bus = SAXILite('s_axi_ctrl_bus', 'ap_clk', 'ap_rst_n')
     ctrl_bus.add_register('enable', 0x10)
     ctrl_bus.set_address('4K', 0)
     ctrl_bus.port.init_channels(mode='default', dataWidth=32, addrWidth=5)
-    dut.add_interface(ctrl_bus.port)
+    dut.add_interface(ctrl_bus)
 
     test_vector_0 = sonarTB.TestVector()
 
@@ -47,7 +47,7 @@ def sample(folderpath, languages):
 
     inputT = sonarTB.Thread()
     inputT.add_delay('100ns')
-    inputT.initTimer()
+    inputT.init_timer()
     inputT.add_transaction(ctrl_bus.write('enable', 1))
     inputT.add_transaction(axis_in.write(tdata=0xABCD, callTB=2))
     inputT.wait_level('ack_V == $value', value=1)

@@ -102,7 +102,7 @@ class Sonar(SonarObject):
         """
         Using the test vectors in the testbench, this method aggregates all the 
         wait conditions as required for the Sonar backend. This method must be 
-        called after all test vectors have been added.
+        called ONCE after all test vectors have been completed and added.
         """
 
         waits = []
@@ -113,12 +113,18 @@ class Sonar(SonarObject):
             for thread in vector.threads:
                 for command in thread.commands:
                     if 'wait' in command:
+                        # print(command)
                         tempKey = command['wait']['key']
+                        # print(tempKey)
                         if tempKey == 'flag':
                             flagPresent = True
                             continue
+                        if tempKey.isdigit():
+                            if int(tempKey) >= index:
+                                raise Exception
+                            continue
                         if tempKey not in conditions:
-                            newKey = 'w' + str(index)
+                            newKey = str(index)
                             waits.append({'condition': tempKey, 'key': newKey})
                             conditions.append(tempKey)
                             index += 1
@@ -248,7 +254,7 @@ class Module(SonarObject):
                 define its port at Interface.port
         """
 
-        self.ports.append(interface)
+        self.ports.append(interface.port)
 
     def asdict(self):
         """
@@ -279,7 +285,7 @@ class TestVector(SonarObject):
             for t in threads:
                 self.threads.append(t)
 
-    def addThread(self, thread=None):
+    def add_thread(self, thread=None):
         if thread is None:
             thread = Thread()
         self.threads.append(thread)
@@ -304,7 +310,7 @@ class Thread(SonarObject):
     def init_signals(self):
         self.commands.append({'macro': 'INIT_SIGNALS'})
 
-    def initTimer(self):
+    def init_timer(self):
         self.commands.append({'timestamp': 'INIT'})
 
     def print_elapsed_time(self, id):
@@ -334,20 +340,18 @@ class Thread(SonarObject):
         if value is None:
             self.commands.append({'wait': {'key': conditionTmp}})
         else:
-            self.commands.append({'wait': {'key': conditionTmp}, 'value': value})
+            self.commands.append({'wait': {'key': conditionTmp, 'value': value}})
 
-    def wait_edge(self, risingEdge, signal):
-        if risingEdge:
-            edge = 'posedge '
-        else:
-            edge = 'negedge '
-        conditionTmp = '@(' + edge + signal + ');'
+    def wait_edge(self, edge, signal):
+        if edge != 'posedge' and edge != 'negedge':
+            raise ValueError()
+        conditionTmp = '@(' + edge + ' ' + signal + ');'
         self.commands.append({'wait': {'key': conditionTmp}})
 
     def add_transaction(self, transaction):
         self.commands.append(transaction)
 
-    def add_interfaceTransactions(self, transactions):
+    def add_transactions(self, transactions):
         for transaction in transactions:
             self.commands.append(transaction)
 
@@ -392,11 +396,11 @@ if __name__ == "__main__":
     initT.add_delay('40ns')
     initT.set_signal('ap_rst_n', 1)
     initT.set_signal('axis_output_tready', 1)
-    test_vector_0.addThread(initT)
+    test_vector_0.add_thread(initT)
 
     inputT = Thread()
     inputT.add_delay('100ns')
-    inputT.initTimer()
+    inputT.init_timer()
     inputT.add_transaction(ctrl_bus.write('enable', 1))
     inputT.add_transaction(axis_in.write(tdata=0xABCD, callTB=2))
     inputT.wait_level('ack_V == $value', value=1)
@@ -404,7 +408,7 @@ if __name__ == "__main__":
     inputT.wait_level('ack_V == $value', value=1)
     inputT.add_delay('110ns')
     inputT.set_flag(0)
-    test_vector_0.addThread(inputT)
+    test_vector_0.add_thread(inputT)
 
     outputT = Thread()
     outputT.add_transaction(axis_out.read(tdata=1))
@@ -413,7 +417,7 @@ if __name__ == "__main__":
     outputT.print_elapsed_time('End')
     outputT.display('The_simulation_is_finished')
     outputT.end_vector()
-    test_vector_0.addThread(outputT)
+    test_vector_0.add_thread(outputT)
 
     sonar.add_test_vector(test_vector_0)
     sonar.finalize_waits()

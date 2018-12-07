@@ -23,7 +23,7 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces, counters):
                     str(parallelIndex) + "_" + "init_" + signal['name']
                 parallelSection_json['data'].append(cur_signal_json)
             for interface in interface_in:
-                if interface['connectionMode'] == 'native':
+                if interface['connection_mode'] == 'native':
                     currInterface = usedInterfaces[interface['type']]
                     for channel in interface['channels']:
                         if channel['type'] in currInterface.master_output_channels:
@@ -36,7 +36,7 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces, counters):
                                 cur_signal_json['interface']
                             parallelSection_json['data'].append(cur_signal_json)
             for interface in interface_out:
-                if interface['connectionMode'] == 'native':
+                if interface['connection_mode'] == 'native':
                     currInterface = usedInterfaces[interface['type']]
                     for channel in interface['channels']:
                         if channel['type'] in currInterface.master_input_channels:
