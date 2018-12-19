@@ -1,5 +1,6 @@
 import json
 import math
+import os
 import sys
 
 from .base_types import SonarObject
@@ -166,6 +167,11 @@ class Sonar(SonarObject):
     def generateTB(self, directory_path, languages):
         filename = self.metadata['Module_Name']
         filepath = directory_path + filename + '.json'
+        try:
+            os.makedirs(directory_path,0775)
+        except OSError:
+            if not os.path.isdir(directory_path):
+                raise
         with open(filepath, 'w+') as f:
             json.dump(self.asdict(), f, indent=2)
         sonarCore.sonar('absolute', None, filepath, languages)
@@ -289,6 +295,7 @@ class TestVector(SonarObject):
         if thread is None:
             thread = Thread()
         self.threads.append(thread)
+        return thread
 
     def asdict(self):
         threads = []

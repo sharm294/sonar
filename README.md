@@ -19,10 +19,7 @@ tested on Bash, with Python 2.7 and Vivado 2017.2 on Ubuntu 16.04. Two
 environment variables are also added: SONAR_VIVADO_HLS and SONAR_PATH. It also 
 adds the *sonar* directory to the PYTHONPATH environment variable so the Python 
 scripts can be run from anywhere. These variables are added to the .bashrc for 
-the current user. The package *python-yaml* is required if you want to use a 
-YAML-based configuration file (it may be called something different on your 
-distro. You need something that will let you open YAML files in Python with 
-*yaml.load*). 
+the current user.). 
 
 ## Usage
 ``make init``
@@ -31,8 +28,8 @@ To create the sample project, run ``make sample``. This will call a number of
 targets that create a Vivado HLS project, generate all the testbenches and data 
 files and open Vivado for simulation.
 
-*sonar* can be imported into any Python script. Refer to /sample/sample.py for
-an example.
+*sonar* can be imported into any Python script. Refer to /sample/sample.py or 
+in /sonar/tests/ for examples.
 
 To remove *sonar*, run ``make purge``. The repository can then be deleted, 
 leaving no trace of *sonar*
@@ -45,6 +42,9 @@ leaving no trace of *sonar*
 The core *sonar* modules are here. ``sonar.py`` is the top level file which 
 calls the other scripts. The backend is in need of documentation and cleanup.
 
+#### test
+Example or test scripts will be here.
+
 ##### include
 This folder contains a set of shared functions (``utilities.py``) and definitions
 for expanding special strings into numbers (``strToInt.py``). The latter will 
@@ -52,7 +52,7 @@ also search the ``user/`` directory for definitions. This folder also contains
 the interface definitions that *sonar* supports (currently AXI-Stream and AXI-
 Lite 4) and any associated files. Other interfaces can also be added in ``user/``.
 
-#### templates
+##### templates
 A template file is included here for each language that *sonar* supports in 
 testbench generation.
 

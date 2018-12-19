@@ -230,7 +230,7 @@ def sonar(mode, modeArg, filepath, languages):
     if enable_C:
         templateTB_c_str = templateTB_c_str.replace("#FUNCTION#", 
             configFileData['metadata']['Module_Name'].upper())
-        dataFile_c = dataFileName.replace(".json", "_c.dat")
+        dataFile_c = dataFileName.replace("_core.json", "_c.dat")
         templateTB_c_str = templateTB_c_str.replace("#DATA_FILE#", "\"" + \
             dataFile_c + "\"")
         templateTB_c_str = templateTB_c_str.replace("#HEADER_FILE#", "\"" + \

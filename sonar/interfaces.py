@@ -44,14 +44,19 @@ class AXIS(SonarObject):
         Returns:
             dict: Dictionary representing the data transaction
         """
-        payloadDict = self.payload(data, **kwargs)
+        payloadDict = self._payload(tdata=data, **kwargs)
         payloadArg = [payloadDict]
-        transaction = {'interface': {
-            'type': 'axis','name': self.name, 'payload': payloadArg
-        }}
-        thread.add_transaction(transaction)
+        self._write(thread, payloadArg)
+
+    def writes(self, thread, data):
+        payloadArg = []
+        for datum in data:
+            payloadDict = self._payload(**datum)
+            payloadArg.append(payloadDict)
+        
+        self._write(thread, payloadArg)
     
-    def writes(self, thread, payload):
+    def _write(self, thread, payload):
         """
         Writes the given payload to the AXIS stream.
 
@@ -63,15 +68,16 @@ class AXIS(SonarObject):
             dict: Dictionary representing the data transaction
         """
 
-        payloadArg = payload
         transaction = {'interface': {
-            'type': 'axis','name': self.name, 'payload': payloadArg
+            'type': 'axis','name': self.name, 'payload': payload
         }}
         thread.add_transaction(transaction)
 
-    def payload(self, data, **kwargs):
-        payloadDict = {}
-        payloadDict['tdata'] = data
+    def _payload(self, existing_payload=None, **kwargs):
+        if existing_payload is None:
+            payloadDict = {}
+        else:
+            payloadDict = existing_payload
         for key, value in kwargs.iteritems():
             payloadDict[key] = value
         return payloadDict
@@ -85,7 +91,9 @@ class AXIS(SonarObject):
         """
 
         self.write(thread, data, **kwargs)
-        # thread.add_transaction(transaction)
+
+    def reads(self, thread, data):
+        self.writes(thread, data)
 
     def asdict(self):
         """
@@ -125,12 +133,12 @@ class AXIS(SonarObject):
         else:
             raise NotImplementedError()
 
-        self.writes(thread, transactions)
+        self._write(thread, transactions)
 
     def _file_to_stream(self, thread, openFile, parsingFunc, endian):
         transactions = []
         transactions = parsingFunc(openFile, endian)
-        return self.writes(thread, transactions)
+        return self._write(thread, transactions)
     
     def _f2sBinData(self, data, endian):
         """
@@ -151,9 +159,7 @@ class AXIS(SonarObject):
         beat = 0
         tdataBytes = self.port.get_channel('tdata')['size'] / 8
         
-        while beat < beatCount:
-            payload = {}
-            
+        while beat < beatCount:           
             tdata = 0
             for i in range(beat, beat + tdataBytes):
                 if endian == 'little':
@@ -166,16 +172,14 @@ class AXIS(SonarObject):
                         tdata = (tdata << 8) | ( data[i]) 
                     elif i < beat + tdataBytes:
                         tdata = tdata << 8
-            payload['tdata'] = "0x" + format(tdata, '08x')
+            payload = self._payload(data="0x" + format(tdata, '08x'))
            
             if self.port.has_channel('tkeep'):
-                payload['tkeep'] = self._f2sTkeep(
-                    fileSize, tdataBytes, beat, endian
-                )
+                tkeep = self._f2sTkeep(fileSize, tdataBytes, beat, endian)
+                payload = self._payload(payload, tkeep=tkeep)
             if self.port.has_channel('tlast'):
-                payload['tlast'] = self._f2sTlast(
-                    fileSize, beat
-                )
+                tlast = self._f2sTlast(fileSize, beat)
+                payload = self._payload(payload, tlast=tlast)
             
             transactions.append(payload) 
             beat = beat + tdataBytes
@@ -209,16 +213,6 @@ class AXIS(SonarObject):
                 if endian != 'little':
                     for i in range(tdataBytes - sizeofLastTransaction):
                         tkeep = tkeep + '0'
-                # for i in range(0, tdataBytes - sizeofLastTransaction):
-                #     if endian == 'little':
-                #         tkeep = tkeep + "0" 
-                #     else: # big endian
-                #         tkeep = "0" + tkeep 
-                # for i in range(tdataBytes - sizeofLastTransaction, tdataBytes):
-                #     if endian == 'little':
-                #         tkeep = tkeep + "1"
-                #     else: # big endian
-                #         tkeep = "1" + tkeep
                 tkeep = "0b" + tkeep
             else:
                 tkeep = "KEEP_ALL"
