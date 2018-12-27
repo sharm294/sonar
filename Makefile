@@ -19,10 +19,10 @@ SHELL := bash
 
 ifdef SONAR_PATH
 sample_dir = $(SONAR_PATH)/sample
-sample_obj_dir = $(sample_dir)/build
-sample_bin_dir = $(sample_obj_dir)/bin
+sample_build_dir = $(sample_dir)/build
+sample_bin_dir = $(sample_build_dir)/bin
 
-obj = $(shell find $(sample_obj_dir)/ -name '*.o' -printf '%f\n' | \
+obj = $(shell find $(sample_build_dir)/ -name '*.o' -printf '%f\n' | \
 sort -k 1nr | cut -f2-)
 dep = $(obj:%.o=$(obj_dir)/%.d)
 endif
@@ -33,7 +33,7 @@ CFLAGS = -g -Wall -I$(SONAR_VIVADO_HLS) \
 	-Wno-unknown-pragmas -Wno-comment -MMD -MP
 EXECUTABLES = vivado vivado_hls bash gcc
 else
-EXECUTABLES = bash gcc
+EXECUTABLES = bash gcc vivado
 endif
 
 K := $(foreach exec,$(EXECUTABLES),\
@@ -86,20 +86,20 @@ sample_sim: guard-SONAR_PATH
 # Executables
 #------------------------------------------------------------------------------
 
-$(sample_bin_dir)/sample_tb: guard-SONAR_PATH $(sample_obj_dir)/sample_tb.o $(sample_obj_dir)/sample.o
-	$(CC) $(CFLAGS) -o $(sample_bin_dir)/sample_tb $(sample_obj_dir)/sample_tb.o \
-		$(sample_obj_dir)/sample.o
+$(sample_bin_dir)/sample_tb: guard-SONAR_PATH $(sample_build_dir)/sample_tb.o $(sample_build_dir)/sample.o
+	$(CC) $(CFLAGS) -o $(sample_bin_dir)/sample_tb $(sample_build_dir)/sample_tb.o \
+		$(sample_build_dir)/sample.o
 
 #------------------------------------------------------------------------------
 # Object Files
 #------------------------------------------------------------------------------
 
-$(sample_obj_dir)/sample_tb.o: guard-SONAR_PATH $(sample_dir)/build/sample/sample_tb.cpp
-	$(CC) $(CFLAGS) -I$(SONAR_PATH)/sample -o $(sample_obj_dir)/sample_tb.o \
+$(sample_build_dir)/sample_tb.o: guard-SONAR_PATH $(sample_dir)/build/sample/sample_tb.cpp
+	$(CC) $(CFLAGS) -I$(SONAR_PATH)/sample -o $(sample_build_dir)/sample_tb.o \
 		-c $(sample_dir)/build/sample/sample_tb.cpp
 
-$(sample_obj_dir)/sample.o: guard-SONAR_PATH $(sample_dir)/sample.cpp
-	$(CC) $(CFLAGS) -I$(SONAR_PATH)/sample -o $(sample_obj_dir)/sample.o \
+$(sample_build_dir)/sample.o: guard-SONAR_PATH $(sample_dir)/sample.cpp
+	$(CC) $(CFLAGS) -I$(SONAR_PATH)/sample -o $(sample_build_dir)/sample.o \
 		-c $(sample_dir)/sample.cpp
 
 -include $(dep)
@@ -109,5 +109,5 @@ $(sample_obj_dir)/sample.o: guard-SONAR_PATH $(sample_dir)/sample.cpp
 #------------------------------------------------------------------------------
 
 clean: guard-SONAR_PATH
-	@$(RM) $(sample_obj_dir)/*.o $(sample_obj_dir)/*.d $(sample_bin_dir)/*
-	@$(RM) vivado*.jou vivado*.log	
+	@$(RM) $(sample_build_dir)/*.o $(sample_build_dir)/*.d $(sample_bin_dir)/*
+	@$(RM) vivado*.jou vivado*.log $(sample_build_dir)/sample/*

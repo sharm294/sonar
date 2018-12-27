@@ -106,7 +106,7 @@ if {[string equal [get_filesets -quiet sources_1] ""]} {
 
 # Set 'sources_1' fileset object
 set obj [get_filesets sources_1]
-if {[info exists ::env(SONAR_VIVADO_HLS)]}{
+if {[info exists ::env(SONAR_VIVADO_HLS)]} {
   set files [list \
     "[file normalize "$origin_dir/build/vivado_hls/sample/Virtex_Ultrascale/impl/verilog/sample.v"]"\
     "[file normalize "$origin_dir/build/vivado_hls/sample/Virtex_Ultrascale/impl/verilog/sample_ctrl_bus_s_axi.v"]"\

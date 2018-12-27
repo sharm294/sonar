@@ -597,7 +597,7 @@ def sonar(mode, modeArg, filepath, languages):
                 if channel['type'] in currInterface.master_output_channels:
                     if ifelse_signal != "":
                         ifelse_signal += leading_spaces + "else " 
-                    ifelse_signal += "if(interfaceType_par == \"" + interface['name'] + "_" + channel['name'] + \
+                    ifelse_signal += "if(interfaceType_par == \"" + interface['name'] + "_" + channel['type'] + \
                         "\") begin\n" + leading_spaces + tabSize + interface['name'] + \
                         "_" + channel['type'] + " = args[0];\n" + leading_spaces + "end\n"
     for interface in interface_out:
@@ -607,7 +607,7 @@ def sonar(mode, modeArg, filepath, languages):
                 if channel['type'] in currInterface.master_input_channels:
                     if ifelse_signal != "":
                         ifelse_signal += leading_spaces + "else "
-                    ifelse_signal += "if(interfaceType_par == \"" + interface['name'] + "_" + channel['name'] + \
+                    ifelse_signal += "if(interfaceType_par == \"" + interface['name'] + "_" + channel['type'] + \
                         "\") begin\n" + leading_spaces + tabSize + interface['name'] + \
                         "_" + channel['type'] + " = args[0];\n" + leading_spaces + "end\n"
     templateTB_sv_str = templateTB_sv_str.replace("#IF_ELSE_SIGNAL#", ifelse_signal[:-1])
