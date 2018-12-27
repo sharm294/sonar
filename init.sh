@@ -7,22 +7,23 @@
 configFile=~/.sonar
 
 if [[ -f $configFile ]]; then
-  echo "Sonar initialization already run!"
+  echo "Sonar initialization already run! Source 'purge.sh' to delete"
   return 0
 fi
 
-clear
 echo "************************"
 echo "* sonar initialization *"
 echo "************************"
 echo ""
 
-echo "Enter the absolute path to this repository (remove trailing /):"
+echo "Enter the absolute path to this repository:"
+echo "It should end in '.../sonar' (remove trailing /)"
 echo "[used for making internal file references]"
 read -er repoPath
 echo ""
 
-echo "Enter the absolute path to the Vivado HLS include folder (leave blank to skip):"
+echo "Enter the absolute path to the Vivado HLS include folder:"
+echo "Leave blank to skip setting this env variable"
 echo "[used to enable the Vivado HLS based sample project]"
 read -er vivadoPath
 
@@ -53,3 +54,7 @@ fi
 echo "" >> ~/.bashrc
 echo "source $configFile #added by sonar" >> ~/.bashrc
 source ~/.bashrc
+
+mkdir -p $SONAR_PATH/sample
+mkdir -p $SONAR_PATH/sample/build
+mkdir -p $SONAR_PATH/sample/build/bin

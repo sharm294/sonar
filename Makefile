@@ -17,11 +17,7 @@ SHELL := bash
 # Variables
 ###############################################################################
 
-ifndef SONAR_PATH
-$(error SONAR_PATH not set in env -- must be set to the absolute \
-path of repository root. Did you source init.sh?)
-endif
-
+ifdef SONAR_PATH
 sample_dir = $(SONAR_PATH)/sample
 sample_obj_dir = $(sample_dir)/build
 sample_bin_dir = $(sample_obj_dir)/bin
@@ -29,15 +25,19 @@ sample_bin_dir = $(sample_obj_dir)/bin
 obj = $(shell find $(sample_obj_dir)/ -name '*.o' -printf '%f\n' | \
 sort -k 1nr | cut -f2-)
 dep = $(obj:%.o=$(obj_dir)/%.d)
+endif
 
-CC = g++
 ifdef SONAR_VIVADO_HLS
+CC = g++
 CFLAGS = -g -Wall -I$(SONAR_VIVADO_HLS) \
 	-Wno-unknown-pragmas -Wno-comment -MMD -MP
+EXECUTABLES = vivado vivado_hls bash gcc
 else
-CFLAGS = -g -Wall \
-	-Wno-unknown-pragmas -Wno-comment -MMD -MP
+EXECUTABLES = bash gcc
 endif
+
+K := $(foreach exec,$(EXECUTABLES),\
+        $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
 
 ###############################################################################
 # Body
@@ -49,32 +49,44 @@ endif
 # Main
 #------------------------------------------------------------------------------
 
-init:
-	@source init.sh
+guard-%:
+	@ if [ "${${*}}" = "" ]; then \
+		echo "Environment variable $* not set. Have you sourced init.sh?"; \
+		exit 1; \
+	fi
 
+ifdef SONAR_VIVADO_HLS
 sample: sample_hw sample_gen sample_csim sample_sim
+else
+sample: sample_gen sample_sim
+endif
 
 # creates a Vivado HLS project and export Sample to RTL
-sample_hw:
+sample_hw: guard-SONAR_PATH guard-SONAR_VIVADO_HLS
 	@$(sample_dir)/sample_hls.sh
 
-# generate the testbenches and data files
-sample_gen:
-	@python $(SONAR_PATH)/sample/sample.py $(SONAR_PATH)/sample/build/sample/ all 
-
 # performs C-simulation on sample
-sample_csim: $(sample_bin_dir)/sample_tb
+sample_csim: guard-SONAR_PATH $(sample_bin_dir)/sample_tb
 	@$(sample_bin_dir)/sample_tb
 
+# generate the testbenches and data files
+ifdef SONAR_VIVADO_HLS
+sample_gen: guard-SONAR_PATH
+	@python $(SONAR_PATH)/sample/sample.py $(SONAR_PATH)/sample/build/sample/ all
+else
+sample_gen: guard-SONAR_PATH
+	@python $(SONAR_PATH)/sample/sample.py $(SONAR_PATH)/sample/build/sample/ sv
+endif
+
 # creates a Vivado project, adds all the files and opens Vivado for simulation
-sample_sim:
+sample_sim: guard-SONAR_PATH
 	@vivado -mode batch -notrace -source $(sample_dir)/sample_vivado.tcl
 
 #------------------------------------------------------------------------------
 # Executables
 #------------------------------------------------------------------------------
 
-$(sample_bin_dir)/sample_tb: $(sample_obj_dir)/sample_tb.o $(sample_obj_dir)/sample.o
+$(sample_bin_dir)/sample_tb: guard-SONAR_PATH $(sample_obj_dir)/sample_tb.o $(sample_obj_dir)/sample.o
 	$(CC) $(CFLAGS) -o $(sample_bin_dir)/sample_tb $(sample_obj_dir)/sample_tb.o \
 		$(sample_obj_dir)/sample.o
 
@@ -82,11 +94,11 @@ $(sample_bin_dir)/sample_tb: $(sample_obj_dir)/sample_tb.o $(sample_obj_dir)/sam
 # Object Files
 #------------------------------------------------------------------------------
 
-$(sample_obj_dir)/sample_tb.o: $(sample_dir)/build/sample/sample_tb.cpp
+$(sample_obj_dir)/sample_tb.o: guard-SONAR_PATH $(sample_dir)/build/sample/sample_tb.cpp
 	$(CC) $(CFLAGS) -I$(SONAR_PATH)/sample -o $(sample_obj_dir)/sample_tb.o \
 		-c $(sample_dir)/build/sample/sample_tb.cpp
 
-$(sample_obj_dir)/sample.o: $(sample_dir)/sample.cpp
+$(sample_obj_dir)/sample.o: guard-SONAR_PATH $(sample_dir)/sample.cpp
 	$(CC) $(CFLAGS) -I$(SONAR_PATH)/sample -o $(sample_obj_dir)/sample.o \
 		-c $(sample_dir)/sample.cpp
 
@@ -96,11 +108,6 @@ $(sample_obj_dir)/sample.o: $(sample_dir)/sample.cpp
 # Cleanup
 #------------------------------------------------------------------------------
 
-clean: 
+clean: guard-SONAR_PATH
 	@$(RM) $(sample_obj_dir)/*.o $(sample_obj_dir)/*.d $(sample_bin_dir)/*
-	@$(RM) vivado*.jou vivado*.log
-
-purge: clean
-	@rm -rf ~/.sonar
-	@rm -rf $(SONAR_PATH)/sample/build
-	@sed -i '/added by sonar/d' ~/.bashrc
+	@$(RM) vivado*.jou vivado*.log	

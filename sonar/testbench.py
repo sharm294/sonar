@@ -3,15 +3,14 @@ import math
 import os
 import sys
 
-from .base_types import SonarObject
-from .base_types import InterfacePort
-from .core import sonar as sonarCore
+from .base_types import SonarObject, InterfacePort
+from .core import sonar as SonarCore
 
-class Sonar(SonarObject):
+class Testbench(SonarObject):
 
     def __init__(self):
         """
-        Initializes a Sonar object with empty attributes
+        Initializes a Testbench object with empty attributes
         """
         
         self.metadata = {}
@@ -22,17 +21,17 @@ class Sonar(SonarObject):
     @classmethod
     def default(cls, module_name):
         """
-        Initializes a sonar testbench with default metadata values
+        Initializes a Testbench with default metadata values
 
         Args:
             module_name (str): Name of the DUT module
         
         Returns:
-            Sonar: the Sonar object represents the whole testbench
+            Testbench: the Testbench object represents the whole testbench
         """
 
-        sonar = cls()
-        sonar.metadata = {
+        testbench = cls()
+        testbench.metadata = {
             'Module_Name': module_name,
             'Timescale': '1ns / 1ps',
             'Time_Format': {'unit': '1us', 'precision': 3},
@@ -45,7 +44,7 @@ class Sonar(SonarObject):
             'Description': None,
             'Dependencies': None
         }
-        return sonar
+        return testbench
 
     def add_metadata(self, key, value):
         """
@@ -99,7 +98,7 @@ class Sonar(SonarObject):
 
         self.vectors.append(vector)
 
-    def finalize_waits(self):
+    def _finalize_waits(self):
         """
         Using the test vectors in the testbench, this method aggregates all the 
         wait conditions as required for the Sonar backend. This method must be 
@@ -165,6 +164,7 @@ class Sonar(SonarObject):
         return json.dumps(self.asdict(), indent=2)
 
     def generateTB(self, directory_path, languages):
+        self._finalize_waits()
         filename = self.metadata['Module_Name']
         filepath = directory_path + filename + '.json'
         try:
@@ -174,7 +174,7 @@ class Sonar(SonarObject):
                 raise
         with open(filepath, 'w+') as f:
             json.dump(self.asdict(), f, indent=2)
-        sonarCore.sonar('absolute', None, filepath, languages)
+        SonarCore.sonar('absolute', None, filepath, languages)
 
 class Module(SonarObject):
 
@@ -367,72 +367,3 @@ class Thread(SonarObject):
         for command in self.commands:
             commands.append(command)
         return commands
-
-if __name__ == "__main__":
-
-    sonar = Sonar.default('sample')
-    sonar.set_metadata('Module_Name', 'sample')
-
-    dut = Module.default("DUT")
-    dut.add_clock_port("ap_clk", "20ns")
-    dut.add_reset_port("ap_rst_n")
-    dut.add_port("state_out_V", size=3, direction="output")
-    dut.add_port("ack_V", direction="output")
-    sonar.add_module(dut)
-
-    axis_out = AXIS("axis_output", "master", "ap_clk")
-    axis_out.port.init_channels('default', 64)
-    # axis_out.ports.addChannel('TKEEP', 'tkeep', 8) # e.g. to add a new channel
-    dut.add_interface(axis_out.port)
-
-    axis_in = AXIS("axis_input", "slave", "ap_clk")
-    axis_in.port.init_channels('default', 64)
-    dut.add_interface(axis_in.port)
-
-    ctrl_bus = SAXILite('s_axi_ctrl_bus', 'ap_clk', 'ap_rst_n')
-    ctrl_bus.add_register('enable', 0x10)
-    ctrl_bus.set_address('4K', 0)
-    ctrl_bus.port.init_channels(mode='default', dataWidth=32, addrWidth=5)
-    dut.add_interface(ctrl_bus.port)
-
-    test_vector_0 = TestVector()
-    
-    initT = Thread()
-    initT.wait_edge(False, 'ap_clk')
-    initT.init_signals()
-    initT.add_delay('40ns')
-    initT.set_signal('ap_rst_n', 1)
-    initT.set_signal('axis_output_tready', 1)
-    test_vector_0.add_thread(initT)
-
-    inputT = Thread()
-    inputT.add_delay('100ns')
-    inputT.init_timer()
-    inputT.add_transaction(ctrl_bus.write('enable', 1))
-    inputT.add_transaction(axis_in.write(tdata=0xABCD, callTB=2))
-    inputT.wait_level('ack_V == $value', value=1)
-    inputT.add_transaction(axis_in.write(tdata=0,callTB=3))
-    inputT.wait_level('ack_V == $value', value=1)
-    inputT.add_delay('110ns')
-    inputT.set_flag(0)
-    test_vector_0.add_thread(inputT)
-
-    outputT = Thread()
-    outputT.add_transaction(axis_out.read(tdata=1))
-    outputT.wait_flag(0)
-    outputT.add_transaction(ctrl_bus.read('enable', 1))
-    outputT.print_elapsed_time('End')
-    outputT.display('The_simulation_is_finished')
-    outputT.end_vector()
-    test_vector_0.add_thread(outputT)
-
-    sonar.add_test_vector(test_vector_0)
-    sonar.finalize_waits()
-
-    # import pprint
-    # sonar.asdict()
-    # pprint.pprint(sonar.asdict())
-    # print(sonar.asjson())
-
-    sonar.generateTB('/home/sharm294/Documents/TMD/', 'sv')
-    

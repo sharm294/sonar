@@ -106,11 +106,18 @@ if {[string equal [get_filesets -quiet sources_1] ""]} {
 
 # Set 'sources_1' fileset object
 set obj [get_filesets sources_1]
-set files [list \
- "[file normalize "$origin_dir/build/vivado_hls/sample/Virtex_Ultrascale/impl/verilog/sample.v"]"\
- "[file normalize "$origin_dir/build/vivado_hls/sample/Virtex_Ultrascale/impl/verilog/sample_ctrl_bus_s_axi.v"]"\
- "[file normalize "$origin_dir/build/sample/sample_sv.dat"]"\
-]
+if {[info exists ::env(SONAR_VIVADO_HLS)]}{
+  set files [list \
+    "[file normalize "$origin_dir/build/vivado_hls/sample/Virtex_Ultrascale/impl/verilog/sample.v"]"\
+    "[file normalize "$origin_dir/build/vivado_hls/sample/Virtex_Ultrascale/impl/verilog/sample_ctrl_bus_s_axi.v"]"\
+    "[file normalize "$origin_dir/build/sample/sample_sv.dat"]"\
+  ]
+} else {
+  set files [list \
+    "[file normalize "$origin_dir/sample.v"]"\
+    "[file normalize "$origin_dir/build/sample/sample_sv.dat"]"\
+  ]
+}
 add_files -norecurse -fileset $obj $files
 
 # Set 'sources_1' fileset file properties for remote files
