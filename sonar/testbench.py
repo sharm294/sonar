@@ -161,9 +161,26 @@ class Testbench(SonarObject):
         return sonar_dict
 
     def asjson(self):
+        """
+        Converts the testbench into JSON format for further processing or 
+        printing
+        
+        Returns:
+            str: Testbench object dumped as JSON string
+        """
+
         return json.dumps(self.asdict(), indent=2)
 
     def generateTB(self, directory_path, languages):
+        """
+        After the Testbench object is complete, this will invoke the Sonar Core
+        to generate the testbench(es) based on the information
+        
+        Args:
+            directory_path (str): path to store the generated files
+            languages (str): sv or all to choose which languages
+        """
+
         self._finalize_waits()
         filename = self.metadata['Module_Name']
         filepath = directory_path + filename + '.json'
@@ -284,6 +301,16 @@ class Module(SonarObject):
 class TestVector(SonarObject):
     
     def __init__(self, thread=None, threads=None):
+        """
+        Initializes a TestVector object
+
+        Args:
+            thread (Thread, optional): Defaults to None. An initial Thread to 
+                initialize with
+            threads (Iterable of Threads, optional): Defaults to None. Initialize 
+                TestVector with all Threads in this iterable
+        """
+
         self.threads = []
         if thread is not None:
             self.threads.append(thread)
@@ -292,12 +319,31 @@ class TestVector(SonarObject):
                 self.threads.append(t)
 
     def add_thread(self, thread=None):
+        """
+        Adds a thread to the TestVector. If a thread is provided as an argument,
+        it's added to the TestVector. Otherwise, an empty one is created, added 
+        and returned.
+
+        Args:
+            thread (Thread, optional): Defaults to None. The thread to add
+        
+        Returns:
+            Thread: The added thread is returned
+        """        
+
         if thread is None:
             thread = Thread()
         self.threads.append(thread)
         return thread
 
     def asdict(self):
+        """
+        Converts the object to a dictionary
+        
+        Returns:
+            dict: Dictionary representing the object
+        """
+
         threads = []
         for thread in self.threads:
             threads.append(thread.asdict())
@@ -306,63 +352,197 @@ class TestVector(SonarObject):
 class Thread(SonarObject):
 
     def __init__(self):
+        """
+        Initializes a default empty thread
+        """
+
         self.commands = []
 
     def add_delay(self, delay):
+        """
+        Add a timed delay to the thread
+        
+        Args:
+            delay (str): String representing delay length e.g. '40ns'
+        """
+
         self.commands.append({'delay': delay})
 
     def set_signal(self, name, value):
+        """
+        Set the value of a signal to be the specified value
+        
+        Args:
+            name (str): Name of the signal
+            value (number): May be an int, or a hex or binary number string 
+                (preceded by 0x or 0b respectively)
+        """
+
         self.commands.append({'signal': [{'name': name, 'value': value}]})
 
     def init_signals(self):
+        """
+        Initialize all signals to zero
+        """
+
         self.commands.append({'macro': 'INIT_SIGNALS'})
 
     def init_timer(self):
+        """
+        Set the timer to zero to begin timestamping
+        """
+
         self.commands.append({'timestamp': 'INIT'})
 
     def print_elapsed_time(self, id):
+        """
+        Prints the elapsed time since the last init_timer command
+        
+        Args:
+            id (str): String to print out with the timestamp for identification
+        """
+
         self.commands.append({'timestamp': id})
     
     def display(self, string):
+        """
+        Print the string to the console (note, must not contain spaces)
+        
+        Args:
+            string (str): String to print
+        """
+
         self.commands.append({'display': string})
 
     def end_vector(self):
+        """
+        Ends the TestVector. This command must be the last chronological event
+        in the vector. If using C++ (or any other sequential simulation), the 
+        thread containing this command must also be the last thread in the 
+        vector
+        """
+
         self.commands.append({'macro': 'END'})
 
     def set_flag(self, id):
+        """
+        Set the flag with the given ID to 1. The number of flags available is 
+        set in the metadata of the testbench. Flags can be used to synchronize
+        between threads. e.g. one thread can set a flag that another will wait 
+        for.
+        
+        Args:
+            id (number): ID of the flag to set (ranges from 0 to Flags-1)
+        """
+
         self.commands.append({'flag': {'set_flag': id}})
 
     def wait_flag(self, id):
+        """
+        Wait for the flag with the given ID to become 1. The number of flags 
+        available is set in the metadata of the testbench. Flags can be used to 
+        synchronize between threads. e.g. one thread can set a flag that another 
+        will wait for.
+        
+        Args:
+            id (number): ID of the flag to wait on (ranges from 0 to Flags-1)
+        """
+
         self.commands.append({'wait': {'key': 'flag', 'value': id}})
         self.commands.append({'flag': {'clear_flag': id}})
 
     def wait(self, condition, value=None):
+        """
+        Add a wait condition to the thread. For now, the condition must be a 
+        complete SystemVerilog line that will be inserted verbatim into the TB. 
+        The terminating semicolon should be included.
+        
+        Args:
+            condition (str): SV-compatible wait statement (e.g. wait(); or @();)
+            value (number, optional): Defaults to None. The condition can use 
+                '$value' as a variable and pass the number that should be 
+                inserted. e.g. wait(signal == $value)
+        """
+
         if value is None:
             self.commands.append({'wait': {'key': condition}})
         else:
             self.commands.append({'wait': {'key': condition, 'value': value}})
 
     def wait_level(self, condition, value=None):
+        """
+        Add a level-wait condition (wait until the signal value matches) to the 
+        thread.
+        
+        Args:
+            condition (str): SV-compatible statement (e.g. 'signal == 1')
+            value (number, optional): Defaults to None. The condition can use 
+                '$value' as a variable and pass the number that should be 
+                inserted. e.g. 'signal == $value'
+        """
+
         conditionTmp = 'wait(' + condition + ');'
         if value is None:
             self.commands.append({'wait': {'key': conditionTmp}})
         else:
             self.commands.append({'wait': {'key': conditionTmp, 'value': value}})
 
-    def wait_edge(self, edge, signal):
+    def wait_posedge(self, signal):
+        """
+        Add a positive-edge sensitive wait condition on a signal.
+        
+        Args:
+            signal (str): Name of the signal to wait on
+        """
+
+        self._wait_edge('posedge', signal)
+
+    def wait_negedge(self, signal):
+        """
+        Add a negative-edge sensitive wait condition on a signal.
+        
+        Args:
+            signal (str): Name of the signal to wait on
+        """
+
+        self._wait_edge('negedge', signal)
+
+    def _wait_edge(self, edge, signal):
+        """
+        Adds a edge sensitive wait condition on a signal
+        
+        Args:
+            edge (str): posedge or negedge
+            signal (str): Name of the signal to wait on
+        
+        Raises:
+            ValueError: Raised if edge is not posedge or negedge
+        """
+
         if edge != 'posedge' and edge != 'negedge':
             raise ValueError()
         conditionTmp = '@(' + edge + ' ' + signal + ');'
         self.commands.append({'wait': {'key': conditionTmp}})
 
-    def add_transaction(self, transaction):
+    def _add_transaction(self, transaction):
+        """
+        Adds a valid transaction to the thread. Since this is raw, it is not 
+        recommended for user use.
+        
+        Args:
+            transaction (object): Some object representing a transaction
+        """
+
         self.commands.append(transaction)
 
-    def add_transactions(self, transactions):
-        for transaction in transactions:
-            self.commands.append(transaction)
-
     def asdict(self):
+        """
+        Converts the object to a dictionary
+        
+        Returns:
+            dict: Dictionary representing the object
+        """
+
         commands = []
         for command in self.commands:
             commands.append(command)

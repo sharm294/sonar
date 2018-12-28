@@ -37,7 +37,7 @@ Vivado for simulation.
 *sonar* can be imported into any Python script. Refer to /sample/sample.py or 
 in /sonar/tests/ for examples.
 
-To remove *sonar*, run ``source purge.sh``. The repository can then be deleted, 
+To remove *sonar*, ``source purge.sh``. The repository can then be deleted, 
 leaving no trace of *sonar*
 
 ## Folder Hierarchy
@@ -79,12 +79,12 @@ There are a number of things on the todo list to implement such as code
 cleanup, new functionality, and improving comments. Testing has also not been
 rigorous so there are probably corner cases that are not being correctly handled 
 and will be fixed when observed. Error handling is fairly poor in general at the 
-moment. Poor coding choices may also be present. Feel free to suggest alternative
-approaches.
+moment. Poor coding choices may also be present.
 
 ## Contributing
 
-I encourage pull requests to improve functionality, error handling, and style. 
+I encourage forks/PRs to improve functionality, error handling, and style. 
 If you find a bug, please raise an issue and make the problem and reproduction 
-steps/code clear. I also plan to move some of this content to the wiki in the 
-future.
+steps/code clear. For style, I've tried to adhere to good Python style and 
+Google-style docstrings on the more public code (the core is not compliant at 
+all). I'm also using a ~60 char width limit on future commit messages.

@@ -1,7 +1,8 @@
 import os
 
-from sonar.sonar import Thread
-from sonar.generators import EthernetAXIS
+from sonar.testbench import Thread
+from sonar.generators import Ethernet
+from sonar.interfaces import AXIS
 
 def ethernet():
 
@@ -15,15 +16,15 @@ def ethernet():
         num_bytes_written = binary_file.write(b'\x34\x56\x78')
     
     thread = Thread() # create empty thread
-    ethernet = EthernetAXIS("axis_in", 'master', 'clock', "0xAABBCCDDEEFF", 
-        "0x001122334455", "0x6677")
+    ethernet = Ethernet("0xAABBCCDDEEFF", "0x001122334455", "0x6677")
+    axis_in = AXIS("axis_in", 'master', 'clock')
 
     # initialize with tkeep profile containing data, last, ready, tkeep, valid
-    ethernet.port.init_channels('tkeep', 64, False)
-    ethernet.prefix = '0x0011'
-    ethernet.file_to_stream(thread, test_file_name, endian='little')
+    axis_in.port.init_channels('tkeep', 64, False)
+    ethernet.prefix = '0x0011' # add this to all streamed data
+    ethernet.file_to_stream(thread, axis_in, test_file_name, endian='little')
 
-    ethernet.wait_for_header(thread, 'little')
+    ethernet.wait_for_header(thread, axis_in, endian='little')
 
     print(thread)
 

@@ -3,11 +3,20 @@ from math import ceil
 from .base_types import SonarObject
 from .interfaces import AXIS
 
-class EthernetAXIS(AXIS):
+class Ethernet(object):
     
-    def __init__(self, name, direction, clock, mac_src, mac_dst, ether_type, 
-            prefix=None, suffix=None, c_struct=None, c_stream=None):
-        AXIS.__init__(self, name, direction, clock, c_struct, c_stream)
+    def __init__(self, mac_src, mac_dst, ether_type, prefix=None, suffix=None):
+        """
+        Initialize an Ethernet object
+        
+        Args:
+            mac_src (str): Source MAC address e.g. '0xAABBCCDDEEFF'
+            mac_dst (str): Destination MAC address e.g. '0xAABBCCDDEEFF'
+            ether_type (str): Ether type e.g. '0x6677'
+            prefix (str, optional): Defaults to None. Prefix data sent with file_to_stream
+            suffix (str, optional): Defaults to None. Suffix data sent with file_to_stream
+        """
+
         self.mac_src = mac_src
         self.mac_dst = mac_dst
         self.ether_type = ether_type
@@ -16,10 +25,27 @@ class EthernetAXIS(AXIS):
 
         self.header = self.mac_dst[2:] + self.mac_src[2:] + self.ether_type[2:]
 
-    def file_to_stream(self, thread, filePath, parsingFunc=None, endian='little'):
-        transactions = {}
+    def file_to_stream(self, thread, interface, filePath, parsingFunc=None, 
+        endian='little'):
+        """
+        Stream the given file over the interface using the provided thread. The 
+        file is parsed using the parsingFunc. By default, a binary file containing
+        only data is assumed
+        
+        Args:
+            thread (Thread): Thread to use to stream the file over
+            interface (Interface): An instance of a Sonar interface such as AXIS
+            filePath (str): Path to the file to stream
+            parsingFunc (Function, optional): Defaults to None. Function to parse 
+                the file with. This should return a list containing dicts 
+            endian (str, optional): Defaults to 'little'. Use 'little' or 'big'
+        
+        Raises:
+            NotImplementedError: Unhandled exception
+        """
+
         if parsingFunc is None:
-            parsingFunc = self._f2sBinData
+            parsingFunc = interface._f2sBinData
         if filePath.endswith('.bin'):
             with open(filePath) as f:
                 readData = f.read()
@@ -31,14 +57,19 @@ class EthernetAXIS(AXIS):
                 
                 if self.suffix is not None:
                     binData.extend(bytearray.fromhex(self.suffix[2:]))
-                self._file_to_stream(thread, binData, parsingFunc, endian)
+                interface._file_to_stream(thread, binData, parsingFunc, endian)
         else:
             raise NotImplementedError()
 
-    def raw_file_to_stream(self, thread, filePath, parsingFunc=None, endian='little'):
-        AXIS.file_to_stream(thread, filePath, parsingFunc, endian)
-
     def get_header_bytes(self):
+        """
+        Returns a bytearray representing the header (i.e. the ethernet headers
+        and prefix, if there is one)
+        
+        Returns:
+            byteArray: Represents the header
+        """
+
         binArray = bytearray.fromhex(header)
         
         if self.prefix is not None:
@@ -46,7 +77,20 @@ class EthernetAXIS(AXIS):
 
         return binArray
 
-    def wait_for_header(self, thread, endian='little'):
+    def wait_for_header(self, thread, interface, endian='little'):
+        """
+        Add a command to wait for the header in a testbench. The provided thread
+        will wait on the Ethernet header to appear on the given interface
+        
+        Args:
+            thread (Thread): Thread that will wait
+            interface (Interface): An instance of a Sonar interface e.g. AXIS
+            endian (str, optional): Defaults to 'little'. Use 'little' or 'big'
+        
+        Raises:
+            NotImplementedError: Unhandled exception
+        """
+
         octet = [0] * 14
         octet[0] = self.mac_dst[2:4]
         octet[1] = self.mac_dst[4:6]
@@ -63,7 +107,11 @@ class EthernetAXIS(AXIS):
         octet[12] = self.ether_type[2:4]
         octet[13] = self.ether_type[4:6]
 
-        data_width = self.port.get_channel('tdata')['size']/8
+        if type(interface) is AXIS:
+            data_channel = 'tdata'
+        else:
+            raise NotImplementedError
+        data_width = interface.port.get_channel(data_channel)['size']/8
         wait_str = ""
         word_count = 0
 
@@ -77,14 +125,17 @@ class EthernetAXIS(AXIS):
                     lower_index = (min_value-i-1)*8
                     octet_index = octet_count + min_value - i - 1
                     word += octet[octet_index]
-                wait_str += (self.name + "_tdata[" + str(min_value*8-1) + ":0] == $value")
+                wait_str += (interface.name + "_" + data_channel + "[" + 
+                    str(min_value*8-1) + ":0] == $value")
             else:
                 for i in range(min_value):
                     upper_index = ((i+1) * 8) - 1
                     lower_index = i*8
                     octet_index = octet_count + i
                     word += octet[octet_index]
-                wait_str += (self.name + "_tdata[" + str(data_width*8-1) + ":" + str((data_width - min_value)*8) + "] == $value")
+                wait_str += (interface.name + "_" + data_channel + "[" + 
+                    str(data_width*8-1) + ":" + str((data_width - min_value)*8) + 
+                    "] == $value")
             thread.wait_level(wait_str, word)
             wait_str = ""
             word_count += 1

@@ -36,6 +36,7 @@ else
 EXECUTABLES = bash gcc vivado
 endif
 
+# check that all required executables exist on the path
 K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
 
@@ -43,12 +44,13 @@ K := $(foreach exec,$(EXECUTABLES),\
 # Body
 ###############################################################################
 
-.PHONY: sample sample_hw sample_sim clean purge sample_gen sample_csim
+.PHONY: sample sample_hw sample_sim clean sample_gen sample_csim
 
 #------------------------------------------------------------------------------
 # Main
 #------------------------------------------------------------------------------
 
+# checks that environment variables are set prior to running targets
 guard-%:
 	@ if [ "${${*}}" = "" ]; then \
 		echo "Environment variable $* not set. Have you sourced init.sh?"; \

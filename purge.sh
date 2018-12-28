@@ -9,4 +9,4 @@ rm -rf $SONAR_PATH/sample/build
 sed -i '/added by sonar/d' ~/.bashrc
 unset SONAR_PATH
 unset SONAR_VIVADO_HLS
-source ~/.bashrc
+source ~/.bashrc # resets PYTHONPATH

@@ -56,6 +56,7 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces, counters):
             cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) \
                 + "_" + "end"
             parallelSection_json['data'].append(cur_signal_json)
+    # TODO support other units. Right now, template only supports ns
     elif 'delay' in packet:
         m = regex_int_str.match(str(packet['delay']))
         cur_signal_json = copy.deepcopy(signal_json)
