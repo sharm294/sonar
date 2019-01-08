@@ -30,7 +30,7 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces, counters):
                             cur_signal_json = copy.deepcopy(signal_json)
                             cur_signal_json['type'] = "signal_" + interface['name']
                             cur_signal_json['interface'] = interface['name'] + "_" \
-                                + channel['type']
+                                + channel['name']
                             cur_signal_json['id'] = str(vectorIndex) + "_" + \
                                 str(parallelIndex) + "_" + "init_" + \
                                 cur_signal_json['interface']
@@ -43,7 +43,7 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces, counters):
                             cur_signal_json = copy.deepcopy(signal_json)
                             cur_signal_json['type'] = "signal_" + interface['name']
                             cur_signal_json['interface'] = interface['name'] + "_" \
-                                + channel['type']
+                                + channel['name']
                             cur_signal_json['id'] = str(vectorIndex) + "_" + \
                                 str(parallelIndex) + "_" + "init_" + \
                                 cur_signal_json['interface']
