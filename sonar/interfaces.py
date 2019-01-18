@@ -315,6 +315,7 @@ class AXIS(SonarObject):
                 mode (str): Name of a channel preset to use. Options are:
                     'default': tdata, tvalid, tready, tlast
                     'tkeep': tdata, tvalid, tready, tlast, tkeep
+                    'min': tdata, tvalid
                 dataWidth (number): Width of the tdata field
                 nameToUpperCase (bool, optional): Defaults to True. Assume that 
                     the channel names are the uppercase versions of their type, 
@@ -339,6 +340,11 @@ class AXIS(SonarObject):
                     {'name': 'tready', 'type': 'tready'},
                     {'name': 'tlast', 'type': 'tlast'},
                     {'name': 'tkeep', 'type': 'tkeep', 'size': dataWidth/8}
+                ]
+            elif mode == 'min':
+                channels = [
+                    {'name': 'tdata', 'type': 'tdata', 'size': dataWidth},
+                    {'name': 'tvalid', 'type': 'tvalid'}
                 ]
             else:
                 raise NotImplementedError()
