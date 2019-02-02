@@ -306,7 +306,7 @@ class AXIS(SonarObject):
             self.c_struct = c_struct
             self.c_stream = c_stream
 
-        def init_channels(self, mode, dataWidth, nameToUpperCase=True):
+        def init_channels(self, mode, dataWidth=None, nameToUpperCase=True):
             """
             Initialize the channels associated with this AXIS interface. Initialize
             means to specify the names, types and widths of all the channels.
@@ -324,9 +324,13 @@ class AXIS(SonarObject):
             
             Raises:
                 NotImplementedError: Unhandled exception if bad mode entered
+                ValueError: Error in mode/argument association
             """
 
             if mode == 'default':
+                if dataWidth is None:
+                    print("dataWidth cannot be None")
+                    raise ValueError
                 channels = [
                     {'name': 'tdata', 'type': 'tdata', 'size': dataWidth},
                     {'name': 'tvalid', 'type': 'tvalid'},
@@ -334,6 +338,9 @@ class AXIS(SonarObject):
                     {'name': 'tlast', 'type': 'tlast'}
                 ]
             elif mode == 'tkeep':
+                if dataWidth is None:
+                    print("dataWidth cannot be None")
+                    raise ValueError
                 channels = [
                     {'name': 'tdata', 'type': 'tdata', 'size': dataWidth},
                     {'name': 'tvalid', 'type': 'tvalid'},
@@ -342,10 +349,15 @@ class AXIS(SonarObject):
                     {'name': 'tkeep', 'type': 'tkeep', 'size': dataWidth/8}
                 ]
             elif mode == 'min':
+                if dataWidth is None:
+                    print("dataWidth cannot be None")
+                    raise ValueError
                 channels = [
                     {'name': 'tdata', 'type': 'tdata', 'size': dataWidth},
                     {'name': 'tvalid', 'type': 'tvalid'}
                 ]
+            elif mode == 'empty':
+                channels = []
             else:
                 raise NotImplementedError()
             for channel in channels:
@@ -529,7 +541,7 @@ class SAXILite(SonarObject):
                     del self.reg_addrs[index]
                     break
 
-        def init_channels(self, mode, dataWidth, addrWidth, nameToUpperCase=True):
+        def init_channels(self, mode, dataWidth=None, addrWidth=None, nameToUpperCase=True):
             """
             Initialize the channels associated with this AXILite interface. 
             Initialize means to specify the names, types and widths of all the 
@@ -547,8 +559,12 @@ class SAXILite(SonarObject):
             
             Raises:
                 NotImplementedError: Unhandled exception if bad mode entered
+                ValueError: Error in mode/argument association
             """
             if mode == 'default':
+                if dataWidth is None or addrWidth is None:
+                    print("dataWidth or addrWidth cannot be None")
+                    raise ValueError
                 channels = [
                     {'name': 'awvalid', 'type': 'awvalid'},
                     {'name': 'awready', 'type': 'awready'},
@@ -568,6 +584,8 @@ class SAXILite(SonarObject):
                     {'name': 'bready', 'type': 'bready'},
                     {'name': 'bresp', 'type': 'bresp', 'size': 2}
                 ]
+            elif mode == 'empty':
+                channels = []
             else:
                 raise NotImplementedError
             for channel in channels:
