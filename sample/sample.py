@@ -52,7 +52,7 @@ def sample(folderpath, languages):
     # this thread just initializes signals. It could be reused in many test
     # vectors so it's created differently from the other threads.
     initT = Thread()
-    initT.wait_edge('negedge', 'ap_clk') # wait for negedge of ap_clk
+    initT.wait_negedge('ap_clk') # wait for negedge of ap_clk
     initT.init_signals() # initialize all signals to zero
     initT.add_delay('40ns')
     initT.set_signal('ap_rst_n', 1)

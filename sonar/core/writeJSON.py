@@ -10,7 +10,8 @@ from .include.utilities import printError
 def writeJSONPacket(parallelSection_json, packet, vectorIndex, parallelIndex, 
 signals_in, signals_out, interface_in, interface_out, usedInterfaces, counters):
     signal_json = {"type": "signal", "interface": "", "value": 0, "id": ""}
-    regex_int_str = re.compile("([0-9]+)([a-z]+)")
+    # regex_int_str = re.compile("([0-9]+)([a-z]+)")
+    regex_int_str = re.compile("([0-9]+([\.][0-9]+)*)([a-z]+)")
     
     if 'macro' in packet:
         if packet['macro'] == "INIT_SIGNALS":
@@ -61,9 +62,9 @@ signals_in, signals_out, interface_in, interface_out, usedInterfaces, counters):
         m = regex_int_str.match(str(packet['delay']))
         cur_signal_json = copy.deepcopy(signal_json)
         cur_signal_json['type'] = 'delay'
-        cur_signal_json['interface'] = str(m.group(2))
-        if m.group(2) not in ["fs", "ps", "ns", "us", "ms", "s"]:
-            printError(1, "Unknown time format: " + m.group(2))
+        cur_signal_json['interface'] = str(m.group(3))
+        if m.group(3) not in ["fs", "ps", "ns", "us", "ms", "s"]:
+            printError(1, "Unknown time format: " + m.group(3))
             exit(1)
         cur_signal_json['value'] = str(m.group(1))
         cur_signal_json['id'] = str(vectorIndex) + "_" + str(parallelIndex) + \

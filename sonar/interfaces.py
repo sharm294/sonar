@@ -220,7 +220,7 @@ class AXIS(SonarObject):
                         tdata = (tdata << 8) | ( data[i]) 
                     elif i < beat + tdataBytes:
                         tdata = tdata << 8
-            payload = self._payload(data="0x" + format(tdata, '08x'))
+            payload = self._payload(tdata="0x" + format(tdata, '08x'))
            
             if self.port.has_channel('tkeep'):
                 tkeep = self._f2sTkeep(fileSize, tdataBytes, beat, endian)

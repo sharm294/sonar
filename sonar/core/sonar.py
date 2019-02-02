@@ -147,6 +147,7 @@ def setFromConfig(templateTB_sv_str, configFileData):
 #TODO clean up code and add functions
 #TODO allow loops for commands (repeat)
 #TODO allow delays by clock cycles
+#TODO support floating clock periods
 ################################################################################
 ### sonar ###
 # This function uses a configuration file to generate testbenches, data for the 
@@ -713,7 +714,8 @@ def sonar(mode, modeArg, filepath, languages):
     initial_clock = ""
     largestClock = ""
     largestPeriod = 0
-    regex_int_str = re.compile("([0-9]+)([a-z]+)")
+    # regex_int_str = re.compile("([0-9]+)([a-z]+)")
+    regex_int_str = re.compile("([0-9]+([\.][0-9]+)*)([a-z]+)")
     with open(templateTB_sv,'r') as f:
         lineStr = [line for line in f if "#INITIAL_CLOCK#" in line]
     leading_spaces = getIndentation(lineStr)
@@ -727,15 +729,15 @@ def sonar(mode, modeArg, filepath, languages):
             clock['period'] + "/2) " + clock['name'] + " <= ~" + clock['name'] + \
             ";\n"
         m = regex_int_str.match(clock['period'])
-        if m.group(2) == "s":
+        if m.group(3) == "s":
             period = m.group(1) * 10 ** 15
-        elif m.group(2) == "ms":
+        elif m.group(3) == "ms":
             period = m.group(1) * 10 ** 12
-        elif m.group(2) == "us":
+        elif m.group(3) == "us":
             period = m.group(1) * 10 ** 9
-        elif m.group(2) == "ns":
+        elif m.group(3) == "ns":
             period = m.group(1) * 10 ** 6
-        elif m.group(2) == "ps":
+        elif m.group(3) == "ps":
             period = m.group(1) * 10 ** 3
         else:
             period = m.group(1)

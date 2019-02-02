@@ -61,6 +61,35 @@ class Ethernet(object):
         else:
             raise NotImplementedError()
 
+    def bin_to_stream(self, thread, interface, binData, parsingFunc=None, 
+        endian='little'):
+        """
+        Stream the binary data over the interface using the provided thread. The 
+        file is parsed using the parsingFunc.
+        
+        Args:
+            thread (Thread): Thread to use to stream the file over
+            interface (Interface): An instance of a Sonar interface such as AXIS
+            binData (byteArray): Binary data to stream
+            parsingFunc (Function, optional): Defaults to None. Function to parse 
+                the file with. This should return a list containing dicts 
+            endian (str, optional): Defaults to 'little'. Use 'little' or 'big'
+        
+        Raises:
+            NotImplementedError: Unhandled exception
+        """
+
+        if parsingFunc is None:
+            parsingFunc = interface._f2sBinData
+        if self.prefix is not None:
+            binData[0:0] = bytearray.fromhex(self.prefix[2:])
+
+        binData[0:0] = bytearray.fromhex(self.header)
+        
+        if self.suffix is not None:
+            binData.extend(bytearray.fromhex(self.suffix[2:]))
+        interface._file_to_stream(thread, binData, parsingFunc, endian)
+
     def get_header_bytes(self):
         """
         Returns a bytearray representing the header (i.e. the ethernet headers
