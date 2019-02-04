@@ -52,7 +52,7 @@ fi
 } >> $configFile
 
 echo "" >> ~/.bashrc
-echo "source $configFile #added by sonar" >> ~/.bashrc
+echo "source $configFile # added by sonar" >> ~/.bashrc
 source ~/.bashrc
 
 mkdir -p $SONAR_PATH/sample

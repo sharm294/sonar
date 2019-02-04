@@ -136,7 +136,28 @@ class AXIS(SonarObject):
             dict: The fields of this object as a dictionary
         """
 
-        return self._Port.asdict()        
+        return self._Port.asdict()
+
+    def wait(self, thread, data, bit_range=None):
+        """
+        Adds a wait statement to the provided thread for a specific tdata value
+
+        Args:
+            thread (Thread): The thread to add the wait to
+            data (number): The value of tdata to wait for
+            bit_range (string, optional): Defaults to all bits. Range of bits
+                to check in tdata, separated by a colon. e.g. "63:40"
+        """
+
+        if bit_range is None:
+            wait_str = "(" + self.name + "_tdata == $value "
+        else:
+            wait_str = self.name + "_tdata[" + bit_range + "] == $value)"
+
+        wait_str += " && (" + self.name + "_tvalid == 1'b1)"
+        if self.port.has_channel('tready'):
+            wait_str += " && (" + self.name + "_tready == 1)"
+        thread.wait_level(wait_str, data)
 
     def file_to_stream(self, thread, filePath, parsingFunc=None, endian='little'):
         """
