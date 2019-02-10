@@ -150,7 +150,7 @@ class AXIS(SonarObject):
         """
 
         if bit_range is None:
-            wait_str = "(" + self.name + "_tdata == $value "
+            wait_str = "(" + self.name + "_tdata == $value) "
         else:
             wait_str = self.name + "_tdata[" + bit_range + "] == $value)"
 
