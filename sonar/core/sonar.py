@@ -930,6 +930,6 @@ if __name__ == "__main__":
             print("  languages: all (SV + C) or sv (just SV)")
 
     if (len(sys.argv) == 5):
-        core(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+        sonar(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
     else:
         print("Incorrect number of arguments. Use -h or --help")

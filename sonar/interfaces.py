@@ -242,7 +242,7 @@ class AXIS(SonarObject):
                     elif i < beat + tdataBytes:
                         tdata = tdata << 8
             payload = self._payload(tdata="0x" + format(tdata, '08x'))
-           
+            
             if self.port.has_channel('tkeep'):
                 tkeep = self._f2sTkeep(fileSize, tdataBytes, beat, endian)
                 payload = self._payload(payload, tkeep=tkeep)
@@ -274,8 +274,8 @@ class AXIS(SonarObject):
         if beat < ((ceil(fileSize/8.0) - 1) * 8.0) :
             tkeep = "KEEP_ALL"
         else:
-            sizeofLastTransaction = fileSize % tdataBytes 
-            if sizeofLastTransaction != tdataBytes:
+            sizeofLastTransaction = fileSize % tdataBytes
+            if sizeofLastTransaction != 0:
                 tkeep = ''
                 for i in range(sizeofLastTransaction):
                     tkeep = tkeep + '1'
