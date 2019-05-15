@@ -357,6 +357,9 @@ class Thread(SonarObject):
         """
 
         self.commands = []
+        self._enable_timestamps = False
+        self.timestamp_prefix = ""
+        self.timestamp_index = 0
 
     def add_delay(self, delay):
         """
@@ -367,6 +370,7 @@ class Thread(SonarObject):
         """
 
         self.commands.append({'delay': delay})
+        self._print_timestamp()
 
     def set_signal(self, name, value):
         """
@@ -379,6 +383,7 @@ class Thread(SonarObject):
         """
 
         self.commands.append({'signal': [{'name': name, 'value': value}]})
+        self._print_timestamp()
 
     def init_signals(self):
         """
@@ -386,6 +391,37 @@ class Thread(SonarObject):
         """
 
         self.commands.append({'macro': 'INIT_SIGNALS'})
+
+    def enable_timestamps(self, prefix, index):
+        """
+        Each subsequent command (until disabled) will print the time after it finishes
+        with the given prefix and an index which starts at the provided one.
+        
+        Args:
+            prefix (str): String to prefix the timestamp with
+            index (int): Integer to start indexing the timestamps at
+        """
+
+        self._enable_timestamps = True
+        self.timestamp_prefix = prefix
+        self.timestamp_index = index
+        self.commands.append({'timestamp': prefix + str(index)})
+        self.timestamp_index += 1
+
+    def disable_timestamps(self):
+        """
+        Disables timestamping
+        """
+        self._enable_timestamps = False
+
+    def _print_timestamp(self):
+        """
+        Used internally to add a timestamping command after certain Thread commands
+        """
+        
+        if self._enable_timestamps:
+            self.commands.append({'timestamp': self.timestamp_prefix + str(self.timestamp_index)})
+            self.timestamp_index += 1
 
     def init_timer(self):
         """
@@ -403,6 +439,13 @@ class Thread(SonarObject):
         """
 
         self.commands.append({'timestamp': id})
+
+    def print_time(self):
+        """
+        Prints the absolute time
+        """
+
+        self.commands.append({'timestamp': 'PRINT'})
     
     def display(self, string):
         """
@@ -423,6 +466,7 @@ class Thread(SonarObject):
         """
 
         self.commands.append({'macro': 'END'})
+        self._print_timestamp()
 
     def set_flag(self, id):
         """
@@ -436,6 +480,7 @@ class Thread(SonarObject):
         """
 
         self.commands.append({'flag': {'set_flag': id}})
+        self._print_timestamp()
 
     def wait_flag(self, id):
         """
@@ -449,6 +494,7 @@ class Thread(SonarObject):
         """
 
         self.commands.append({'wait': {'key': 'flag', 'value': id}})
+        self._print_timestamp()
         self.commands.append({'flag': {'clear_flag': id}})
 
     def wait(self, condition, value=None):
@@ -468,6 +514,7 @@ class Thread(SonarObject):
             self.commands.append({'wait': {'key': condition}})
         else:
             self.commands.append({'wait': {'key': condition, 'value': value}})
+        self._print_timestamp()
 
     def wait_level(self, condition, value=None):
         """
@@ -486,6 +533,7 @@ class Thread(SonarObject):
             self.commands.append({'wait': {'key': conditionTmp}})
         else:
             self.commands.append({'wait': {'key': conditionTmp, 'value': value}})
+        self._print_timestamp()
 
     def wait_posedge(self, signal):
         """
@@ -523,6 +571,7 @@ class Thread(SonarObject):
             raise ValueError()
         conditionTmp = '@(' + edge + ' ' + signal + ');'
         self.commands.append({'wait': {'key': conditionTmp}})
+        self._print_timestamp()
 
     def _add_transaction(self, transaction):
         """
@@ -534,6 +583,7 @@ class Thread(SonarObject):
         """
 
         self.commands.append(transaction)
+        self._print_timestamp()
 
     def asdict(self):
         """

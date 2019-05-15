@@ -35,6 +35,8 @@ module exerciser (
 
     logic [MAX_PARALLEL-1:0] testVectorEnd = 0;
     logic [MAX_PARALLEL-1:0] errorCheck = 0;
+    logic [MAX_PARALLEL-1:0] threadSync = 0;
+    logic [MAX_PARALLEL-1:0] threadSync_golden = 0;
     logic updateEnd = 0;
     logic fileReady = 0;
 
@@ -45,7 +47,8 @@ module exerciser (
         output logic done,
         output logic error
     );
-        
+        error = 0;
+        done = 0;
         if (packetType_par == "wait") begin
             #IF_ELSE_WAIT#
             else begin
@@ -151,7 +154,7 @@ module exerciser (
                             interfaceType,parallelSections[j]);
                     end
                     updateEnd = 1;
-                    wait(|testVectorEnd == 1);
+                    wait(|testVectorEnd == 1 && threadSync == threadSync_golden);
                     updateEnd = 0;
                     @(posedge #VECTOR_CLOCK#)
                     for(int z = 0; z < MAX_PARALLEL; z++) begin
@@ -199,7 +202,10 @@ module exerciser (
                 wait(fileReady == 1);
                 for(int w = 0; w < vectorCount; w++) begin
                     wait(updateEnd == 1'b1);
+                    threadSync[gen_i] = 1'b0;
+                    threadSync_golden[gen_i] = 1'b0;
                     if (parallelSections[gen_i] != 0) begin
+                        threadSync_golden[gen_i] = 1'b1;
                         status_par = $fseek(dataFile, parallelSections[gen_i], 
                             0);
                         status_par = $fscanf(dataFile, "%s %s %d", 
@@ -213,6 +219,7 @@ module exerciser (
                             evaluateData(args, packetType_par,
                                 interfaceType_par, testVectorEnd[gen_i], errorCheck[gen_i]);
                         end
+                        threadSync[gen_i] = 1'b1;
                     end
                     wait(updateEnd == '0);
                     testVectorEnd = '0;                    
@@ -220,7 +227,7 @@ module exerciser (
             end
         end
     endgenerate
-   
+
 endmodule
 
 module #MODULE_NAME#_tb();

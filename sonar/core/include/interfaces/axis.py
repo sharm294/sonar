@@ -33,18 +33,8 @@ master_action = [
     "wait($$clock == 0);",
     {"channels": {"tdata", "tlast", "tkeep", "tdest"}, "commands": ["$$name_$$channel = args[$$i];"]},
     "$$name_tvalid = 1'b1;",
-    "fork",
-    "  begin",
-    "    @(posedge $$name_tready iff !$$clock);",
-    "  end",
-    "  begin",
-    "    @(negedge $$clock iff $$name_tready === 1'b1);",
-    "  end",
-    "  begin",
-    "    @(posedge $$clock iff $$name_tready === 1'b1);",
-    "  end",
-    "join_any",
-    "@(negedge $$clock);",
+    "@(posedge $$clock iff $$name_tready === 1'b1);",
+    "@(negedge $$clock iff $$name_tready === 1'b1);",
     "$$name_tvalid = 1'b0;"
 ]
 
