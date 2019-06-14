@@ -34,7 +34,7 @@ master_action = [
     {"channels": {"tdata", "tlast", "tkeep", "tdest"}, "commands": ["$$name_$$channel = args[$$i];"]},
     "$$name_tvalid = 1'b1;",
     "@(posedge $$clock iff $$name_tready === 1'b1);",
-    "@(negedge $$clock iff $$name_tready === 1'b1);",
+    "@(negedge $$clock);",
     "$$name_tvalid = 1'b0;"
 ]
 
