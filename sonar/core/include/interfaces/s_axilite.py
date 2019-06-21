@@ -83,9 +83,7 @@ def import_packages_global(imports):
         imports += "import axi_vip_v1_0_2_pkg::*;\n"
         return imports
     else:
-        printWarning("Vivado version " + version + " not supported " + \
-            "for AXI VIP. There may be errors with importing VIP packages.")
-        imports += "import axi_vip_v1_0_2_pkg::*;\n"
+        imports += "import axi_vip_pkg::*;\n"
         return imports
 
 def import_packages_local(imports, interface):

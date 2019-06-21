@@ -1,67 +1,3 @@
-proc get_design_name {design_name} {
-  set cur_design [current_bd_design -quiet]
-  set list_cells [get_bd_cells -quiet]
-  set errMsg ""
-  set nRet 0
-
-  if { ${design_name} eq "" } {
-    # USE CASES:
-    # 1): Missing design name
-    set errMsg "Please set the variable <design_name> to a non-empty value."
-    set nRet 1
-  } elseif { ${cur_design} ne "" && ${list_cells} eq "" } {
-    # USE CASES:
-    # 2): Current design opened AND is empty AND names same.
-    # 3): Current design opened AND is empty AND names diff; design_name NOT 
-    #     in project.
-    # 4): Current design opened AND is empty AND names diff; design_name exists
-    #     in project.
-
-    if { $cur_design ne $design_name } {
-      common::send_msg_id "BD_TCL-001" "INFO" "Changing value of \
-        <design_name> from <$design_name> to <$cur_design> since current \
-        design is empty."
-      set design_name [get_property NAME $cur_design]
-    }
-    common::send_msg_id "BD_TCL-002" "INFO" "Constructing design in IPI design \
-      <$cur_design>..."
-
-  } elseif { ${cur_design} ne "" && $list_cells ne "" && \
-    $cur_design eq $design_name } {
-    # USE CASES:
-    # 5) Current design opened AND has components AND same names.
-
-    set errMsg "Design <$design_name> already exists in your project, please \
-      set the variable <design_name> to another value."
-    set nRet 1
-  } elseif { [get_files -quiet ${design_name}.bd] ne "" } {
-    # USE CASES: 
-    # 6) Current opened design, has components, but diff names, design_name 
-    #    exists in project.
-    # 7) No opened design, design_name exists in project.
-    set errMsg "Design <$design_name> already exists in your project, please \
-      set the variable <design_name> to another value."
-    set nRet 2
-  } else {
-    # USE CASES:
-    #    8) No opened design, design_name not in project.
-    #    9) Current opened design, has components, but diff names, design_name 
-    #       not in project.
-    common::send_msg_id "BD_TCL-003" "INFO" "Currently there is no design \
-      <$design_name> in project, so creating one..."
-
-    create_bd_design $design_name
-
-    common::send_msg_id "BD_TCL-004" "INFO" "Making design <$design_name> as \
-      current_bd_design."
-    current_bd_design $design_name
-  }
-
-  return [list $cur_design $design_name $errMsg $nRet]
-}
-
-namespace eval 2017_2 {
-
 proc create_VIP {bd_name addr_width data_width address address_offset} {
   
   set design_name $bd_name
@@ -125,7 +61,11 @@ proc create_VIP {bd_name addr_width data_width address address_offset} {
   set aresetn [ create_bd_port -dir I -type rst aresetn ]
 
   # Create instance: axi_vip_0, and set properties
-  set axi_vip_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_vip:1.0 \
+  set ip_name [check_ip axi_vip {1.0 1.1}]
+  if {$ip_name == -1} {
+    return 1
+  }
+  set axi_vip_0 [ create_bd_cell -type ip -vlnv $ip_name \
     axi_vip_0 ]
   set_property -dict [ list \
     CONFIG.ADDR_WIDTH "$addr_width" \
@@ -178,19 +118,7 @@ proc create_VIP {bd_name addr_width data_width address address_offset} {
   close_bd_design [get_bd_designs $bd_name]
 }
 
-}
+source ${::env(SONAR_PATH)}/sonar/core/utilities.tcl
 
-################################################################
-# Check if script is running in correct Vivado version.
-################################################################
-set current_vivado_version [version -short]
-
-if { [string first 2017.2 $current_vivado_version] != -1 } {
-  2017_2::create_VIP #DESIGN_NAME# #ADDR_WIDTH# #DATA_WIDTH# #ADDRESS# #ADDRESS_OFFSET#
-} else {
-  puts ""
-  catch {common::send_msg_id "BD_TCL-109" "WARNING" "Unsupported Vivado version:\
-    $current_vivado_version for AXI VIP for s_axilite interface"}
-  2017_2::create_VIP #DESIGN_NAME# #ADDR_WIDTH# #DATA_WIDTH# #ADDRESS# #ADDRESS_OFFSET#
-  return 1
-}
+check_vivado_version {2017.2, 2018.1} WARNING
+create_VIP #DESIGN_NAME# #ADDR_WIDTH# #DATA_WIDTH# #ADDRESS# #ADDRESS_OFFSET#
