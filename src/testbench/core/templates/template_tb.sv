@@ -2,16 +2,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Company: #COMPANY#
 // Engineer: #ENGINEER#
-// 
+//
 // Create Date: #CURR_DATE#
 // Module Name: #MODULE_NAME#
 // Project Name: #PROJECT_NAME#
 // Target Devices: #TARGET_DEVICES#
 // Tool Versions: #TOOL_VERSIONS#
 // Description: #DESCRIPTION#
-// 
+//
 // Dependencies: #DEPENDENCIES#
-// 
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 //filename for the input data file
@@ -59,7 +59,7 @@ module exerciser (
         else if (packetType_par == "signal") begin
             #IF_ELSE_SIGNAL#
             else begin
-                $display({"Unhandled case for signal type: ", 
+                $display({"Unhandled case for signal type: ",
                     interfaceType_par});
                 error = 1'b1;
             end
@@ -104,7 +104,7 @@ module exerciser (
         #ELSE_IF_INTERFACE_IN#
         #ELSE_IF_INTERFACE_OUT#
         else begin
-            $display({"Unhandled case: ", packetType_par, " " , 
+            $display({"Unhandled case: ", packetType_par, " " ,
                 interfaceType_par});
             error = 1'b1;
             $display("\n*** Finishing RTL Simulation *** \n");
@@ -114,7 +114,7 @@ module exerciser (
 
     //clock generation
     #INITIAL_CLOCK#
-    
+
     int vectorCount;
     time timeRef;
     logic [#FLAG_COUNT#-1:0] flags = 0;
@@ -134,23 +134,23 @@ module exerciser (
         #INITIAL_PROLOGUE#
 
         dataFile_0 = $fopen(dataFileName, "r");
-        status = $fscanf(dataFile_0, "%s %s %d\n", packetType, interfaceType, 
+        status = $fscanf(dataFile_0, "%s %s %d\n", packetType, interfaceType,
             vectorCount);
         fileReady = 1;
         $display("\n*** Starting RTL Simulation *** \n");
         if (packetType == "TestVector" && interfaceType == "count") begin
             for(int i = 0; i < vectorCount; i++) begin
-                status = $fscanf(dataFile_0, "%s %s %d\n", packetType, 
+                status = $fscanf(dataFile_0, "%s %s %d\n", packetType,
                     interfaceType, testVectors[i]);
             end
             for(int i = 0; i < vectorCount; i++) begin
                 status = $fseek(dataFile_0, testVectors[i], 0);
-                status = $fscanf(dataFile_0, "%s %s %d\n", packetType, 
+                status = $fscanf(dataFile_0, "%s %s %d\n", packetType,
                     interfaceType, parallelSectionCount);
-                if (packetType == "ParallelSection" && 
+                if (packetType == "ParallelSection" &&
                     interfaceType == "count") begin
                     for(int j = 0; j < parallelSectionCount; j++) begin
-                        status = $fscanf(dataFile_0, "%s %s %d\n", packetType, 
+                        status = $fscanf(dataFile_0, "%s %s %d\n", packetType,
                             interfaceType,parallelSections[j]);
                     end
                     updateEnd = 1;
@@ -191,13 +191,13 @@ module exerciser (
         for(genvar gen_i = 0; gen_i < MAX_PARALLEL; gen_i++) begin
             initial begin
                 int status_par;
-                int dataFile; 
+                int dataFile;
                 logic [MAX_DATA_SIZE-1:0] args [MAX_ARG_NUM];
                 logic [MAX_ARG_SIZE-1:0] argCount;
-                string packetType_par; 
+                string packetType_par;
                 string interfaceType_par;
                 int packetCount;
-                
+
                 dataFile = $fopen(dataFileName, "r");
                 wait(fileReady == 1);
                 for(int w = 0; w < vectorCount; w++) begin
@@ -206,12 +206,12 @@ module exerciser (
                     threadSync_golden[gen_i] = 1'b0;
                     if (parallelSections[gen_i] != 0) begin
                         threadSync_golden[gen_i] = 1'b1;
-                        status_par = $fseek(dataFile, parallelSections[gen_i], 
+                        status_par = $fseek(dataFile, parallelSections[gen_i],
                             0);
-                        status_par = $fscanf(dataFile, "%s %s %d", 
+                        status_par = $fscanf(dataFile, "%s %s %d",
                             packetType_par, interfaceType_par, packetCount);
                         for(int k = 0; k < packetCount; k++) begin
-                            status_par = $fscanf(dataFile, "%s %s %d", 
+                            status_par = $fscanf(dataFile, "%s %s %d",
                                 packetType_par, interfaceType_par, argCount);
                             for(int l = 0; l < argCount; l++) begin
                                 status_par = $fscanf(dataFile, "%d", args[l]);
@@ -222,7 +222,7 @@ module exerciser (
                         threadSync[gen_i] = 1'b1;
                     end
                     wait(updateEnd == '0);
-                    testVectorEnd = '0;                    
+                    testVectorEnd = '0;
                 end
             end
         end
@@ -235,7 +235,7 @@ module #MODULE_NAME#_tb();
     #TB_SIGNAL_LIST#
 
     #EXERCISER_INT#
-    
+
     #IP_INST#
 
     //initialize DUT

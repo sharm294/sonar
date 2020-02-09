@@ -80,11 +80,11 @@ int main(int argc, char* argv[]){
             VERIFY(cStreamType)
             else if (printMatches){
                 std::cout << "Match at id: " << id << "\n";
-                std::cout << std::hex << "   Received: " << readArgs[0] << " " << 
+                std::cout << std::hex << "   Received: " << readArgs[0] << " " <<
                     readArgs[1] << "\n";
             }
         }
-        
+
         if(callTB > 0){
             for(int l = 0; l < callTB; l++){
                 CALL_TB
@@ -111,5 +111,5 @@ int main(int argc, char* argv[]){
     fclose(dataFile);
 
     return 0;
-    
+
 }

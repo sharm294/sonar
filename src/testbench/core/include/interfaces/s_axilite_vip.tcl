@@ -1,7 +1,7 @@
 proc create_VIP {bd_name addr_width data_width address address_offset} {
-  
+
   set design_name $bd_name
-  
+
   set result [get_design_name $design_name]
 
   set cur_design [lindex $result 0]
@@ -19,7 +19,7 @@ proc create_VIP {bd_name addr_width data_width address address_offset} {
   # Get object for parentCell
   set parentObj [get_bd_cells $parentCell]
   if { $parentObj == "" } {
-    catch {common::send_msg_id "BD_TCL-100" "ERROR" "Unable to find parent 
+    catch {common::send_msg_id "BD_TCL-100" "ERROR" "Unable to find parent
       cell <$parentCell>!"}
     return
   }

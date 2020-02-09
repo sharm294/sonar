@@ -3,10 +3,10 @@ from .utilities import extractNumber
 import importlib
 
 ### strToInt ###
-# This function converts a defined packed structure into an integer by 
+# This function converts a defined packed structure into an integer by
 # appropriately bitshifting and concatenating the different fields. New fields
-# can be added as needed. To add custom packets that aren't broadly useful, 
-# a similar function can be defined in the user_strToInt function in a 
+# can be added as needed. To add custom packets that aren't broadly useful,
+# a similar function can be defined in the user_strToInt function in a
 # user_utilities.py file that is ignored on Git
 #
 # Arguments:
@@ -15,7 +15,7 @@ import importlib
 #       - {type,name0:arg0,name1:arg1...namen:argn} for named conversion
 #
 # Return: the evaluated integer. May raise an error if an unhandled case occurs
-#TODO enforce data size checking for arguments
+# TODO enforce data size checking for arguments
 def strToInt(packet):
 
     packetArgs = packet[1:-1].split(",")

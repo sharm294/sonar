@@ -14,7 +14,7 @@ proc get_design_name {design_name} {
   } elseif { ${cur_design} ne "" && ${list_cells} eq "" } {
     # USE CASES:
     # 2): Current design opened AND is empty AND names same.
-    # 3): Current design opened AND is empty AND names diff; design_name NOT 
+    # 3): Current design opened AND is empty AND names diff; design_name NOT
     #     in project.
     # 4): Current design opened AND is empty AND names diff; design_name exists
     #     in project.
@@ -37,8 +37,8 @@ proc get_design_name {design_name} {
       set the variable <design_name> to another value."
     set nRet 1
   } elseif { [get_files -quiet ${design_name}.bd] ne "" } {
-    # USE CASES: 
-    # 6) Current opened design, has components, but diff names, design_name 
+    # USE CASES:
+    # 6) Current opened design, has components, but diff names, design_name
     #    exists in project.
     # 7) No opened design, design_name exists in project.
     set errMsg "Design <$design_name> already exists in your project, please \
@@ -47,7 +47,7 @@ proc get_design_name {design_name} {
   } else {
     # USE CASES:
     #    8) No opened design, design_name not in project.
-    #    9) Current opened design, has components, but diff names, design_name 
+    #    9) Current opened design, has components, but diff names, design_name
     #       not in project.
     common::send_msg_id "BD_TCL-003" "INFO" "Currently there is no design \
       <$design_name> in project, so creating one..."

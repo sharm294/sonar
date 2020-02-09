@@ -15,15 +15,18 @@ def getInterface(interfaceName):
     #     pass
     # else:
     #     return interface
-    
+
     # then check Sonar directory
     try:
-        interface = importlib.import_module("sonar.core.include.interfaces." + interfaceName)
+        interface = importlib.import_module(
+            "sonar.core.include.interfaces." + interfaceName
+        )
     except ImportError:
         printError(1, "Unknown interface type: " + interfaceName)
         return None
     else:
         return interface
+
 
 ################################################################################
 ### getIndentation ###
@@ -31,27 +34,28 @@ def getInterface(interfaceName):
 # Return: a string containing the leading whitespace
 def getIndentation(textStr):
     try:
-        indent = textStr[0][:len(textStr[0])-len(textStr[0].lstrip())]
+        indent = textStr[0][: len(textStr[0]) - len(textStr[0].lstrip())]
     except IndexError:
         printError(1, "String " + str(textStr) + " not found")
         exit(1)
     else:
         return indent
 
+
 ################################################################################
 ### GetFilePath ###
 # This function checks if a file exists and returns the absolute path to it
-# 
+#
 # Arguments:
-#   mode: must be one of "env", "path", or "absolute". 
-#       - "env" considers modeArg as an environment variable and appends the 
+#   mode: must be one of "env", "path", or "absolute".
+#       - "env" considers modeArg as an environment variable and appends the
 #           filepath to it
 #       - "path" considers modeArg as a path and appends the filepath to it
 #       - "absolute" ignores modeArg and uses the filepath alone
 #   modeArg: a string argument used in conjunction with mode
 #   filepath: a string argument for the file to check
 #
-# Return: a string containing the absolute path of the filename if found. None 
+# Return: a string containing the absolute path of the filename if found. None
 #   otherwise.
 def getFilePath(mode, modeArg, filepath):
     if mode == "env":
@@ -61,7 +65,9 @@ def getFilePath(mode, modeArg, filepath):
         else:
             path = getEnvironmentVar(modeArg)
             if path is None:
-                printError(1, "getFilePath - environment variable not found: " + modeArg)
+                printError(
+                    1, "getFilePath - environment variable not found: " + modeArg
+                )
                 return None
     elif mode == "path":
         if modeArg is None:
@@ -83,6 +89,7 @@ def getFilePath(mode, modeArg, filepath):
     else:
         return testFileName
 
+
 ################################################################################
 ### trimFinalLine ###
 # This function removes the final line from a file
@@ -92,15 +99,16 @@ def getFilePath(mode, modeArg, filepath):
 #
 # Return: N/A
 def trimFinalLine(openFile):
-    openFile.seek(0, os.SEEK_END) #move to end of file
+    openFile.seek(0, os.SEEK_END)  # move to end of file
     pos = openFile.tell()
-    while pos > 0 and openFile.read(1) != "\n": #traverse back until \n
+    while pos > 0 and openFile.read(1) != "\n":  # traverse back until \n
         pos -= 1
         openFile.seek(pos, os.SEEK_SET)
 
-    if pos > 0: #if we're not at the start, delete chars ahead
+    if pos > 0:  # if we're not at the start, delete chars ahead
         openFile.seek(pos, os.SEEK_SET)
         openFile.truncate()
+
 
 ################################################################################
 ### getEnvironmentVar ###
@@ -118,9 +126,10 @@ def getEnvironmentVar(envVar):
     else:
         return variable
 
+
 ################################################################################
 ### stripFileName ###
-# This function strips the unnecessary parts of the absolute path of a file to 
+# This function strips the unnecessary parts of the absolute path of a file to
 # improve legibility
 #
 # Arguments:
@@ -131,7 +140,7 @@ def getEnvironmentVar(envVar):
 #   filepath: a string argument for the filepath to strip
 #
 # Return: the stripped filepath (string) or None (if error)
-def stripFileName(mode, modeArg, filename):  
+def stripFileName(mode, modeArg, filename):
     if mode == "env":
         if modeArg is None:
             printError(1, "stripFileName - the mode argument must not be None for env")
@@ -139,7 +148,9 @@ def stripFileName(mode, modeArg, filename):
         else:
             stripHeader = getEnvironmentVar(modeArg)
             if stripHeader is None:
-                printError(1, "stripFileName - environment variable not found: " + modeArg)
+                printError(
+                    1, "stripFileName - environment variable not found: " + modeArg
+                )
                 return None
     elif mode == "path":
         if modeArg is None:
@@ -150,16 +161,20 @@ def stripFileName(mode, modeArg, filename):
         printError(1, "stripFileName - unknown mode option: " + mode)
         return None
 
-    localName = filename.replace(stripHeader, '')
+    localName = filename.replace(stripHeader, "")
     return localName
 
+
 ################################################################################
+
 
 def printWarning(message):
     print("*** Warning *** : " + message)
 
+
 def printError(errorCode, message):
     print("*** Fatal Error *** Code " + str(errorCode) + ": " + message)
+
 
 ################################################################################
 ### extractNumber ###
@@ -169,11 +184,11 @@ def printError(errorCode, message):
 #   numberStr: the string to convert
 #
 # Return: the integer. May raise an error if an unhandled case occurs
-#TODO handle exceptions for graceful exit
+# TODO handle exceptions for graceful exit
 def extractNumber(numberStr):
-    if not isinstance(numberStr, (int, long)):
+    if not isinstance(numberStr, (int)):
         if numberStr[:2] == "0x":
-           number = int(numberStr, 16)
+            number = int(numberStr, 16)
         elif numberStr[:2] == "0b":
             number = int(numberStr, 2)
         else:
@@ -182,6 +197,7 @@ def extractNumber(numberStr):
         return number
     else:
         return int(numberStr, 10)
+
 
 ################################################################################
 
@@ -195,7 +211,7 @@ if __name__ == "__main__":
             print("   extractNumber number string, returns int")
             exit(1)
 
-    if (len(sys.argv) > 1):
+    if len(sys.argv) > 1:
         if sys.argv[1] == "strToInt" and len(sys.argv) == 3:
             print(strToInt(sys.argv[2]))
         elif sys.argv[1] == "extractNumber" and len(sys.argv) == 3:
