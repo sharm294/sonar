@@ -2,19 +2,19 @@
 # Sonar Configuration File
 #
 # DEPRECATED
-# This file is outdated and Sonar is no longer compatible with it. However, 
-# some of the contents of this file has potentially useful information about 
+# This file is outdated and Sonar is no longer compatible with it. However,
+# some of the contents of this file has potentially useful information about
 # the core JSON format and so it is kept as old documentation.
 ################################################################################
 
 # Optional Meta Data #
-Company: 
-Engineer: 
-Project_Name: 
-Target_Devices: 
-Tool_Versions: 
-Description: 
-Dependencies: 
+Company:
+Engineer:
+Project_Name:
+Target_Devices:
+Tool_Versions:
+Description:
+Dependencies:
 
 # Required Data #
 Module_Name: sample
@@ -24,35 +24,35 @@ Flag_Count: 4 # even if not using, must be non zero for now
 ################################################################################
 
 # This defines the DUT. The type:clock must be specified only on clocks that the
-# the testbench must generate. Size is assumed to be 1 if omitted for signals. 
+# the testbench must generate. Size is assumed to be 1 if omitted for signals.
 # All directions are relative to the DUT.
 #
-# For interfaces, the default is defined in its interface file. Here, AXI-S 
+# For interfaces, the default is defined in its interface file. Here, AXI-S
 # assumes that its name in Verilog is name_channelName (e.g. axis_output_TDATA).
-# c_struct and c_stream are tags needed for C++ to identify the name of the 
-# struct variable that is used to read/write data and the struct used to define 
+# c_struct and c_stream are tags needed for C++ to identify the name of the
+# struct variable that is used to read/write data and the struct used to define
 # the stream (i.e. what channels exist) respectively. These names can be seen in
 # sample.hpp. If C sim is not required, they can be omitted.
 DUT:
   - {direction: input, name: ap_clk, type: clock, period: 20ns}
   - {direction: input, name: ap_rst_n, type: reset}
   - {direction: output, size: 3, name: state_out_V}
-  - {direction: master, name: axis_output, type: axis, clock: ap_clk, 
+  - {direction: master, name: axis_output, type: axis, clock: ap_clk,
     c_struct: axis_word, c_stream: uaxis_l, channels: [
       {name: "TDATA", type: "tdata", size: 64},
       {name: "TVALID", type: "tvalid"},
       {name: "TREADY", type: "tready"},
       {name: "TLAST", type: "tlast"}
     ]}
-  - {direction: slave, name: axis_input, type: axis, clock: ap_clk, 
+  - {direction: slave, name: axis_input, type: axis, clock: ap_clk,
     c_struct: axis_word, c_stream: uaxis_l, channels: [
       {name: "TDATA", type: "tdata", size: 64},
       {name: "TVALID", type: "tvalid"},
       {name: "TREADY", type: "tready"},
       {name: "TLAST", type: "tlast"}
     ]}
-  - {direction: mixed, name: s_axi_ctrl_bus, type: s_axilite, clock: ap_clk, 
-    reset: ap_rst_n, registers: [enable], regAddrs: [0x10], address_range: 4K, 
+  - {direction: mixed, name: s_axi_ctrl_bus, type: s_axilite, clock: ap_clk,
+    reset: ap_rst_n, registers: [enable], regAddrs: [0x10], address_range: 4K,
     address_offset: 0, connectionMode: ip, channels: [
       {name: AWVALID, type: awvalid},
       {name: AWREADY, type: awready},
@@ -75,14 +75,14 @@ DUT:
   - {direction: output, name: ack_V}
 
 # This defines the test vectors. There may be one or more test vectors with each
-# test vector made up of one or more parallel sections. Each parallel section 
-# occurs, as the name suggests, in parallel and independently during the 
-# testbench. Here, YAML syntax for referencing is used with & and *. 
+# test vector made up of one or more parallel sections. Each parallel section
+# occurs, as the name suggests, in parallel and independently during the
+# testbench. Here, YAML syntax for referencing is used with & and *.
 #
 # Fields may also make use of syntax like "{AMHeader,0xAA,0xCC,0,0xE,1,2}" where
-# python will concatenate and bitshift an integer for you using the first string 
+# python will concatenate and bitshift an integer for you using the first string
 # as the type. Refer to include/strToInt.py for more information
-# 
+#
 # Interface payloads can make use of loops that can be nested to send packets.
 Initialize: &Initialize
   - wait: {key: ap_clk} # enforce changing signals at negative edge of clocks
@@ -92,7 +92,7 @@ Initialize: &Initialize
     - {name: ap_rst_n, value: 1}
     - {name: axis_output_TREADY, value: 1}
 
-# This is one test vector that is defined. Whether it gets run is determined by 
+# This is one test vector that is defined. Whether it gets run is determined by
 # enabling it below under Test_Vectors.
 Example: &Example
   - Parallel_Section_0: *Initialize # YAML syntax for a reference/pointer
@@ -130,9 +130,9 @@ Example: &Example
     - macro: END # for C++, the parallel section with this macro must be last
 
 # These wait conditions are inserted directly into the systemverilog testbench
-# and so must be valid syntax (minus any variable substitutions.) Variables may 
-# be $value (referring to the value key in a wait packet). For now, only a 
-# single argument can be passed to the wait. To use the wait, use the key in the 
+# and so must be valid syntax (minus any variable substitutions.) Variables may
+# be $value (referring to the value key in a wait packet). For now, only a
+# single argument can be passed to the wait. To use the wait, use the key in the
 # test vector to identify which wait condition to use.
 #
 # If you use signals in the wait, their names should match the names defined
@@ -142,8 +142,8 @@ Wait_Conditions:
   - {condition: "wait(flags[$value]);", key: "flag"}
   - {condition: "@(negedge ap_clk);", key: ap_clk}
 
-# A list of all the test vectors that are actually called, which can be defined 
-# above and referenced here. Alternatively, they could all be listed here. 
+# A list of all the test vectors that are actually called, which can be defined
+# above and referenced here. Alternatively, they could all be listed here.
 # Test_Vector_x starts at 0 and goes up to n.
 Test_Vectors:
   - Test_Vector_0: *Example

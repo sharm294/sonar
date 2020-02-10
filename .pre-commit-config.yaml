@@ -4,6 +4,18 @@ repos:
     hooks:
       - id: black
         language_version: python3.7
+  - repo: https://gitlab.com/daverona-env/pre-commit-cpp
+    rev: master
+    hooks:
+    - id: clang-format
+      entry: clang-format
+      args: []
+    - id: cpplint
+      args: ["--filter=-build/include_subdir,-readability/braces", "--exclude=sonar/core/templates/template_tb.cpp"]
+    - id: cppcheck
+      # args: ["-i sonar/core/templates/"]
+      entry: cppcheck
+      # args: ["--does_not_exist"]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.2.3
     hooks:

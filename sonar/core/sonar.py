@@ -153,10 +153,10 @@ def setFromConfig(templateTB_sv_str, configFileData):
         templateTB_sv_str = templateTB_sv_str.replace(searchStr, replaceStr)
 
     templateTB_sv_str = templateTB_sv_str.replace(
-        "#CURR_DATE#", str(datetime.datetime.now())
+        "SONAR_CURR_DATE", str(datetime.datetime.now())
     )
     templateTB_sv_str = templateTB_sv_str.replace(
-        "#DATA_FILE#", '"' + configFileData["metadata"]["Module_Name"] + '_sv.dat"'
+        "SONAR_DATA_FILE", '"' + configFileData["metadata"]["Module_Name"] + '_sv.dat"'
     )
 
     return templateTB_sv_str
@@ -255,18 +255,19 @@ def sonar(mode, modeArg, filepath, languages):
 
     if enable_C:
         templateTB_c_str = templateTB_c_str.replace(
-            "#FUNCTION#", configFileData["metadata"]["Module_Name"].upper()
+            "SONAR_FUNCTION", configFileData["metadata"]["Module_Name"].upper()
         )
         dataFile_c = dataFileName.replace("_core.json", "_c.dat")
         templateTB_c_str = templateTB_c_str.replace(
-            "#DATA_FILE#", '"' + dataFile_c + '"'
+            "SONAR_DATA_FILE", '"' + dataFile_c + '"'
         )
         templateTB_c_str = templateTB_c_str.replace(
-            "#HEADER_FILE#", '"' + configFileData["metadata"]["Module_Name"] + '.hpp"'
+            "SONAR_HEADER_FILE",
+            '"' + configFileData["metadata"]["Module_Name"] + '.hpp"',
         )
 
     vectorNum = len(configFileData["vectors"])
-    templateTB_sv_str = templateTB_sv_str.replace("#MAX_VECTORS#", str(vectorNum))
+    templateTB_sv_str = templateTB_sv_str.replace("SONAR_MAX_VECTORS", str(vectorNum))
 
     # ------------------------------------------------------------------------------#
     # Read configuration file into separate structures for easier access
@@ -345,7 +346,7 @@ def sonar(mode, modeArg, filepath, languages):
 
     time_format = "$timeformat("
     with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "#TIME_FORMAT#" in line]
+        l = [line for line in f if "SONAR_TIME_FORMAT" in line]
     leading_spaces = getIndentation(l)
     precision = str(configFileData["metadata"]["Time_Format"]["precision"])
     timeFormat = configFileData["metadata"]["Time_Format"]["unit"]
@@ -366,13 +367,13 @@ def sonar(mode, modeArg, filepath, languages):
             1, "Unknown time format: " + configFileData["metadata"]["Time_Format"]
         )
         exit(1)
-    templateTB_sv_str = templateTB_sv_str.replace("#TIME_FORMAT#", time_format)
+    templateTB_sv_str = templateTB_sv_str.replace("SONAR_TIME_FORMAT", time_format)
 
     # ------------------------------------------------------------------------------#
     # Import any packages that interfaces may use
     imports = ""
     with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "#IMPORT_PACKAGES#" in line]
+        l = [line for line in f if "SONAR_IMPORT_PACKAGES" in line]
     leading_spaces = getIndentation(l)
     for name, interface in usedInterfaces.items():
         if hasattr(interface, "import_packages_global"):
@@ -382,13 +383,13 @@ def sonar(mode, modeArg, filepath, languages):
             currInterface = usedInterfaces[interface["type"]]
             if hasattr(currInterface, "import_packages_local"):
                 imports = currInterface.import_packages_local(imports, interface)
-    templateTB_sv_str = templateTB_sv_str.replace("#IMPORT_PACKAGES#", imports[:-1])
+    templateTB_sv_str = templateTB_sv_str.replace("SONAR_IMPORT_PACKAGES", imports[:-1])
 
     # ------------------------------------------------------------------------------#
     # Add any statements an interface might require within an initial block
     initial_prologue = ""
     with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "#INITIAL_PROLOGUE#" in line]
+        l = [line for line in f if "SONAR_INITIAL_PROLOGUE" in line]
     leading_spaces = getIndentation(l)
     for interfaces in (interface_in, interface_out):
         for interface in interfaces:
@@ -399,14 +400,14 @@ def sonar(mode, modeArg, filepath, languages):
                 )
                 initial_prologue = replaceVar(initial_prologue, interface)
     templateTB_sv_str = templateTB_sv_str.replace(
-        "#INITIAL_PROLOGUE#", initial_prologue[:-1]
+        "SONAR_INITIAL_PROLOGUE", initial_prologue[:-1]
     )
 
     # ------------------------------------------------------------------------------#
     # Add any statements an interface might require within outside an initial block
     exerciser_prologue = ""
     with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "#EXERCISER_PROLOGUE#" in line]
+        l = [line for line in f if "SONAR_EXERCISER_PROLOGUE" in line]
     leading_spaces = getIndentation(l)
     for interfaces in (interface_in, interface_out):
         for interface in interfaces:
@@ -417,7 +418,7 @@ def sonar(mode, modeArg, filepath, languages):
                 )
                 exerciser_prologue = replaceVar(exerciser_prologue, interface)
     templateTB_sv_str = templateTB_sv_str.replace(
-        "#EXERCISER_PROLOGUE#", exerciser_prologue[:-1]
+        "SONAR_EXERCISER_PROLOGUE", exerciser_prologue[:-1]
     )
 
     # ------------------------------------------------------------------------------#
@@ -432,7 +433,7 @@ def sonar(mode, modeArg, filepath, languages):
 
     exerciserPorts = ""
     with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "#EXERCISER_PORTS#" in line]
+        l = [line for line in f if "SONAR_EXERCISER_PORTS" in line]
     leading_spaces = getIndentation(l)
     for clock in clocks_in:
         if exerciserPorts != "":
@@ -476,7 +477,7 @@ def sonar(mode, modeArg, filepath, languages):
             exerciserPorts += "[" + str(int(signal["size"]) - 1) + ":0] "
         exerciserPorts += signal["name"] + ",\n"
     templateTB_sv_str = templateTB_sv_str.replace(
-        "#EXERCISER_PORTS#", exerciserPorts[:-2]
+        "SONAR_EXERCISER_PORTS", exerciserPorts[:-2]
     )
 
     # ------------------------------------------------------------------------------#
@@ -484,7 +485,7 @@ def sonar(mode, modeArg, filepath, languages):
 
     dut_inst = ""
     with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "#DUT_INST#" in line]
+        lineStr = [line for line in f if "SONAR_DUT_INST" in line]
     leading_spaces = getIndentation(lineStr)
     dut_inst += (
         configFileData["metadata"]["Module_Name"]
@@ -554,14 +555,14 @@ def sonar(mode, modeArg, filepath, languages):
             )
     dut_inst = dut_inst[:-2] + "\n"
     dut_inst += leading_spaces + ");"
-    templateTB_sv_str = templateTB_sv_str.replace("#DUT_INST#", dut_inst)
+    templateTB_sv_str = templateTB_sv_str.replace("SONAR_DUT_INST", dut_inst)
 
     # ------------------------------------------------------------------------------#
     # Instantiate the exerciser
 
     exerciser_int = ""
     with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "#EXERCISER_INT#" in line]
+        lineStr = [line for line in f if "SONAR_EXERCISER_INT" in line]
     leading_spaces = getIndentation(lineStr)
     exerciser_int += "exerciser exerciser_i(\n"
     for index, clock in enumerate(clocks_in):
@@ -628,13 +629,15 @@ def sonar(mode, modeArg, filepath, languages):
         )
     exerciser_int = exerciser_int[:-2] + "\n"
     exerciser_int += leading_spaces + ");\n"
-    templateTB_sv_str = templateTB_sv_str.replace("#EXERCISER_INT#", exerciser_int[:-1])
+    templateTB_sv_str = templateTB_sv_str.replace(
+        "SONAR_EXERCISER_INT", exerciser_int[:-1]
+    )
 
     # ------------------------------------------------------------------------------#
     # Instantiate any IPs required by interfaces
     ip_inst = ""
     with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "#IP_INST#" in line]
+        l = [line for line in f if "SONAR_IP_INST" in line]
     leading_spaces = getIndentation(l)
     for interfaces in (interface_in, interface_out):
         for interface in interfaces:
@@ -643,7 +646,7 @@ def sonar(mode, modeArg, filepath, languages):
                 ip_inst = currInterface.instantiate(
                     ip_inst, interface, leading_spaces, tabSize
                 )
-    templateTB_sv_str = templateTB_sv_str.replace("#IP_INST#", ip_inst[:-1])
+    templateTB_sv_str = templateTB_sv_str.replace("SONAR_IP_INST", ip_inst[:-1])
 
     # ------------------------------------------------------------------------------#
     # Declare all the signals connecting the exerciser and the DUT
@@ -651,7 +654,7 @@ def sonar(mode, modeArg, filepath, languages):
     tb_signal_list = ""
     maxSignalSize = 0
     with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "#TB_SIGNAL_LIST#" in line]
+        lineStr = [line for line in f if "SONAR_TB_SIGNAL_LIST" in line]
     leading_spaces = getIndentation(lineStr)
     for clock in clocks_in:
         if tb_signal_list != "":
@@ -734,12 +737,14 @@ def sonar(mode, modeArg, filepath, languages):
             if int(channel["size"]) > maxSignalSize:
                 maxSignalSize = int(channel["size"])
     templateTB_sv_str = templateTB_sv_str.replace(
-        "#TB_SIGNAL_LIST#", tb_signal_list[:-1]
+        "SONAR_TB_SIGNAL_LIST", tb_signal_list[:-1]
     )
-    templateTB_sv_str = templateTB_sv_str.replace("#MAX_DATA_SIZE#", str(maxSignalSize))
+    templateTB_sv_str = templateTB_sv_str.replace(
+        "SONAR_MAX_DATA_SIZE", str(maxSignalSize)
+    )
     if enable_C:
         templateTB_c_str = templateTB_c_str.replace(
-            "#MAX_DATA_SIZE#", str(maxSignalSize)
+            "SONAR_MAX_DATA_SIZE", str(maxSignalSize)
         )
 
     # ------------------------------------------------------------------------------#
@@ -749,7 +754,7 @@ def sonar(mode, modeArg, filepath, languages):
 
     ifelse_signal = ""
     with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "#IF_ELSE_SIGNAL#" in line]
+        lineStr = [line for line in f if "SONAR_IF_ELSE_SIGNAL" in line]
     leading_spaces = getIndentation(lineStr)
     for signal in signals_in:
         if ifelse_signal != "":
@@ -810,7 +815,7 @@ def sonar(mode, modeArg, filepath, languages):
                         + "end\n"
                     )
     templateTB_sv_str = templateTB_sv_str.replace(
-        "#IF_ELSE_SIGNAL#", ifelse_signal[:-1]
+        "SONAR_IF_ELSE_SIGNAL", ifelse_signal[:-1]
     )
 
     # for C++ - not currently used since it's not being written to C data file
@@ -818,7 +823,7 @@ def sonar(mode, modeArg, filepath, languages):
     if enable_C:
         ifelse_signal = ""
         with open(templateTB_c, "r") as f:
-            lineStr = [line for line in f if "#ELSE_IF_SIGNAL#" in line]
+            lineStr = [line for line in f if "SONAR_ELSE_IF_SIGNAL" in line]
         leading_spaces = getIndentation(lineStr)
         for signal in signals_in:
             if "type" not in signal:
@@ -836,7 +841,7 @@ def sonar(mode, modeArg, filepath, languages):
         ifelse_signal = ""  # clear this since it's not being used right now
 
         templateTB_c_str = templateTB_c_str.replace(
-            "#ELSE_IF_SIGNAL#", ifelse_signal[:-1]
+            "SONAR_ELSE_IF_SIGNAL", ifelse_signal[:-1]
         )
 
     # ------------------------------------------------------------------------------#
@@ -846,7 +851,7 @@ def sonar(mode, modeArg, filepath, languages):
 
     elseif_interfaceIn = ""
     with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "#ELSE_IF_INTERFACE_IN#" in line]
+        lineStr = [line for line in f if "SONAR_ELSE_IF_INTERFACE_IN" in line]
     leading_spaces = getIndentation(lineStr)
     for interface in interface_in:
         currInterface = usedInterfaces[interface["type"]]
@@ -884,12 +889,12 @@ def sonar(mode, modeArg, filepath, languages):
             )
         elseif_interfaceIn += leading_spaces + "end\n"
     templateTB_sv_str = templateTB_sv_str.replace(
-        "#ELSE_IF_INTERFACE_IN#", elseif_interfaceIn[:-1]
+        "SONAR_ELSE_IF_INTERFACE_IN", elseif_interfaceIn[:-1]
     )
 
     elseif_interfaceOut = ""
     with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "#ELSE_IF_INTERFACE_OUT#" in line]
+        lineStr = [line for line in f if "SONAR_ELSE_IF_INTERFACE_OUT" in line]
     leading_spaces = getIndentation(lineStr)
     for interface in interface_out:
         currInterface = usedInterfaces[interface["type"]]
@@ -907,7 +912,7 @@ def sonar(mode, modeArg, filepath, languages):
         )
         elseif_interfaceOut += leading_spaces + "end\n"
     templateTB_sv_str = templateTB_sv_str.replace(
-        "#ELSE_IF_INTERFACE_OUT#", elseif_interfaceOut[:-1]
+        "SONAR_ELSE_IF_INTERFACE_OUT", elseif_interfaceOut[:-1]
     )
 
     # for C++
@@ -915,7 +920,7 @@ def sonar(mode, modeArg, filepath, languages):
     if enable_C:
         elseif_interfaceIn = ""
         with open(templateTB_c, "r") as f:
-            lineStr = [line for line in f if "#ELSE_IF_INTERFACE_IN#" in line]
+            lineStr = [line for line in f if "SONAR_ELSE_IF_INTERFACE_IN" in line]
         leading_spaces = getIndentation(lineStr)
         for interface in interface_in:
             currInterface = usedInterfaces[interface["type"]]
@@ -923,12 +928,12 @@ def sonar(mode, modeArg, filepath, languages):
                 elseif_interfaceIn, ifelse_signal, interface, leading_spaces, tabSize
             )
         templateTB_c_str = templateTB_c_str.replace(
-            "#ELSE_IF_INTERFACE_IN#", elseif_interfaceIn[:-1]
+            "SONAR_ELSE_IF_INTERFACE_IN", elseif_interfaceIn[:-1]
         )
 
         elseif_interfaceOut = ""
         with open(templateTB_c, "r") as f:
-            lineStr = [line for line in f if "#ELSE_IF_INTERFACE_OUT#" in line]
+            lineStr = [line for line in f if "SONAR_ELSE_IF_INTERFACE_OUT" in line]
         leading_spaces = getIndentation(lineStr)
         for interface in interface_out:
             currInterface = usedInterfaces[interface["type"]]
@@ -940,7 +945,7 @@ def sonar(mode, modeArg, filepath, languages):
                 tabSize,
             )
         templateTB_c_str = templateTB_c_str.replace(
-            "#ELSE_IF_INTERFACE_OUT#", elseif_interfaceOut[:-1]
+            "SONAR_ELSE_IF_INTERFACE_OUT", elseif_interfaceOut[:-1]
         )
 
     # ------------------------------------------------------------------------------#
@@ -953,7 +958,7 @@ def sonar(mode, modeArg, filepath, languages):
     # regex_int_str = re.compile("([0-9]+)([a-z]+)")
     regex_int_str = re.compile("([0-9]+([\.][0-9]+)*)([a-z]+)")
     with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "#INITIAL_CLOCK#" in line]
+        lineStr = [line for line in f if "SONAR_INITIAL_CLOCK" in line]
     leading_spaces = getIndentation(lineStr)
     for clock in clocks_in:
         if initial_clock != "":
@@ -991,15 +996,17 @@ def sonar(mode, modeArg, filepath, languages):
             largestClock = clock["name"]
         initial_clock += leading_spaces + tabSize + "end\n"
         initial_clock += leading_spaces + "end\n"
-    templateTB_sv_str = templateTB_sv_str.replace("#INITIAL_CLOCK#", initial_clock[:-1])
-    templateTB_sv_str = templateTB_sv_str.replace("#VECTOR_CLOCK#", largestClock)
+    templateTB_sv_str = templateTB_sv_str.replace(
+        "SONAR_INITIAL_CLOCK", initial_clock[:-1]
+    )
+    templateTB_sv_str = templateTB_sv_str.replace("SONAR_VECTOR_CLOCK", largestClock)
 
     # ------------------------------------------------------------------------------#
     # Create the if-else tree for waits
     # TODO need to handle this if waitConditions is empty (sv will error out)
     if_else_wait = ""
     with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "#IF_ELSE_WAIT#" in line]
+        lineStr = [line for line in f if "SONAR_IF_ELSE_WAIT" in line]
     leading_spaces = getIndentation(lineStr)
     for condition in waitConditions:
         if if_else_wait != "":
@@ -1010,7 +1017,9 @@ def sonar(mode, modeArg, filepath, languages):
             conditionStr += ";"
         if_else_wait += leading_spaces + tabSize + conditionStr + "\n"
         if_else_wait += leading_spaces + "end\n"
-    templateTB_sv_str = templateTB_sv_str.replace("#IF_ELSE_WAIT#", if_else_wait[:-1])
+    templateTB_sv_str = templateTB_sv_str.replace(
+        "SONAR_IF_ELSE_WAIT", if_else_wait[:-1]
+    )
 
     # ------------------------------------------------------------------------------#
     # This was meant to handle the use of interfaces in the testbench. For now,
@@ -1018,7 +1027,7 @@ def sonar(mode, modeArg, filepath, languages):
 
     # tb_axis_list = ""
     # with open(templateTB_sv,'r') as f:
-    #     lineStr = [line for line in f if "#TB_AXIS_LIST#" in line]
+    #     lineStr = [line for line in f if "SONAR_TB_AXIS_LIST" in line]
     # leading_spaces = getIndentation(lineStr)
     # for interface in interface_in:
     #     currInterface = usedInterfaces[interface['type']]
@@ -1084,11 +1093,11 @@ def sonar(mode, modeArg, filepath, languages):
     #             "(" + axis_out['name'] + "_" + interface['name'] + "),\n"
     #     tb_axis_list = tb_axis_list[:-2] + "\n"
     #     tb_axis_list += leading_spaces + ");\n"
-    # templateTB_sv_str = templateTB_sv_str.replace("#TB_AXIS_LIST#", tb_axis_list[:-1])
+    # templateTB_sv_str = templateTB_sv_str.replace("SONAR_TB_AXIS_LIST", tb_axis_list[:-1])
 
     # axis_assign = ""
     # with open(templateTB_sv,'r') as f:
-    #     lineStr = [line for line in f if "#AXIS_ASSIGN#" in line]
+    #     lineStr = [line for line in f if "SONAR_AXIS_ASSIGN" in line]
     # leading_spaces = getIndentation(lineStr)
     # for axis_in in axis_interfaces_in:
     #     if axis_assign != "":
@@ -1098,7 +1107,7 @@ def sonar(mode, modeArg, filepath, languages):
     #     if axis_assign != "":
     #         axis_assign += leading_spaces
     #     axis_assign += axis_out['name'] + "_s.read();\n"
-    # templateTB_sv_str = templateTB_sv_str.replace("#AXIS_ASSIGN#", axis_assign[:-1])
+    # templateTB_sv_str = templateTB_sv_str.replace("SONAR_AXIS_ASSIGN", axis_assign[:-1])
 
     # ------------------------------------------------------------------------------#
     # Create a JSON file (for legacy reasons) for the next script to work with.
@@ -1114,7 +1123,9 @@ def sonar(mode, modeArg, filepath, languages):
         usedInterfaces,
     )
 
-    templateTB_sv_str = templateTB_sv_str.replace("#MAX_PARALLEL#", str(parallelNum))
+    templateTB_sv_str = templateTB_sv_str.replace(
+        "SONAR_MAX_PARALLEL", str(parallelNum)
+    )
 
     dataFile.close()
     configFile.close()
@@ -1150,17 +1161,17 @@ def sonar(mode, modeArg, filepath, languages):
                 line = f.readline()
 
     with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "#MAX_ARG_NUM#" in line]
+        lineStr = [line for line in f if "SONAR_MAX_ARG_NUM" in line]
     leading_spaces = getIndentation(lineStr)
-    templateTB_sv_str = templateTB_sv_str.replace("#MAX_ARG_NUM#", str(maxArgs))
+    templateTB_sv_str = templateTB_sv_str.replace("SONAR_MAX_ARG_NUM", str(maxArgs))
 
     if enable_C:
-        templateTB_c_str = templateTB_c_str.replace("#MAX_ARG_NUM#", str(maxArgs))
+        templateTB_c_str = templateTB_c_str.replace("SONAR_MAX_ARG_NUM", str(maxArgs))
         with open(templateTB_c, "r") as f:
-            lineStr = [line for line in f if "#MAX_ARG_NUM#" in line]
+            lineStr = [line for line in f if "SONAR_MAX_ARG_NUM" in line]
         leading_spaces = getIndentation(lineStr)
         templateTB_c_str = templateTB_c_str.replace(
-            "#MAX_STRING_SIZE#", str(maxCharLength + 1)
+            "SONAR_MAX_STRING_SIZE", str(maxCharLength + 1)
         )  # /0 char
 
     tbFile_sv.write(templateTB_sv_str)

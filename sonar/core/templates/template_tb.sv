@@ -1,34 +1,34 @@
-`timescale #TIMESCALE#
+`timescale SONAR_TIMESCALE
 ////////////////////////////////////////////////////////////////////////////////
-// Company: #COMPANY#
-// Engineer: #ENGINEER#
+// Company: SONAR_COMPANY
+// Engineer: SONAR_ENGINEER
 //
-// Create Date: #CURR_DATE#
-// Module Name: #MODULE_NAME#
-// Project Name: #PROJECT_NAME#
-// Target Devices: #TARGET_DEVICES#
-// Tool Versions: #TOOL_VERSIONS#
-// Description: #DESCRIPTION#
+// Create Date: SONAR_CURR_DATE
+// Module Name: SONAR_MODULE_NAME
+// Project Name: SONAR_PROJECT_NAME
+// Target Devices: SONAR_TARGET_DEVICES
+// Tool Versions: SONAR_TOOL_VERSIONS
+// Description: SONAR_DESCRIPTION
 //
-// Dependencies: #DEPENDENCIES#
+// Dependencies: SONAR_DEPENDENCIES
 //
 ////////////////////////////////////////////////////////////////////////////////
 
 //filename for the input data file
-string dataFileName = #DATA_FILE#;
+string dataFileName = SONAR_DATA_FILE;
 
-localparam MAX_DATA_SIZE = #MAX_DATA_SIZE#; //max width of the data to be read/writtn
-localparam MAX_VECTORS = #MAX_VECTORS#; //number of test vectors
-localparam MAX_PARALLEL = #MAX_PARALLEL#;  //max number of parallel sections in any vector
+localparam MAX_DATA_SIZE = SONAR_MAX_DATA_SIZE; //max width of the data to be read/writtn
+localparam MAX_VECTORS = SONAR_MAX_VECTORS; //number of test vectors
+localparam MAX_PARALLEL = SONAR_MAX_PARALLEL;  //max number of parallel sections in any vector
 localparam MAX_SEEK_SIZE = 64; //base 2 log of the max number to fseek
-localparam MAX_ARG_NUM = #MAX_ARG_NUM#;
+localparam MAX_ARG_NUM = SONAR_MAX_ARG_NUM;
 localparam MAX_ARG_SIZE = $clog2(MAX_ARG_NUM) + 1;
 
-#IMPORT_PACKAGES#
+SONAR_IMPORT_PACKAGES
 
 //This module provides the stimulus for the DUT by reading the data file
 module exerciser (
-    #EXERCISER_PORTS#
+    SONAR_EXERCISER_PORTS
 );
 
     logic [MAX_SEEK_SIZE-1:0] parallelSections [MAX_PARALLEL];
@@ -50,14 +50,14 @@ module exerciser (
         error = 0;
         done = 0;
         if (packetType_par == "wait") begin
-            #IF_ELSE_WAIT#
+            SONAR_IF_ELSE_WAIT
             else begin
                 $display({"Unhandled case for wait type: ", interfaceType_par});
                 error = 1'b1;
             end
         end
         else if (packetType_par == "signal") begin
-            #IF_ELSE_SIGNAL#
+            SONAR_IF_ELSE_SIGNAL
             else begin
                 $display({"Unhandled case for signal type: ",
                     interfaceType_par});
@@ -86,7 +86,7 @@ module exerciser (
             end
         end
         else if (packetType_par == "timestamp") begin
-            #TIME_FORMAT#
+            SONAR_TIME_FORMAT
             if(interfaceType_par == "INIT") begin
                 timeRef = $time;
             end
@@ -101,8 +101,8 @@ module exerciser (
             $display("Test vector %0d complete", args[0]);
             done = 1'b1;
         end
-        #ELSE_IF_INTERFACE_IN#
-        #ELSE_IF_INTERFACE_OUT#
+        SONAR_ELSE_IF_INTERFACE_IN
+        SONAR_ELSE_IF_INTERFACE_OUT
         else begin
             $display({"Unhandled case: ", packetType_par, " " ,
                 interfaceType_par});
@@ -113,13 +113,13 @@ module exerciser (
     endtask
 
     //clock generation
-    #INITIAL_CLOCK#
+    SONAR_INITIAL_CLOCK
 
     int vectorCount;
     time timeRef;
-    logic [#FLAG_COUNT#-1:0] flags = 0;
+    logic [SONAR_FLAG_COUNT-1:0] flags = 0;
 
-    #EXERCISER_PROLOGUE#
+    SONAR_EXERCISER_PROLOGUE
 
     initial begin
         int status;
@@ -131,7 +131,7 @@ module exerciser (
         int dataFile_0;
         int parallelSectionCount;
 
-        #INITIAL_PROLOGUE#
+        SONAR_INITIAL_PROLOGUE
 
         dataFile_0 = $fopen(dataFileName, "r");
         status = $fscanf(dataFile_0, "%s %s %d\n", packetType, interfaceType,
@@ -156,7 +156,7 @@ module exerciser (
                     updateEnd = 1;
                     wait(|testVectorEnd == 1 && threadSync == threadSync_golden);
                     updateEnd = 0;
-                    @(posedge #VECTOR_CLOCK#)
+                    @(posedge SONAR_VECTOR_CLOCK)
                     for(int z = 0; z < MAX_PARALLEL; z++) begin
                         parallelSections[z] = 0;
                     end
@@ -183,7 +183,7 @@ module exerciser (
     end
 
     logic [MAX_PARALLEL-1:0] errorCheck_latched = 0;
-    always_ff @(posedge #VECTOR_CLOCK#) begin
+    always_ff @(posedge SONAR_VECTOR_CLOCK) begin
         errorCheck_latched <= errorCheck | errorCheck_latched;
     end
 
@@ -230,15 +230,15 @@ module exerciser (
 
 endmodule
 
-module #MODULE_NAME#_tb();
+module SONAR_MODULE_NAME_tb();
 
-    #TB_SIGNAL_LIST#
+    SONAR_TB_SIGNAL_LIST
 
-    #EXERCISER_INT#
+    SONAR_EXERCISER_INT
 
-    #IP_INST#
+    SONAR_IP_INST
 
     //initialize DUT
-    #DUT_INST#
+    SONAR_DUT_INST
 
 endmodule

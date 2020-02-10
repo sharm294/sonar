@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# This shell script initializes Sonar. It sets up the SONAR_PATH and 
-# SONAR_VIVADO_HLS environment variables. It also adds Sonar to the 
+# This shell script initializes Sonar. It sets up the SONAR_PATH and
+# SONAR_VIVADO_HLS environment variables. It also adds Sonar to the
 # PYTHONPATH environment variable so python scripts can be run from anywhere.
 
 configFile=~/.sonar

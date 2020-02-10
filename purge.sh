@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script purges Sonar from the environment and bashrc. The repo can then 
+# This script purges Sonar from the environment and bashrc. The repo can then
 # be deleted without any other trace
 
 make clean
