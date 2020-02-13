@@ -1,10 +1,116 @@
 #!/usr/bin/env python
-import sonar
+import argparse
+import logging.config
+import os
+
+from sonar.cli import *
+from sonar.include import ReturnValue
+
+
+def activate(subparser):
+    parser_activate = subparser.add_parser(
+        "activate", help="Activate an environment profile"
+    )
+
+    parser_activate.add_argument(
+        "profile",
+        type=str,
+        help="Name of the profile to activate. See 'sonar profile --help'",
+    )
+    parser_activate.set_defaults(func=handle_activate)
+
+
+def env(subparser):
+    parser_env = subparser.add_parser("env", help="Manage the sonar environment")
+
+    subparser_env = parser_env.add_subparsers(title="Commands", metavar="command")
+
+    env_add_types = ", ".join(ENV_ADD_TYPES)
+    subparser_env_add = subparser_env.add_parser(
+        "add",
+        help="Add to sonar's environment",
+        add_help=False,
+        description=f"""Adds an environment variable to sonar's database. These saved
+        variables can then be used to create one or more profiles that can be
+        activated through 'sonar activate'.
+
+        The type must be one of: {env_add_types}.
+
+        Names must be unique within a variable type.
+        """,
+    )
+    parser_group = subparser_env_add.add_argument_group("Arguments")
+    parser_group.add_argument("type", type=str, help="Type of env variable to add")
+    parser_group.add_argument("name", type=str, help="Name of variable")
+    parser_group.add_argument("value", type=str, help="Value to variable")
+    subparser_env_add.set_defaults(func=handler_env_add, parser=subparser_env_add)
+    add_help(subparser_env_add)
+
+
+def add_help(parser):
+    parser_group = parser.add_argument_group("Options")
+    parser_group.add_argument(
+        "-h", "--help", action="help", help="show this help message and exit"
+    )
+
+
+def configure_logging():
+    # log_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logging.ini")
+    config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "fileFormatter": {
+                "format": "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s",
+                "datafmt": "%H:%M:%S",
+            },
+            "consoleFormatter": {
+                "format": "%(levelname)s - %(message)s",
+                "datafmt": "",
+            },
+        },
+        "handlers": {
+            "consoleHandler": {
+                "class": "logging.StreamHandler",
+                "level": "WARNING",
+                "formatter": "consoleFormatter",
+                "stream": "ext://sys.stdout",
+            },
+            "fileHandler": {
+                "class": "logging.FileHandler",
+                "level": "INFO",
+                "formatter": "fileFormatter",
+                "filename": "/home/sharm294/sonar.log",
+                "mode": "a",
+            },
+        },
+        "loggers": {
+            "": {"level": "DEBUG", "handlers": ["consoleHandler", "fileHandler"]}
+        },
+    }
+
+    logging.config.dictConfig(config)
 
 
 def main():
-    print(f"Starting sonar from {sonar.__file__}")
+    parser = argparse.ArgumentParser(
+        prog="sonar",
+        description="sonar is a tool to manage and test your hardware projects.",
+        # usage="%(prog)s [-h] command [command args]",
+        add_help=False,
+    )
+    subparser = parser.add_subparsers(title="Commands", metavar="command")
+    activate(subparser)
+    env(subparser)
+
+    add_help(parser)
+
+    args = parser.parse_args()
+    retval = args.func(args)
+    if retval != ReturnValue.SONAR_OK:
+        exit(retval)
 
 
 if __name__ == "__main__":
+    configure_logging()
     main()
