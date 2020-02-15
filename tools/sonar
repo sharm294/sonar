@@ -2,9 +2,12 @@
 import argparse
 import logging.config
 import os
+import dbm
+import shelve
 
+import sonar.database
 from sonar.cli import *
-from sonar.include import ReturnValue
+from sonar.include import ReturnValue, Constants, sonarrc_exists
 
 
 def activate(subparser):
@@ -20,42 +23,94 @@ def activate(subparser):
     parser_activate.set_defaults(func=handle_activate)
 
 
-def env(subparser):
-    parser_env = subparser.add_parser("env", help="Manage the sonar environment")
-
-    subparser_env = parser_env.add_subparsers(title="Commands", metavar="command")
-
-    env_add_types = ", ".join(ENV_ADD_TYPES)
-    subparser_env_add = subparser_env.add_parser(
-        "add",
-        help="Add to sonar's environment",
-        add_help=False,
-        description=f"""Adds an environment variable to sonar's database. These saved
-        variables can then be used to create one or more profiles that can be
-        activated through 'sonar activate'.
-
-        The type must be one of: {env_add_types}.
-
-        Names must be unique within a variable type.
-        """,
+def env(parser):
+    subparser = parser.add_parser(
+        "env", help="Manage the sonar environment", add_help=False
     )
-    parser_group = subparser_env_add.add_argument_group("Arguments")
-    parser_group.add_argument("type", type=str, help="Type of env variable to add")
-    parser_group.add_argument("name", type=str, help="Name of variable")
-    parser_group.add_argument("value", type=str, help="Value to variable")
-    subparser_env_add.set_defaults(func=handler_env_add, parser=subparser_env_add)
-    add_help(subparser_env_add)
+    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+
+    env_types = ", ".join(vars(sonar.database.Environment()))
+
+    def add():
+        command = subsubparser.add_parser(
+            "add",
+            help="Add to sonar's environment database",
+            add_help=False,
+            description=f"""Adds an environment variable to sonar's database. These saved
+            variables can then be used to create one or more profiles that can be
+            activated through 'sonar activate'.
+
+            The type must be one of: {env_types}.
+
+            Names must be unique within a variable type.
+            """,
+        )
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument("type", type=str, help="Type of env variable to add")
+        command_group.add_argument("name", type=str, help="Name of variable")
+        command_group.add_argument("value", type=str, help="Value to set to variable")
+        command.set_defaults(func=handler_env_add)
+        add_help(command)
+
+    def remove():
+        command = subsubparser.add_parser(
+            "remove",
+            help="Remove from sonar's environment database",
+            add_help=False,
+            description=f"""Removes an environment variable from sonar's database.
+
+            The type must be one of: {env_types}.
+            """,
+        )
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument(
+            "type", type=str, help="Type of env variable to remove"
+        )
+        command_group.add_argument("name", type=str, help="Name of variable")
+        command.set_defaults(func=handler_env_remove)
+        add_help(command)
+
+    def edit():
+        command = subsubparser.add_parser(
+            "edit",
+            help="Edit a variable in sonar's environment database",
+            add_help=False,
+            description=f"""Removes an environment variable from sonar's database.
+
+            The type must be one of: {env_types}.
+            """,
+        )
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument(
+            "type", type=str, help="Type of env variable to edit"
+        )
+        command_group.add_argument("name", type=str, help="Name of variable")
+        command_group.add_argument("value", type=str, help="Value to set to variable")
+        command.set_defaults(func=handler_env_edit)
+        add_help(command)
+
+    add()
+    remove()
+    edit()
+    add_help(subparser)
 
 
 def add_help(parser):
-    parser_group = parser.add_argument_group("Options")
-    parser_group.add_argument(
+    command_group = parser.add_argument_group("Options")
+    command_group.add_argument(
         "-h", "--help", action="help", help="show this help message and exit"
     )
 
 
+def init(subparser):
+    parser_activate = subparser.add_parser(
+        "init", help="Initialize sonar. Run for a new user using sonar"
+    )
+
+    parser_activate.set_defaults(func=handle_init)
+
+
 def configure_logging():
-    # log_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logging.ini")
     config = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -80,7 +135,7 @@ def configure_logging():
                 "class": "logging.FileHandler",
                 "level": "INFO",
                 "formatter": "fileFormatter",
-                "filename": "/home/sharm294/sonar.log",
+                "filename": Constants.SONAR_LOG,
                 "mode": "a",
             },
         },
@@ -102,15 +157,20 @@ def main():
     subparser = parser.add_subparsers(title="Commands", metavar="command")
     activate(subparser)
     env(subparser)
+    init(subparser)
 
     add_help(parser)
 
     args = parser.parse_args()
+    try:
+        db = shelve.open(Constants.SONAR_DATABASE, "r")
+    except dbm.error:
+        handle_init(None)
+    configure_logging()
     retval = args.func(args)
     if retval != ReturnValue.SONAR_OK:
         exit(retval)
 
 
 if __name__ == "__main__":
-    configure_logging()
     main()
