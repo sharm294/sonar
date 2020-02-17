@@ -1,26 +1,24 @@
 #!/usr/bin/env python
 import argparse
 import logging.config
-import os
 import dbm
 import shelve
+import textwrap
 
 import sonar.database
-from sonar.cli import *
-from sonar.include import ReturnValue, Constants, sonarrc_exists
+import sonar.cli as cli
+from sonar.include import ReturnValue, Constants
 
 
-def activate(subparser):
-    parser_activate = subparser.add_parser(
-        "activate", help="Activate an environment profile"
-    )
+def activate(parser):
+    subparser = parser.add_parser("activate", help="Activate an environment profile")
 
-    parser_activate.add_argument(
+    subparser.add_argument(
         "profile",
         type=str,
         help="Name of the profile to activate. See 'sonar profile --help'",
     )
-    parser_activate.set_defaults(func=handle_activate)
+    subparser.set_defaults(func=cli.handle_activate)
 
 
 def env(parser):
@@ -36,20 +34,25 @@ def env(parser):
             "add",
             help="Add to sonar's environment database",
             add_help=False,
-            description=f"""Adds an environment variable to sonar's database. These saved
-            variables can then be used to create one or more profiles that can be
-            activated through 'sonar activate'.
+            description=textwrap.dedent(
+                f"""\
+                Adds an environment variable to sonar's database. These saved
+                variables can then be used to create one or more profiles that can be
+                activated through 'sonar activate'.
 
-            The type must be one of: {env_types}.
+                The type must be one of: {env_types}.
 
-            Names must be unique within a variable type.
-            """,
+                IDs must be unique within a variable type.
+                """
+            ),
         )
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument("type", type=str, help="Type of env variable to add")
-        command_group.add_argument("name", type=str, help="Name of variable")
-        command_group.add_argument("value", type=str, help="Value to set to variable")
-        command.set_defaults(func=handler_env_add)
+        command_group.add_argument("ID", type=str, help="ID of variable")
+        command_group.add_argument(
+            "arg", type=str, nargs="+", help="Value to set to variable"
+        )
+        command.set_defaults(func=cli.handler_env_add)
         add_help(command)
 
     def remove():
@@ -67,7 +70,7 @@ def env(parser):
             "type", type=str, help="Type of env variable to remove"
         )
         command_group.add_argument("name", type=str, help="Name of variable")
-        command.set_defaults(func=handler_env_remove)
+        command.set_defaults(func=cli.handler_env_remove)
         add_help(command)
 
     def edit():
@@ -86,12 +89,34 @@ def env(parser):
         )
         command_group.add_argument("name", type=str, help="Name of variable")
         command_group.add_argument("value", type=str, help="Value to set to variable")
-        command.set_defaults(func=handler_env_edit)
+        command.set_defaults(func=cli.handler_env_edit)
+        add_help(command)
+
+    def show():
+        command = subsubparser.add_parser(
+            "show",
+            help="Show sonar's environment database",
+            add_help=False,
+            description="Shows sonar's environment database",
+        )
+        command.set_defaults(func=cli.handler_env_show)
+        add_help(command)
+
+    def clear():
+        command = subsubparser.add_parser(
+            "clear",
+            help="Clear sonar's environment database and reset it to default",
+            add_help=False,
+            description="Clears sonar's environment database and resets it to default",
+        )
+        command.set_defaults(func=cli.handler_env_clear)
         add_help(command)
 
     add()
     remove()
     edit()
+    show()
+    clear()
     add_help(subparser)
 
 
@@ -102,12 +127,27 @@ def add_help(parser):
     )
 
 
-def init(subparser):
-    parser_activate = subparser.add_parser(
-        "init", help="Initialize sonar. Run for a new user using sonar"
-    )
+def init(parser):
+    subparser = parser.add_parser("init", help="Initialize sonar")
 
-    parser_activate.set_defaults(func=handle_init)
+    subparser.set_defaults(func=cli.handle_init)
+    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+
+    def vivado():
+        command = subsubparser.add_parser(
+            "vivado",
+            help="Add Vivado(s) to sonar's database",
+            add_help=False,
+            description="Adds all Vivado versions to sonar's database automatically",
+        )
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument(
+            "path", type=str, help="Path to Xilinx install folder"
+        )
+        command.set_defaults(func=cli.handler_init_vivado)
+        add_help(command)
+
+    vivado()
 
 
 def configure_logging():
@@ -165,7 +205,9 @@ def main():
     try:
         db = shelve.open(Constants.SONAR_DATABASE, "r")
     except dbm.error:
-        handle_init(None)
+        cli.handle_init(None)
+    else:
+        db.close()
     configure_logging()
     retval = args.func(args)
     if retval != ReturnValue.SONAR_OK:
@@ -174,3 +216,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # with shelve.open(Constants.SONAR_DATABASE) as db:
+    #     dkeys = list(db.keys())
+    #     dkeys.sort()
+    #     for x in dkeys:
+    #         print(x, db[x])
+
+    # true

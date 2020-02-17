@@ -16,6 +16,7 @@ vivado*.jou
 # Python
 *.pyc
 *.egg-info/
+.coverage
 
 # Prerequisites
 *.d

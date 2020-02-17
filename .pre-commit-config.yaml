@@ -27,8 +27,8 @@ repos:
     - id: check-json
     - id: check-merge-conflict
     - id: pretty-format-json
-  # - repo: https://gitlab.com/pycqa/flake8
-  #   rev: 3.7.9
-  #   hooks:
-  #     - id: flake8
-  #       language_version: python3
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.9
+    hooks:
+      - id: flake8
+        language_version: python3
