@@ -11,93 +11,175 @@ from sonar.include import ReturnValue, Constants
 
 
 def activate(parser):
-    subparser = parser.add_parser("activate", help="Activate an environment profile")
+    subparser = parser.add_parser(
+        "activate", help="Activate an environment environment"
+    )
 
     subparser.add_argument(
-        "profile",
-        type=str,
-        help="Name of the profile to activate. See 'sonar profile --help'",
+        "env", type=str, help="Name of the env to activate",
     )
     subparser.set_defaults(func=cli.handle_activate)
 
 
-def env(parser):
-    subparser = parser.add_parser(
-        "env", help="Manage the sonar environment", add_help=False
-    )
+def tool(parser):
+    subparser = parser.add_parser("tool", help="Manage sonar tools", add_help=False)
     subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
 
-    env_types = ", ".join(vars(sonar.database.Environment()))
+    tool_types = ", ".join(vars(sonar.database.Tools()))
 
     def add():
         command = subsubparser.add_parser(
             "add",
-            help="Add to sonar's environment database",
+            help="Add a tool to sonar's database",
             add_help=False,
             description=textwrap.dedent(
                 f"""\
-                Adds an environment variable to sonar's database. These saved
-                variables can then be used to create one or more profiles that can be
-                activated through 'sonar activate'.
+                Adds a tool to sonar's database.
 
-                The type must be one of: {env_types}.
+                The type must be one of: {tool_types}.
 
-                IDs must be unique within a variable type.
+                IDs must be unique within a type.
                 """
             ),
         )
         command_group = command.add_argument_group("Arguments")
-        command_group.add_argument("type", type=str, help="Type of env variable to add")
-        command_group.add_argument("ID", type=str, help="ID of variable")
+        command_group.add_argument("type", type=str, help="Type of tool to add")
+        command_group.add_argument("ID", type=str, help="ID of tool")
         command_group.add_argument(
-            "arg", type=str, nargs="+", help="Value to set to variable"
+            "executable", type=str, help="Name of executable to call"
         )
+        command_group.add_argument("version", type=str, help="Tool version identifier")
+        command_group.add_argument(
+            "script", type=str, help="Name of executable to call"
+        )
+        # command_group.add_argument(
+        #     "arg", type=str, nargs="+", help="Value to set to variable"
+        # )
+        command.set_defaults(func=cli.handler_tool_add)
+        add_help(command)
+
+    def remove():
+        command = subsubparser.add_parser(
+            "remove",
+            help="Remove a tool from sonar's database",
+            add_help=False,
+            description=f"""Removes a tool from sonar's database.
+
+            The type must be one of: {tool_types}.
+            """,
+        )
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument("type", type=str, help="Type of tool to remove")
+        command_group.add_argument("ID", type=str, help="ID of tool")
+        command.set_defaults(func=cli.handler_tool_remove)
+        add_help(command)
+
+    def edit():
+        command = subsubparser.add_parser(
+            "edit",
+            help="Edit a tool in sonar's database",
+            add_help=False,
+            description=f"""Removes a tool from sonar's database.
+
+            The type must be one of: {tool_types}.
+            """,
+        )
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument("type", type=str, help="Type of tool to edit")
+        command_group.add_argument("ID", type=str, help="ID of tool")
+        command_group.add_argument("value", type=str, help="Value to set to variable")
+        command.set_defaults(func=cli.handler_tool_edit)
+        add_help(command)
+
+    def show():
+        command = subsubparser.add_parser(
+            "show",
+            help="Show sonar's database",
+            add_help=False,
+            description="Shows sonar's database",
+        )
+        command.set_defaults(func=cli.handler_tool_show)
+        add_help(command)
+
+    def clear():
+        command = subsubparser.add_parser(
+            "clear",
+            help="Clear sonar's database and reset it to default",
+            add_help=False,
+            description="Clears sonar's environment database and resets it to default",
+        )
+        command.set_defaults(func=cli.handler_tool_clear)
+        add_help(command)
+
+    add()
+    remove()
+    # edit()
+    show()
+    clear()
+    add_help(subparser)
+
+
+def env(parser):
+    subparser = parser.add_parser("env", help="Manage sonar envs", add_help=False)
+    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+
+    def add():
+        command = subsubparser.add_parser(
+            "add",
+            help="Add an env to sonar",
+            add_help=False,
+            description=textwrap.dedent(
+                f"""\
+                Adds an env to sonar's database that can be activated with 'sonar
+                activate'. Env elements must be already added to sonar.
+                """
+            ),
+        )
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument("name", type=str, help="Name of env")
+        command_group.add_argument("cad", type=str, help="CAD tool")
+        command_group.add_argument("sim", type=str, help="Sim tool")
+        command_group.add_argument("hls", type=str, help="HLS tool")
+        command_group.add_argument("repo", type=str, help="Repository")
+        command_group.add_argument("board", type=str, help="Board")
         command.set_defaults(func=cli.handler_env_add)
         add_help(command)
 
     def remove():
         command = subsubparser.add_parser(
             "remove",
-            help="Remove from sonar's environment database",
+            help="Remove an env",
             add_help=False,
-            description=f"""Removes an environment variable from sonar's database.
-
-            The type must be one of: {env_types}.
-            """,
+            description="Removes an env",
         )
         command_group = command.add_argument_group("Arguments")
-        command_group.add_argument(
-            "type", type=str, help="Type of env variable to remove"
-        )
-        command_group.add_argument("name", type=str, help="Name of variable")
+        command_group.add_argument("name", type=str, help="Name of env to remove")
         command.set_defaults(func=cli.handler_env_remove)
         add_help(command)
 
     def edit():
         command = subsubparser.add_parser(
             "edit",
-            help="Edit a variable in sonar's environment database",
+            help="Edit an env",
             add_help=False,
-            description=f"""Removes an environment variable from sonar's database.
-
-            The type must be one of: {env_types}.
-            """,
+            description="Edits an env elements",
         )
         command_group = command.add_argument_group("Arguments")
-        command_group.add_argument(
-            "type", type=str, help="Type of env variable to edit"
-        )
-        command_group.add_argument("name", type=str, help="Name of variable")
-        command_group.add_argument("value", type=str, help="Value to set to variable")
+        command_group.add_argument("name", type=str, help="Name of env")
+        command_group.add_argument("cad", type=str, help="CAD tool")
+        command_group.add_argument("sim", type=str, help="Sim tool")
+        command_group.add_argument("hls", type=str, help="HLS tool")
+        command_group.add_argument("repo", type=str, help="Repository")
+        command_group.add_argument("board", type=str, help="Board")
         command.set_defaults(func=cli.handler_env_edit)
         add_help(command)
 
     def show():
         command = subsubparser.add_parser(
             "show",
-            help="Show sonar's environment database",
+            help="Show sonar's envs",
             add_help=False,
-            description="Shows sonar's environment database",
+            description="Shows sonar's envs",
         )
         command.set_defaults(func=cli.handler_env_show)
         add_help(command)
@@ -105,16 +187,16 @@ def env(parser):
     def clear():
         command = subsubparser.add_parser(
             "clear",
-            help="Clear sonar's environment database and reset it to default",
+            help="Clear sonar's envs",
             add_help=False,
-            description="Clears sonar's environment database and resets it to default",
+            description="Clears sonar's envs",
         )
         command.set_defaults(func=cli.handler_env_clear)
         add_help(command)
 
     add()
     remove()
-    edit()
+    # edit()
     show()
     clear()
     add_help(subparser)
@@ -196,8 +278,9 @@ def main():
     )
     subparser = parser.add_subparsers(title="Commands", metavar="command")
     activate(subparser)
-    env(subparser)
+    tool(subparser)
     init(subparser)
+    env(subparser)
 
     add_help(parser)
 
@@ -209,7 +292,11 @@ def main():
     else:
         db.close()
     configure_logging()
-    retval = args.func(args)
+
+    try:
+        retval = args.func(args)
+    except AttributeError:
+        retval = ReturnValue.SONAR_OK
     if retval != ReturnValue.SONAR_OK:
         exit(retval)
 
@@ -223,3 +310,7 @@ if __name__ == "__main__":
     #         print(x, db[x])
 
     # true
+    # import os
+    # print(__file__)
+    # print(os.path.dirname(__file__))
+    # print(os.path.join(os.path.dirname(__file__), "shell"))
