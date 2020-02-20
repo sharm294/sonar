@@ -149,7 +149,7 @@ def setFromConfig(templateTB_sv_str, configFileData):
             replaceStr = ""
         else:
             replaceStr = str(configFileData["metadata"][tbMetadataTag])
-        searchStr = "#" + tbMetadataTag.upper() + "#"
+        searchStr = "SONAR_" + tbMetadataTag.upper()
         templateTB_sv_str = templateTB_sv_str.replace(searchStr, replaceStr)
 
     templateTB_sv_str = templateTB_sv_str.replace(
