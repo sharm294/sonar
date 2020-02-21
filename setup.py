@@ -43,5 +43,6 @@ setup(
         "Topic :: Software Development :: Testing",
     ],
     python_requires=">=3.6",
-    scripts=["tools/sonar"],
+    # scripts=["tools/sonar"],
+    entry_points={"console_scripts": ["sonar=sonar.main:main"]},
 )

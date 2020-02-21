@@ -1,8 +1,8 @@
-#!/usr/bin/env python
 import argparse
 import logging.config
 import dbm
 import shelve
+import sys
 import textwrap
 
 import sonar.database
@@ -269,7 +269,7 @@ def configure_logging():
     logging.config.dictConfig(config)
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser(
         prog="sonar",
         description="sonar is a tool to manage and test your hardware projects.",
@@ -284,21 +284,39 @@ def main():
 
     add_help(parser)
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def check_database():
     try:
         db = shelve.open(Constants.SONAR_DATABASE, "r")
     except dbm.error:
         cli.handle_init(None)
     else:
         db.close()
-    configure_logging()
 
+
+def call_cli(args):
     try:
         retval = args.func(args)
     except AttributeError:
         retval = ReturnValue.SONAR_OK
+    return retval
+
+
+def check_retval(retval):
     if retval != ReturnValue.SONAR_OK:
-        exit(retval)
+        sys.exit(retval)
+
+
+def main():
+    args = parse_args()
+
+    check_database()
+    configure_logging()
+
+    retval = call_cli(args)
+    check_retval(retval)
 
 
 if __name__ == "__main__":
