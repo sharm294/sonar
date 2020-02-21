@@ -2,6 +2,7 @@ import logging
 import os
 import shelve
 import shutil
+import pprint
 
 import sonar.database as database
 from sonar.include import ReturnValue, Constants
@@ -119,7 +120,7 @@ def handler_env_edit(args):
 def handler_env_show(args):
     with shelve.open(Constants.SONAR_DATABASE) as db:
         env = db["env"]
-        print(env)
+        pprint.pprint(env)
 
     return ReturnValue.SONAR_OK
 

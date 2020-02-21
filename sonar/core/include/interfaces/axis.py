@@ -8,6 +8,8 @@ master_output_channels = {
     "tlast": {"size": 1, "required": False},
     "tkeep": {"size": 0, "required": False},
     "tdest": {"size": 0, "required": False},
+    "tid": {"size": 0, "required": False},
+    "tuser": {"size": 0, "required": False},
 }
 
 # Defines the systemverilog commands to use for a master/slave command.

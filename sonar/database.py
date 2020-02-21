@@ -1,4 +1,5 @@
 import textwrap
+import pprint
 
 
 # https://stackoverflow.com/a/32107024
@@ -79,14 +80,13 @@ class Tools(SubscriptMixin):
         """
 
     def __str__(self):
-        return textwrap.dedent(
-            f"""\
-            Tools:
-                cad_tool: {self.cad_tool}
-                sim_tool: {self.sim_tool}
-                hls_tool: {self.hls_tool}\
-            """
-        )
+        tool_str = ["cad:"]
+        tool_str.append(textwrap.indent(pprint.pformat(self.cad_tool), "    "))
+        tool_str.append("sim:")
+        tool_str.append(textwrap.indent(pprint.pformat(self.sim_tool), "    "))
+        tool_str.append("hls:")
+        tool_str.append(textwrap.indent(pprint.pformat(self.hls_tool), "    "))
+        return "\n".join(tool_str)
 
 
 class Environment(SubscriptMixin):
@@ -98,13 +98,7 @@ class Environment(SubscriptMixin):
         self.board = _board
 
     def __repr__(self):
-        return f"""\
-        {self.cad_tool}
-        {self.sim_tool}
-        {self.hls_tool}
-        {self.repo}
-        {self.board}\
-        """
+        return "<database.Environment()>"
 
     def __str__(self):
         return textwrap.dedent(
@@ -126,7 +120,7 @@ class Tool(SubscriptMixin):
         self.script = _script
 
     def __repr__(self):
-        return f"<database.Tool({self.name}, {self.version}, {self.script})>"
+        return f"<database.Tool()>"
 
     def __str__(self):
         return textwrap.dedent(
@@ -146,7 +140,7 @@ class Repo(SubscriptMixin):
         self.script = f"export SONAR_REPO_PATH={_path}"
 
     def __repr__(self):
-        return f"<database.Repo({self.name}, {self.path}, {self.script})>"
+        return f"<database.Repo()>"
 
     def __str__(self):
         return textwrap.dedent(
