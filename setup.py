@@ -19,7 +19,7 @@ def read(filepath):
 
 setup(
     name="sonar",
-    version=get_version("tools/version.py"),
+    version=get_version("sonar/_version.py"),
     author="Varun Sharma",
     author_email="varuns.sharma@mail.utoronto.ca",
     packages=find_packages(),

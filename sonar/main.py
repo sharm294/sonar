@@ -257,7 +257,7 @@ def configure_logging():
                 "class": "logging.FileHandler",
                 "level": "INFO",
                 "formatter": "fileFormatter",
-                "filename": Constants.SONAR_LOG,
+                "filename": Constants.SONAR_LOG_PATH,
                 "mode": "a",
             },
         },
@@ -282,14 +282,20 @@ def parse_args():
     init(subparser)
     env(subparser)
 
-    add_help(parser)
+    command_group = parser.add_argument_group("Options")
+    command_group.add_argument(
+        "-h", "--help", action="help", help="show this help message and exit"
+    )
+    command_group.add_argument(
+        "-v", "--version", action="version", version="%(prog)s " + sonar.__version__
+    )
 
     return parser.parse_args()
 
 
 def check_database():
     try:
-        db = shelve.open(Constants.SONAR_DATABASE, "r")
+        db = shelve.open(Constants.SONAR_DB_PATH, "r")
     except dbm.error:
         cli.handle_init(None)
     else:
@@ -316,19 +322,5 @@ def main():
     configure_logging()
 
     retval = call_cli(args)
-    check_retval(retval)
-
-
-if __name__ == "__main__":
-    main()
-    # with shelve.open(Constants.SONAR_DATABASE) as db:
-    #     dkeys = list(db.keys())
-    #     dkeys.sort()
-    #     for x in dkeys:
-    #         print(x, db[x])
-
-    # true
-    # import os
-    # print(__file__)
-    # print(os.path.dirname(__file__))
-    # print(os.path.join(os.path.dirname(__file__), "shell"))
+    # check_retval(retval)
+    sys.exit(retval)

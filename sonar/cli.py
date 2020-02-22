@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def handle_activate(args):
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         env = db["env"][args.env]
         with open(Constants.SONAR_BASH_ENV_SOURCE, "w") as f:
             script = []
@@ -30,7 +30,7 @@ def handler_tool_add(args):
         logger.error(f"{args.type} is not a valid type. See sonar env add --help")
         return ReturnValue.SONAR_INVALID_ARG
 
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         tools = db["tool"]
         _dict = tools[args.type]
         value = database.Tool(args.executable, args.version, args.script)
@@ -46,7 +46,7 @@ def handler_tool_remove(args):
         logger.error(f"{args.type} is not a valid type. See sonar env remove --help")
         return ReturnValue.SONAR_INVALID_ARG
 
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         tools = db["tool"]
         _dict = tools[args.type]
         del _dict[args.name]
@@ -61,7 +61,7 @@ def handler_tool_edit(args):
         logger.error(f"{args.type} is not a valid type. See sonar env remove --help")
         return ReturnValue.SONAR_INVALID_ARG
 
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         tools = db["tool"]
         _dict = tools[args.type]
         _dict[args.name] = args.value
@@ -72,7 +72,7 @@ def handler_tool_edit(args):
 
 
 def handler_tool_show(args):
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         tools = db["tool"]
         print(tools)
 
@@ -80,14 +80,14 @@ def handler_tool_show(args):
 
 
 def handler_tool_clear(args):
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         db["tool"] = database.Tools()
 
     return ReturnValue.SONAR_OK
 
 
 def handler_env_add(args):
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         env = db["env"]
         env[args.name] = database.Environment(
             args.cad_tool, args.sim_tool, args.hls_tool, args.repo, args.board
@@ -98,7 +98,7 @@ def handler_env_add(args):
 
 
 def handler_env_remove(args):
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         env = db["env"]
         del env[args.name]
         db["env"] = env
@@ -107,7 +107,7 @@ def handler_env_remove(args):
 
 
 def handler_env_edit(args):
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         env = db["env"]
         env[args.name] = database.Environment(
             args.cad_tool, args.sim_tool, args.hls_tool, args.repo, args.board
@@ -118,7 +118,7 @@ def handler_env_edit(args):
 
 
 def handler_env_show(args):
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         env = db["env"]
         pprint.pprint(env)
 
@@ -126,17 +126,17 @@ def handler_env_show(args):
 
 
 def handler_env_clear(args):
-    with shelve.open(Constants.SONAR_DATABASE) as db:
+    with shelve.open(Constants.SONAR_DB_PATH) as db:
         db["env"] = {}
 
     return ReturnValue.SONAR_OK
 
 
 def handle_init(args):
-    os.makedirs(Constants.SONAR_DIRECTORY, exist_ok=True)
+    os.makedirs(Constants.SONAR_PATH, exist_ok=True)
 
     src_dir = os.path.join(os.path.dirname(__file__), "shell")
-    dst_dir = os.path.join(Constants.SONAR_DIRECTORY, "shell")
+    dst_dir = os.path.join(Constants.SONAR_PATH, "shell")
     shutil.copytree(src_dir, dst_dir)
     retval = handler_tool_clear(args)
     retval = handler_env_clear(args)

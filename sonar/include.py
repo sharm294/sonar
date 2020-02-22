@@ -11,16 +11,31 @@ class ReturnValue(IntEnum):
     SONAR_NONEXISTENT_PATH = auto()
 
 
-class Constants:
-    SONAR_DIRECTORY = os.path.join(str(Path.home()), ".sonar")
-    SONAR_LOG = os.path.join(SONAR_DIRECTORY, "sonar.log")
-    SONAR_RC = ".sonarrc"
-    SONAR_DATABASE = os.path.join(SONAR_DIRECTORY, "sonar_db")
-    SONAR_BASH_PATH = os.path.join(SONAR_DIRECTORY, "shell", "bash")
-    SONAR_MAIN_SOURCE = "sonar.sh"
-    SONAR_ENV_SOURCE = "sonar_env.sh"
+def init_constants(cls):
+    cls.add_derived()
+    return cls
 
-    SONAR_BASH_ENV_SOURCE = os.path.join(SONAR_BASH_PATH, SONAR_ENV_SOURCE)
+
+@init_constants
+class Constants:
+    SONAR_BASE_PATH = Path.home()
+    SONAR_DIRECTORY = Path(".sonar")
+    SONAR_LOG_FILE = Path("sonar.log")
+    SONAR_RC_FILE = Path(".sonarrc")
+    SONAR_DB = Path("sonar_db")
+    SONAR_BASH_SCRIPTS = Path("shell/bash")
+    SONAR_MAIN_SOURCE = Path("sonar.sh")
+    SONAR_ENV_SOURCE = Path("sonar_env.sh")
+
+    @classmethod
+    def add_derived(cls):
+        cls.SONAR_PATH = cls.SONAR_BASE_PATH.joinpath(cls.SONAR_DIRECTORY)
+        cls.SONAR_LOG_PATH = cls.SONAR_PATH.joinpath(cls.SONAR_LOG_FILE)
+        cls.SONAR_DB_PATH = str(
+            cls.SONAR_PATH.joinpath(cls.SONAR_DB)
+        )  # shelve doesn't like pathlib
+        cls.SONAR_BASH_PATH = cls.SONAR_PATH.joinpath(cls.SONAR_BASH_SCRIPTS)
+        cls.SONAR_BASH_ENV_SOURCE = cls.SONAR_BASH_PATH.joinpath(cls.SONAR_ENV_SOURCE)
 
 
 def sonarrc_exists():
