@@ -1,12 +1,15 @@
-from sonar.include import ReturnValue
+from sonar.exceptions import ReturnValue
 
 
-def test_sonar(call_sonar):
+def test_sonar_no_args(capsys, call_sonar):
     exit_code = call_sonar.cli()
-    assert exit_code == ReturnValue.SONAR_OK
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err != ""
+    assert exit_code == 2  # argparse returns 2 on ArgumentParse error
 
 
-def test_help(capsys, call_sonar):
+def test_sonar_help(capsys, call_sonar):
     exit_code = call_sonar.cli("--help")
     captured = capsys.readouterr()
     assert captured.out != ""
@@ -20,7 +23,21 @@ def test_help(capsys, call_sonar):
     assert exit_code == ReturnValue.SONAR_OK
 
 
-def test_bad_arg(capsys, call_sonar):
+def test_sonar_version(capsys, call_sonar):
+    exit_code = call_sonar.cli("--version")
+    captured = capsys.readouterr()
+    assert captured.out != ""
+    assert captured.err == ""
+    assert exit_code == ReturnValue.SONAR_OK
+
+    exit_code = call_sonar.cli("-v")
+    captured = capsys.readouterr()
+    assert captured.out != ""
+    assert captured.err == ""
+    assert exit_code == ReturnValue.SONAR_OK
+
+
+def test_sonar_bad_option(capsys, call_sonar):
     exit_code = call_sonar.cli("--bad_arg")
     captured = capsys.readouterr()
     assert captured.out == ""
@@ -28,7 +45,7 @@ def test_bad_arg(capsys, call_sonar):
     assert exit_code == 2  # argparse returns 2 on ArgumentParse error
 
 
-def test_bad_command(capsys, call_sonar):
+def test_sonar_bad_command(capsys, call_sonar):
     exit_code = call_sonar.cli("bad_arg")
     captured = capsys.readouterr()
     assert captured.out == ""

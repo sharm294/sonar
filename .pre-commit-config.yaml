@@ -13,9 +13,7 @@ repos:
     - id: cpplint
       args: ["--filter=-build/include_subdir,-readability/braces", "--exclude=sonar/core/templates/template_tb.cpp"]
     - id: cppcheck
-      # args: ["-i sonar/core/templates/"]
       entry: cppcheck
-      # args: ["--does_not_exist"]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.2.3
     hooks:
@@ -27,8 +25,21 @@ repos:
     - id: check-json
     - id: check-merge-conflict
     - id: pretty-format-json
+  # - repo: https://github.com/PyCQA/pylint
+  #   rev: pylint-2.4.4
+  #   hooks:
+  #   - id: pylint
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.6.2
+    hooks:
+    - id: bandit
+      args: ["--exclude=tests/"]
   - repo: https://gitlab.com/pycqa/flake8
     rev: 3.7.9
     hooks:
       - id: flake8
         language_version: python3
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 1.11.2
+    hooks:
+    - id: shellcheck

@@ -3,9 +3,11 @@ import os
 import shelve
 import shutil
 import pprint
+import sys
 
-import sonar.database as database
-from sonar.include import ReturnValue, Constants
+from sonar.database import Database, DotDict
+from sonar.include import Constants
+from sonar.exceptions import ReturnValue, SonarException
 
 logger = logging.getLogger(__name__)
 
@@ -22,114 +24,59 @@ def handle_activate(args):
                     script.append(tool.script)
             f.write("\n".join(script))
 
-    return ReturnValue.SONAR_OK
-
 
 def handler_tool_add(args):
-    if args.type not in vars(database.Tools()):
-        logger.error(f"{args.type} is not a valid type. See sonar env add --help")
-        return ReturnValue.SONAR_INVALID_ARG
-
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        tools = db["tool"]
-        _dict = tools[args.type]
-        value = database.Tool(args.executable, args.version, args.script)
-        _dict[args.ID] = value
-        tools[args.type] = _dict
-        db["tool"] = tools
-
-    return ReturnValue.SONAR_OK
+    try:
+        Database.Tool.add(args)
+    except SonarException as exc:
+        logger.exception(f"Adding a tool to the database failed: {exc.exit_str}")
+        sys.exit(exc.exit_code)
 
 
 def handler_tool_remove(args):
-    if args.type not in vars(database.Tools()):
-        logger.error(f"{args.type} is not a valid type. See sonar env remove --help")
-        return ReturnValue.SONAR_INVALID_ARG
-
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        tools = db["tool"]
-        _dict = tools[args.type]
-        del _dict[args.name]
-        tools[args.type] = _dict
-        db["tool"] = tools
-
-    return ReturnValue.SONAR_OK
+    try:
+        Database.Tool.remove(args)
+    except SonarException as exc:
+        logger.error(f"Removing a tool from the database failed: {exc.exit_str}")
+        sys.exit(exc.exit_code)
 
 
 def handler_tool_edit(args):
-    if args.type not in vars(database.Tools()):
-        logger.error(f"{args.type} is not a valid type. See sonar env remove --help")
-        return ReturnValue.SONAR_INVALID_ARG
-
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        tools = db["tool"]
-        _dict = tools[args.type]
-        _dict[args.name] = args.value
-        tools[args.type] = _dict
-        db["tool"] = tools
-
-    return ReturnValue.SONAR_OK
+    try:
+        Database.Tool.edit(args)
+    except SonarException as exc:
+        logger.error(f"Editing a tool in the database failed: {exc.exit_str}")
+        sys.exit(exc.exit_code)
 
 
 def handler_tool_show(args):
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        tools = db["tool"]
-        print(tools)
-
-    return ReturnValue.SONAR_OK
+    tools = Database.Tool.get()
+    print(tools)
 
 
 def handler_tool_clear(args):
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        db["tool"] = database.Tools()
-
-    return ReturnValue.SONAR_OK
+    Database.Tool.clear()
 
 
 def handler_env_add(args):
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        env = db["env"]
-        env[args.name] = database.Environment(
-            args.cad_tool, args.sim_tool, args.hls_tool, args.repo, args.board
-        )
-        db["env"] = env
-
-    return ReturnValue.SONAR_OK
+    Database.Env.add(args)
 
 
 def handler_env_remove(args):
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        env = db["env"]
-        del env[args.name]
-        db["env"] = env
-
-    return ReturnValue.SONAR_OK
+    Database.Env.remove(args)
 
 
 def handler_env_edit(args):
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        env = db["env"]
-        env[args.name] = database.Environment(
-            args.cad_tool, args.sim_tool, args.hls_tool, args.repo, args.board
-        )
-        db["env"] = env
-
-    return ReturnValue.SONAR_OK
+    Database.Env.edit(args)
 
 
 def handler_env_show(args):
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        env = db["env"]
-        pprint.pprint(env)
-
-    return ReturnValue.SONAR_OK
+    env = Database.Env.get()
+    pprint.pprint(env)
 
 
 def handler_env_clear(args):
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        db["env"] = {}
-
-    return ReturnValue.SONAR_OK
+    Database.Env.clear()
 
 
 def handle_init(args):
@@ -138,24 +85,26 @@ def handle_init(args):
     src_dir = os.path.join(os.path.dirname(__file__), "shell")
     dst_dir = os.path.join(Constants.SONAR_PATH, "shell")
     shutil.copytree(src_dir, dst_dir)
-    retval = handler_tool_clear(args)
-    retval = handler_env_clear(args)
-
-    return retval
+    handler_tool_clear(args)
+    handler_env_clear(args)
 
 
 def handler_init_vivado(args):
     xilinx_path = os.path.abspath(args.path)
+    if not os.path.exists(xilinx_path):
+        logger.error(f"Path does not exist: {xilinx_path}")
+        sys.exit(ReturnValue.SONAR_NONEXISTENT_PATH)
 
     vivado_path = os.path.join(xilinx_path, "Vivado")
-    if not os.path.exists(vivado_path):
-        logger.error(f"{xilinx_path} does not contain a 'Vivado' directory")
-        return ReturnValue.SONAR_NONEXISTENT_PATH
+    try:
+        vivado_versions = os.listdir(vivado_path)
+    except FileNotFoundError:
+        logger.error(f"No 'Vivado/' directory found in {xilinx_path}")
+        sys.exit(ReturnValue.SONAR_INVALID_PATH)
 
-    vivado_versions = os.listdir(vivado_path)
     for version in vivado_versions:
         for tool in ["cad_tool", "sim_tool", "hls_tool"]:
-            args = database.DotDict(
+            args = DotDict(
                 {
                     "type": tool,
                     "ID": f"vivado_{version}",
@@ -165,7 +114,7 @@ def handler_init_vivado(args):
                 }
             )
             handler_tool_add(args)
-        args = database.DotDict(
+        args = DotDict(
             {
                 "sim_tool": f"vivado_{version}",
                 "hls_tool": f"vivado_{version}",

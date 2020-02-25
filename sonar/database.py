@@ -1,5 +1,115 @@
 import textwrap
 import pprint
+import shelve
+import logging
+
+from sonar.include import Constants
+from sonar.exceptions import SonarInvalidArgError, SonarInvalidOpError
+
+logger = logging.getLogger(__name__)
+
+
+class Database:
+    class Tool:
+        @staticmethod
+        def add(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                tools = db["tool"]
+                try:
+                    _dict = tools[args.type]
+                except KeyError as exc:
+                    logger.error(
+                        f"{args.type} is not a valid type. Valid types: "
+                        + str(vars(DBtools()))
+                    )
+                    raise SonarInvalidArgError from exc
+                if args.ID in _dict:
+                    logger.error(
+                        f"{args.ID} already exists. Use 'edit' to modify existing tools"
+                    )
+                    raise SonarInvalidOpError
+                value = DBtool(args.executable, args.version, args.script)
+                _dict[args.ID] = value
+                tools[args.type] = _dict
+                db["tool"] = tools
+
+        @staticmethod
+        def edit(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                tools = db["tool"]
+                try:
+                    _dict = tools[args.type]
+                except KeyError as exc:
+                    raise SonarInvalidArgError(
+                        f"{args.type} is not a valid type. Valid types: "
+                        + str(vars(DBtools()))
+                    ) from exc
+                value = DBtool(args.executable, args.version, args.script)
+                _dict[args.ID] = value
+                tools[args.type] = _dict
+                db["tool"] = tools
+
+        @staticmethod
+        def remove(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                tools = db["tool"]
+                try:
+                    _dict = tools[args.type]
+                except KeyError as exc:
+                    raise SonarInvalidArgError(
+                        f"{args.type} is not a valid type. Valid types: "
+                        + str(vars(DBtools()))
+                    ) from exc
+                del _dict[args.ID]
+                db["tool"] = tools
+
+        @staticmethod
+        def get():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                tools = db["tool"]
+            return tools
+
+        @staticmethod
+        def clear():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                db["tool"] = DBtools()
+
+    class Env:
+        @staticmethod
+        def add(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                env = db["env"]
+                env[args.name] = DBenvironment(
+                    args.cad_tool, args.sim_tool, args.hls_tool, args.repo, args.board
+                )
+                db["env"] = env
+
+        @staticmethod
+        def edit(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                env = db["env"]
+                env[args.name] = DBenvironment(
+                    args.cad_tool, args.sim_tool, args.hls_tool, args.repo, args.board
+                )
+                db["env"] = env
+
+        @staticmethod
+        def remove(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                env = db["env"]
+                del env[args.name]
+                db["env"] = env
+
+        @staticmethod
+        def get():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                env = db["env"]
+            return env
+
+        @staticmethod
+        def clear():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                db["env"] = {}
 
 
 # https://stackoverflow.com/a/32107024
@@ -11,14 +121,6 @@ class DotDict(dict):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # for arg in args:
-        #     if isinstance(arg, dict):
-        #         for k, v in arg.items():
-        #             self[k] = v
-
-        # if kwargs:
-        #     for k, v in kwargs.items():
-        #         self[k] = v
         self.update(*args, **kwargs)
 
     def __getattr__(self, attr):
@@ -46,12 +148,6 @@ class DotDict(dict):
 
 
 class SubscriptMixin:
-    # def __getattr__(self, attr):
-    #     return getattr(self, attr)
-
-    # def __setattr__(self, key, value):
-    #     setattr(self, key, value)
-
     def __getitem__(self, key):
         return getattr(self, key)
 
@@ -59,15 +155,8 @@ class SubscriptMixin:
         setattr(self, key, value)
 
 
-class Tools(SubscriptMixin):
+class DBtools(SubscriptMixin):
     def __init__(self):
-        # super().__init__({
-        #     "cad_tool": {},
-        #     "sim_tool": {},
-        #     "hls_tool": {},
-        #     "repo": {},
-        #     "board": {},
-        # })
         self.cad_tool = {}
         self.sim_tool = {}
         self.hls_tool = {}
@@ -89,7 +178,7 @@ class Tools(SubscriptMixin):
         return "\n".join(tool_str)
 
 
-class Environment(SubscriptMixin):
+class DBenvironment(SubscriptMixin):
     def __init__(self, _cad_tool, _sim_tool, _hls_tool, _repo, _board):
         self.cad_tool = _cad_tool
         self.sim_tool = _sim_tool
@@ -113,7 +202,7 @@ class Environment(SubscriptMixin):
         )
 
 
-class Tool(SubscriptMixin):
+class DBtool(SubscriptMixin):
     def __init__(self, _name, _version, _script):
         self.name = _name
         self.version = _version

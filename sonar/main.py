@@ -7,7 +7,7 @@ import textwrap
 
 import sonar.database
 import sonar.cli as cli
-from sonar.include import ReturnValue, Constants
+from sonar.include import Constants
 
 
 def activate(parser):
@@ -25,7 +25,7 @@ def tool(parser):
     subparser = parser.add_parser("tool", help="Manage sonar tools", add_help=False)
     subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
 
-    tool_types = ", ".join(vars(sonar.database.Tools()))
+    tool_types = ", ".join(vars(sonar.database.DBtools()))
 
     def add():
         command = subsubparser.add_parser(
@@ -276,6 +276,7 @@ def parse_args():
         # usage="%(prog)s [-h] command [command args]",
         add_help=False,
     )
+    parser.set_defaults(func=lambda x: parser.print_help())
     subparser = parser.add_subparsers(title="Commands", metavar="command")
     activate(subparser)
     tool(subparser)
@@ -302,25 +303,11 @@ def check_database():
         db.close()
 
 
-def call_cli(args):
-    try:
-        retval = args.func(args)
-    except AttributeError:
-        retval = ReturnValue.SONAR_OK
-    return retval
-
-
-def check_retval(retval):
-    if retval != ReturnValue.SONAR_OK:
-        sys.exit(retval)
-
-
 def main():
     args = parse_args()
 
     check_database()
     configure_logging()
 
-    retval = call_cli(args)
-    # check_retval(retval)
-    sys.exit(retval)
+    args.func(args)
+    sys.exit(0)

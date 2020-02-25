@@ -1,0 +1,4 @@
+[bandit]
+# there's a directory exclusion bug in bandit 1.6.2 so no assertions are checked
+# in the repo until its fixed
+tests: B101
