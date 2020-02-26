@@ -3,10 +3,11 @@
 # This bash function overrides the 'sonar' executable when this script is sourced.
 sonar() {
     # call the actual sonar Python executable
-    command sonar $@
+    command sonar "$@"
+    retval=$?
 
     # if the command was an 'activate', source the profile script to update
-    if [[ $# -ge 2 ]]; then
+    if [[ $retval == 0 && $# -ge 2 ]]; then
         if [[ $1 == "activate" ]]; then
             # source ~/.sonar/shell/bash/sonar_env.sh
             echo "Sourced file"

@@ -202,6 +202,83 @@ def env(parser):
     add_help(subparser)
 
 
+def board(parser):
+    subparser = parser.add_parser(
+        "board", help="Manage sonar board definitions", add_help=False
+    )
+    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+
+    def add():
+        command = subsubparser.add_parser(
+            "add",
+            help="Add a board to sonar",
+            add_help=False,
+            description=textwrap.dedent(
+                f"""\
+                Adds a board to sonar's database
+                """
+            ),
+        )
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument("path", type=str, help="Path to board definition")
+        command.set_defaults(func=cli.handler_board_add)
+        add_help(command)
+
+    # def remove():
+    #     command = subsubparser.add_parser(
+    #         "remove",
+    #         help="Remove an env",
+    #         add_help=False,
+    #         description="Removes an env",
+    #     )
+    #     command_group = command.add_argument_group("Arguments")
+    #     command_group.add_argument("name", type=str, help="Name of env to remove")
+    #     command.set_defaults(func=cli.handler_env_remove)
+    #     add_help(command)
+
+    # def edit():
+    #     command = subsubparser.add_parser(
+    #         "edit",
+    #         help="Edit an env",
+    #         add_help=False,
+    #         description="Edits an env elements",
+    #     )
+    #     command_group = command.add_argument_group("Arguments")
+    #     command_group.add_argument("name", type=str, help="Name of env")
+    #     command_group.add_argument("cad", type=str, help="CAD tool")
+    #     command_group.add_argument("sim", type=str, help="Sim tool")
+    #     command_group.add_argument("hls", type=str, help="HLS tool")
+    #     command_group.add_argument("repo", type=str, help="Repository")
+    #     command_group.add_argument("board", type=str, help="Board")
+    #     command.set_defaults(func=cli.handler_env_edit)
+    #     add_help(command)
+
+    def show():
+        command = subsubparser.add_parser(
+            "show",
+            help="Show sonar's boards",
+            add_help=False,
+            description="Shows sonar's boards",
+        )
+        command.set_defaults(func=cli.handler_board_show)
+        add_help(command)
+
+    def clear():
+        command = subsubparser.add_parser(
+            "clear",
+            help="Clear sonar's boards",
+            add_help=False,
+            description="Clears sonar's boards",
+        )
+        command.set_defaults(func=cli.handler_board_clear)
+        add_help(command)
+
+    add()
+    show()
+    clear()
+    add_help(subparser)
+
+
 def add_help(parser):
     command_group = parser.add_argument_group("Options")
     command_group.add_argument(
@@ -282,6 +359,7 @@ def parse_args():
     tool(subparser)
     init(subparser)
     env(subparser)
+    board(subparser)
 
     command_group = parser.add_argument_group("Options")
     command_group.add_argument(

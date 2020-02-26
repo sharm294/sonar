@@ -1,7 +1,7 @@
 import logging
 import os
-import shelve
 import shutil
+from pathlib import Path
 import pprint
 import sys
 
@@ -13,16 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 def handle_activate(args):
-    with shelve.open(Constants.SONAR_DB_PATH) as db:
-        env = db["env"][args.env]
-        with open(Constants.SONAR_BASH_ENV_SOURCE, "w") as f:
-            script = []
-            for key in ["cad_tool", "sim_tool", "hls_tool"]:
-                tool_id = env[key]
-                tool = db["tool"][key][tool_id]
-                if tool.script not in script:
-                    script.append(tool.script)
-            f.write("\n".join(script))
+    try:
+        Database.activate(args)
+    except SonarException as exc:
+        logger.error(f"Activating environment failed: {exc.exit_str}")
+        sys.exit(exc.exit_code)
 
 
 def handler_tool_add(args):
@@ -51,7 +46,7 @@ def handler_tool_edit(args):
 
 def handler_tool_show(args):
     tools = Database.Tool.get()
-    print(tools)
+    pprint.pprint(tools)
 
 
 def handler_tool_clear(args):
@@ -79,6 +74,19 @@ def handler_env_clear(args):
     Database.Env.clear()
 
 
+def handler_board_add(args):
+    Database.Board.add(args)
+
+
+def handler_board_show(args):
+    board = Database.Board.get()
+    pprint.pprint(board)
+
+
+def handler_board_clear(args):
+    Database.Board.clear()
+
+
 def handle_init(args):
     os.makedirs(Constants.SONAR_PATH, exist_ok=True)
 
@@ -87,6 +95,18 @@ def handle_init(args):
     shutil.copytree(src_dir, dst_dir)
     handler_tool_clear(args)
     handler_env_clear(args)
+    Database.Board.clear()
+    with open(Path.home().joinpath(".bashrc"), "r+") as f:
+        for line in f:
+            if "# added by sonar" in line:
+                break
+        else:  # not found, we are at the eof
+            f.write(f"source {Constants.SONAR_BASH_MAIN_SOURCE} # added by sonar")
+    boards = os.listdir(os.path.join(os.path.dirname(__file__), "boards"))
+    for board in boards:
+        path = os.path.join(os.path.dirname(__file__), "boards", board)
+        args = DotDict({"path": path})
+        Database.Board.add(args)
 
 
 def handler_init_vivado(args):
@@ -103,22 +123,24 @@ def handler_init_vivado(args):
         sys.exit(ReturnValue.SONAR_INVALID_PATH)
 
     for version in vivado_versions:
-        for tool in ["cad_tool", "sim_tool", "hls_tool"]:
-            args = DotDict(
-                {
-                    "type": tool,
-                    "ID": f"vivado_{version}",
-                    "executable": "vivado",
-                    "version": version,
-                    "script": f"source setup_vivado.sh {xilinx_path} {version}",
-                }
-            )
-            handler_tool_add(args)
+        # for tool in ["cad_tool", "sim_tool", "hls_tool"]:
         args = DotDict(
             {
-                "sim_tool": f"vivado_{version}",
-                "hls_tool": f"vivado_{version}",
-                "cad_tool": f"vivado_{version}",
+                "type": "vivado",
+                # "ID": f"vivado_{version}",
+                "cad_executable": "vivado",
+                "sim_executable": "vivado",
+                "hls_executable": "vivado_hls",
+                "version": version,
+                "script": f"source setup_vivado.sh {xilinx_path} {version}",
+            }
+        )
+        handler_tool_add(args)
+        args = DotDict(
+            {
+                "sim_tool": ("vivado", version),
+                "hls_tool": ("vivado", version),
+                "cad_tool": ("vivado", version),
                 "name": f"vivado_{version}",
             }
         )

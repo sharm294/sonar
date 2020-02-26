@@ -23,9 +23,6 @@ setup(
     author="Varun Sharma",
     author_email="varuns.sharma@mail.utoronto.ca",
     packages=find_packages(),
-    # package_dir={
-    #     '': 'src',
-    # },
     description=("Manage and test hardware and mixed language projects"),
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
@@ -43,6 +40,6 @@ setup(
         "Topic :: Software Development :: Testing",
     ],
     python_requires=">=3.6",
-    # scripts=["tools/sonar"],
     entry_points={"console_scripts": ["sonar=sonar.main:main"]},
+    include_package_data=True,
 )

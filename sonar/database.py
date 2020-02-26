@@ -2,6 +2,7 @@ import textwrap
 import pprint
 import shelve
 import logging
+import os
 
 from sonar.include import Constants
 from sonar.exceptions import SonarInvalidArgError, SonarInvalidOpError
@@ -17,51 +18,50 @@ class Database:
                 tools = db["tool"]
                 try:
                     _dict = tools[args.type]
-                except KeyError as exc:
+                except KeyError:
+                    _dict = {"versions": [], "executable": {}, "script": {}}
+                if args.version in _dict["versions"]:
                     logger.error(
-                        f"{args.type} is not a valid type. Valid types: "
-                        + str(vars(DBtools()))
-                    )
-                    raise SonarInvalidArgError from exc
-                if args.ID in _dict:
-                    logger.error(
-                        f"{args.ID} already exists. Use 'edit' to modify existing tools"
+                        f"{args.version} already exists. Use 'edit' to modify existing tools"
                     )
                     raise SonarInvalidOpError
-                value = DBtool(args.executable, args.version, args.script)
-                _dict[args.ID] = value
+                _dict["versions"].append(args.version)
+                _dict["executable"]["cad"] = args.cad_executable
+                _dict["executable"]["hls"] = args.hls_executable
+                _dict["executable"]["sim"] = args.sim_executable
+                _dict["script"][args.version] = args.script
                 tools[args.type] = _dict
                 db["tool"] = tools
 
-        @staticmethod
-        def edit(args):
-            with shelve.open(Constants.SONAR_DB_PATH) as db:
-                tools = db["tool"]
-                try:
-                    _dict = tools[args.type]
-                except KeyError as exc:
-                    raise SonarInvalidArgError(
-                        f"{args.type} is not a valid type. Valid types: "
-                        + str(vars(DBtools()))
-                    ) from exc
-                value = DBtool(args.executable, args.version, args.script)
-                _dict[args.ID] = value
-                tools[args.type] = _dict
-                db["tool"] = tools
+        # @staticmethod
+        # def edit(args):
+        #     with shelve.open(Constants.SONAR_DB_PATH) as db:
+        #         tools = db["tool"]
+        #         try:
+        #             _dict = tools[args.type]
+        #         except KeyError as exc:
+        #             raise SonarInvalidArgError(
+        #                 f"{args.type} is not a valid type. Valid types: "
+        #                 + str(vars(DBtools()))
+        #             ) from exc
+        #         value = DBtool(args.executable, args.version, args.script)
+        #         _dict[args.ID] = value
+        #         tools[args.type] = _dict
+        #         db["tool"] = tools
 
-        @staticmethod
-        def remove(args):
-            with shelve.open(Constants.SONAR_DB_PATH) as db:
-                tools = db["tool"]
-                try:
-                    _dict = tools[args.type]
-                except KeyError as exc:
-                    raise SonarInvalidArgError(
-                        f"{args.type} is not a valid type. Valid types: "
-                        + str(vars(DBtools()))
-                    ) from exc
-                del _dict[args.ID]
-                db["tool"] = tools
+        # @staticmethod
+        # def remove(args):
+        #     with shelve.open(Constants.SONAR_DB_PATH) as db:
+        #         tools = db["tool"]
+        #         try:
+        #             _dict = tools[args.type]
+        #         except KeyError as exc:
+        #             raise SonarInvalidArgError(
+        #                 f"{args.type} is not a valid type. Valid types: "
+        #                 + str(vars(DBtools()))
+        #             ) from exc
+        #         del _dict[args.ID]
+        #         db["tool"] = tools
 
         @staticmethod
         def get():
@@ -72,7 +72,7 @@ class Database:
         @staticmethod
         def clear():
             with shelve.open(Constants.SONAR_DB_PATH) as db:
-                db["tool"] = DBtools()
+                db["tool"] = {}
 
     class Env:
         @staticmethod
@@ -80,25 +80,25 @@ class Database:
             with shelve.open(Constants.SONAR_DB_PATH) as db:
                 env = db["env"]
                 env[args.name] = DBenvironment(
-                    args.cad_tool, args.sim_tool, args.hls_tool, args.repo, args.board
+                    args.cad_tool, args.sim_tool, args.hls_tool
                 )
                 db["env"] = env
 
-        @staticmethod
-        def edit(args):
-            with shelve.open(Constants.SONAR_DB_PATH) as db:
-                env = db["env"]
-                env[args.name] = DBenvironment(
-                    args.cad_tool, args.sim_tool, args.hls_tool, args.repo, args.board
-                )
-                db["env"] = env
+        # @staticmethod
+        # def edit(args):
+        #     with shelve.open(Constants.SONAR_DB_PATH) as db:
+        #         env = db["env"]
+        #         env[args.name] = DBenvironment(
+        #             args.cad_tool, args.sim_tool, args.hls_tool, args.repo, args.board
+        #         )
+        #         db["env"] = env
 
-        @staticmethod
-        def remove(args):
-            with shelve.open(Constants.SONAR_DB_PATH) as db:
-                env = db["env"]
-                del env[args.name]
-                db["env"] = env
+        # @staticmethod
+        # def remove(args):
+        #     with shelve.open(Constants.SONAR_DB_PATH) as db:
+        #         env = db["env"]
+        #         del env[args.name]
+        #         db["env"] = env
 
         @staticmethod
         def get():
@@ -110,6 +110,45 @@ class Database:
         def clear():
             with shelve.open(Constants.SONAR_DB_PATH) as db:
                 db["env"] = {}
+
+    class Board:
+        @staticmethod
+        def add(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                boards = db["board"]
+                board_name = os.path.basename(args.path)
+                boards[board_name] = args.path
+                db["board"] = boards
+
+        @staticmethod
+        def clear():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                db["board"] = {}
+
+        @staticmethod
+        def get():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                boards = db["board"]
+            return boards
+
+    @staticmethod
+    def activate(args):
+        with shelve.open(Constants.SONAR_DB_PATH) as db:
+            try:
+                env = db["env"][args.env]
+            except KeyError as exc:
+                logger.error(
+                    f"Could not find environment: {args.env}. See envs with `sonar env show`"
+                )
+                raise SonarInvalidArgError from exc
+            with open(Constants.SONAR_BASH_ENV_SOURCE, "w") as f:
+                script = []
+                for key in ["cad_tool", "sim_tool", "hls_tool"]:
+                    tool_id = env[key]
+                    tool_script = db["tool"][tool_id[0]]["script"][tool_id[1]]
+                    if tool_script not in script:
+                        script.append(tool_script)
+                f.write("\n".join(script))
 
 
 # https://stackoverflow.com/a/32107024
@@ -179,12 +218,10 @@ class DBtools(SubscriptMixin):
 
 
 class DBenvironment(SubscriptMixin):
-    def __init__(self, _cad_tool, _sim_tool, _hls_tool, _repo, _board):
+    def __init__(self, _cad_tool, _sim_tool, _hls_tool):
         self.cad_tool = _cad_tool
         self.sim_tool = _sim_tool
         self.hls_tool = _hls_tool
-        self.repo = _repo
-        self.board = _board
 
     def __repr__(self):
         return "<database.Environment()>"
@@ -195,9 +232,7 @@ class DBenvironment(SubscriptMixin):
             Environment:
                 cad_tool: {self.cad_tool}
                 sim_tool: {self.sim_tool}
-                hls_tool: {self.hls_tool}
-                repo: {self.repo}
-                board: {self.board}\
+                hls_tool: {self.hls_tool}\
             """
         )
 
