@@ -12,9 +12,9 @@ from sonar.exceptions import ReturnValue, SonarException
 logger = logging.getLogger(__name__)
 
 
-def handle_activate(args):
+def handler_env_activate(args):
     try:
-        Database.activate(args)
+        Database.Env.activate(args)
     except SonarException as exc:
         logger.error(f"Activating environment failed: {exc.exit_str}")
         sys.exit(exc.exit_code)
@@ -87,6 +87,10 @@ def handler_board_clear(args):
     Database.Board.clear()
 
 
+def handler_board_activate(args):
+    Database.Board.activate(args)
+
+
 def handle_init(args):
     os.makedirs(Constants.SONAR_PATH, exist_ok=True)
 
@@ -96,13 +100,15 @@ def handle_init(args):
     handler_tool_clear(args)
     handler_env_clear(args)
     Database.Board.clear()
+    Database.Repo.clear()
     with open(Path.home().joinpath(".bashrc"), "r+") as f:
         for line in f:
             if "# added by sonar" in line:
                 break
         else:  # not found, we are at the eof
             f.write(f"source {Constants.SONAR_BASH_MAIN_SOURCE} # added by sonar")
-    boards = os.listdir(os.path.join(os.path.dirname(__file__), "boards"))
+    files = os.listdir(os.path.join(os.path.dirname(__file__), "boards"))
+    boards = [x for x in files if x != "__init__.py" and x != "__pycache__"]
     for board in boards:
         path = os.path.join(os.path.dirname(__file__), "boards", board)
         args = DotDict({"path": path})
@@ -145,3 +151,20 @@ def handler_init_vivado(args):
             }
         )
         handler_env_add(args)
+
+
+def handler_repo_add(args):
+    Database.Repo.add(args)
+
+
+def handler_repo_show(args):
+    repo = Database.Repo.get()
+    pprint.pprint(repo)
+
+
+def handler_repo_clear(args):
+    Database.Repo.clear()
+
+
+def handler_repo_activate(args):
+    Database.Repo.activate(args)

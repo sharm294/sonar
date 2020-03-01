@@ -3,6 +3,8 @@ import pprint
 import shelve
 import logging
 import os
+import configparser
+import runpy
 
 from sonar.include import Constants
 from sonar.exceptions import SonarInvalidArgError, SonarInvalidOpError
@@ -111,6 +113,25 @@ class Database:
             with shelve.open(Constants.SONAR_DB_PATH) as db:
                 db["env"] = {}
 
+        @staticmethod
+        def activate(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                try:
+                    env = db["env"][args.env]
+                except KeyError as exc:
+                    logger.error(
+                        f"Could not find environment: {args.env}. See envs with `sonar env show`"
+                    )
+                    raise SonarInvalidArgError from exc
+                with open(Constants.SONAR_BASH_ENV_SOURCE, "w") as f:
+                    script = []
+                    for key in ["cad_tool", "sim_tool", "hls_tool"]:
+                        tool_id = env[key]
+                        tool_script = db["tool"][tool_id[0]]["script"][tool_id[1]]
+                        if tool_script not in script:
+                            script.append(tool_script)
+                    f.write("\n".join(script))
+
     class Board:
         @staticmethod
         def add(args):
@@ -131,24 +152,62 @@ class Database:
                 boards = db["board"]
             return boards
 
-    @staticmethod
-    def activate(args):
-        with shelve.open(Constants.SONAR_DB_PATH) as db:
-            try:
-                env = db["env"][args.env]
-            except KeyError as exc:
-                logger.error(
-                    f"Could not find environment: {args.env}. See envs with `sonar env show`"
-                )
-                raise SonarInvalidArgError from exc
-            with open(Constants.SONAR_BASH_ENV_SOURCE, "w") as f:
-                script = []
-                for key in ["cad_tool", "sim_tool", "hls_tool"]:
-                    tool_id = env[key]
-                    tool_script = db["tool"][tool_id[0]]["script"][tool_id[1]]
-                    if tool_script not in script:
-                        script.append(tool_script)
-                f.write("\n".join(script))
+        @staticmethod
+        def activate(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                try:
+                    env = db["board"][args.board]
+                except KeyError as exc:
+                    logger.error(
+                        f"Could not find board: {args.board}. See boards with `sonar board show`"
+                    )
+                    raise SonarInvalidArgError from exc
+                with open(Constants.SONAR_BASH_BOARD_SOURCE, "w") as f:
+                    script = []
+                    board_settings = runpy.run_path(os.path.join(env, "__init__.py"))
+                    part = board_settings["PART"]
+                    script.append(f"SONAR_BOARD={args.board}")
+                    script.append(f"SONAR_PART={part}")
+                    f.write("\n".join(script))
+
+    class Repo:
+        @staticmethod
+        def add(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                repos = db["repo"]
+                repo_path = os.getcwd()
+                config = configparser.ConfigParser()
+                config.read(os.path.join(repo_path, Constants.SONAR_CONFIG_FILE))
+                repo = config["repo"]["name"]
+                repos[repo] = {"path": repo_path}
+                db["repo"] = repos
+
+        @staticmethod
+        def clear():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                db["repo"] = {}
+
+        @staticmethod
+        def get():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                repos = db["repo"]
+            return repos
+
+        @staticmethod
+        def activate(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                try:
+                    env = db["repo"][args.repo]
+                except KeyError as exc:
+                    logger.error(
+                        f"Could not find repo: {args.board}. See repos with `sonar repo show`"
+                    )
+                    raise SonarInvalidArgError from exc
+                with open(Constants.SONAR_BASH_REPO_SOURCE, "w") as f:
+                    script = []
+                    path = env["path"]
+                    script.append(f"SONAR_REPO={path}")
+                    f.write("\n".join(script))
 
 
 # https://stackoverflow.com/a/32107024

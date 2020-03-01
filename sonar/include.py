@@ -11,11 +11,13 @@ class Constants:
     SONAR_BASE_PATH = Path.home()
     SONAR_DIRECTORY = Path(".sonar")
     SONAR_LOG_FILE = Path("sonar.log")
-    SONAR_RC_FILE = Path(".sonarrc")
+    SONAR_CONFIG_FILE = Path(".sonar")
     SONAR_DB = Path("sonar_db")
     SONAR_BASH_SCRIPTS = Path("shell/bash")
     SONAR_MAIN_SOURCE = Path("sonar.sh")
     SONAR_ENV_SOURCE = Path("sonar_env.sh")
+    SONAR_BOARD_SOURCE = Path("sonar_board.sh")
+    SONAR_REPO_SOURCE = Path("sonar_repo.sh")
 
     @classmethod
     def add_derived(cls):
@@ -27,6 +29,10 @@ class Constants:
         cls.SONAR_BASH_PATH = cls.SONAR_PATH.joinpath(cls.SONAR_BASH_SCRIPTS)
         cls.SONAR_BASH_MAIN_SOURCE = cls.SONAR_BASH_PATH.joinpath(cls.SONAR_MAIN_SOURCE)
         cls.SONAR_BASH_ENV_SOURCE = cls.SONAR_BASH_PATH.joinpath(cls.SONAR_ENV_SOURCE)
+        cls.SONAR_BASH_BOARD_SOURCE = cls.SONAR_BASH_PATH.joinpath(
+            cls.SONAR_BOARD_SOURCE
+        )
+        cls.SONAR_BASH_REPO_SOURCE = cls.SONAR_BASH_PATH.joinpath(cls.SONAR_REPO_SOURCE)
 
 
 # def sonarrc_exists():
