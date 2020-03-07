@@ -1,5 +1,7 @@
 # sonar
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=sharm294_sonar&metric=alert_status)](https://sonarcloud.io/dashboard?id=sharm294_sonar)
+
 *sonar* is a simulation and testbenching infrastructure for hardware. It can
 be imported into a Python script as a library. Then, the user can define the
 ports of the device-under-test (DUT) and test vectors. *sonar* will generate

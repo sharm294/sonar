@@ -41,7 +41,7 @@ def tool(parser):
     #     # command_group.add_argument(
     #     #     "arg", type=str, nargs="+", help="Value to set to variable"
     #     # )
-    #     command.set_defaults(func=cli.handler_tool_add)
+    #     command.set_defaults(func=cli.Tool.add)
     #     add_help(command)
 
     # def remove():
@@ -57,7 +57,7 @@ def tool(parser):
     #     command_group = command.add_argument_group("Arguments")
     #     command_group.add_argument("type", type=str, help="Type of tool to remove")
     #     command_group.add_argument("ID", type=str, help="ID of tool")
-    #     command.set_defaults(func=cli.handler_tool_remove)
+    #     command.set_defaults(func=cli.Tool.remove)
     #     add_help(command)
 
     # def edit():
@@ -74,7 +74,7 @@ def tool(parser):
     #     command_group.add_argument("type", type=str, help="Type of tool to edit")
     #     command_group.add_argument("ID", type=str, help="ID of tool")
     #     command_group.add_argument("value", type=str, help="Value to set to variable")
-    #     command.set_defaults(func=cli.handler_tool_edit)
+    #     command.set_defaults(func=cli.Tool.edit)
     #     add_help(command)
 
     def show():
@@ -84,7 +84,7 @@ def tool(parser):
             add_help=False,
             description="Shows sonar's database",
         )
-        command.set_defaults(func=cli.handler_tool_show)
+        command.set_defaults(func=cli.Tool.show)
         add_help(command)
 
     def clear():
@@ -94,7 +94,7 @@ def tool(parser):
             add_help=False,
             description="Clears sonar's environment database and resets it to default",
         )
-        command.set_defaults(func=cli.handler_tool_clear)
+        command.set_defaults(func=cli.Tool.clear)
         add_help(command)
 
     # add()
@@ -140,7 +140,7 @@ def env(parser):
         command_group.add_argument(
             "hls", type=verify_tool, help="HLS tool. In the format <tool>:<version>"
         )
-        command.set_defaults(func=cli.handler_env_add)
+        command.set_defaults(func=cli.Env.add)
         add_help(command)
 
     def remove():
@@ -152,7 +152,7 @@ def env(parser):
         )
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument("name", type=str, help="Name of env to remove")
-        command.set_defaults(func=cli.handler_env_remove)
+        command.set_defaults(func=cli.Env.remove)
         add_help(command)
 
     # def edit():
@@ -169,7 +169,7 @@ def env(parser):
     #     command_group.add_argument("hls", type=str, help="HLS tool")
     #     command_group.add_argument("repo", type=str, help="Repository")
     #     command_group.add_argument("board", type=str, help="Board")
-    #     command.set_defaults(func=cli.handler_env_edit)
+    #     command.set_defaults(func=cli.Env.edit)
     #     add_help(command)
 
     def show():
@@ -179,7 +179,7 @@ def env(parser):
             add_help=False,
             description="Shows sonar's envs",
         )
-        command.set_defaults(func=cli.handler_env_show)
+        command.set_defaults(func=cli.Env.show)
         add_help(command)
 
     def clear():
@@ -189,7 +189,7 @@ def env(parser):
             add_help=False,
             description="Clears sonar's envs",
         )
-        command.set_defaults(func=cli.handler_env_clear)
+        command.set_defaults(func=cli.Env.clear)
         add_help(command)
 
     def activate():
@@ -204,7 +204,7 @@ def env(parser):
         command_group.add_argument(
             "env", type=str, help="Name of the env to activate",
         )
-        command.set_defaults(func=cli.handler_env_activate)
+        command.set_defaults(func=cli.Env.activate)
         add_help(command)
 
     add()
@@ -235,7 +235,7 @@ def board(parser):
         )
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument("path", type=str, help="Path to board definition")
-        command.set_defaults(func=cli.handler_board_add)
+        command.set_defaults(func=cli.Board.add)
         add_help(command)
 
     # def remove():
@@ -247,7 +247,7 @@ def board(parser):
     #     )
     #     command_group = command.add_argument_group("Arguments")
     #     command_group.add_argument("name", type=str, help="Name of env to remove")
-    #     command.set_defaults(func=cli.handler_env_remove)
+    #     command.set_defaults(func=cli.Env.remove)
     #     add_help(command)
 
     # def edit():
@@ -264,7 +264,7 @@ def board(parser):
     #     command_group.add_argument("hls", type=str, help="HLS tool")
     #     command_group.add_argument("repo", type=str, help="Repository")
     #     command_group.add_argument("board", type=str, help="Board")
-    #     command.set_defaults(func=cli.handler_env_edit)
+    #     command.set_defaults(func=cli.Env.edit)
     #     add_help(command)
 
     def show():
@@ -274,7 +274,7 @@ def board(parser):
             add_help=False,
             description="Shows sonar's boards",
         )
-        command.set_defaults(func=cli.handler_board_show)
+        command.set_defaults(func=cli.Board.show)
         add_help(command)
 
     def clear():
@@ -284,7 +284,7 @@ def board(parser):
             add_help=False,
             description="Clears sonar's boards",
         )
-        command.set_defaults(func=cli.handler_board_clear)
+        command.set_defaults(func=cli.Board.clear)
         add_help(command)
 
     def activate():
@@ -299,7 +299,7 @@ def board(parser):
         command_group.add_argument(
             "board", type=str, help="Name of the board to activate",
         )
-        command.set_defaults(func=cli.handler_board_activate)
+        command.set_defaults(func=cli.Board.activate)
         add_help(command)
 
     add()
@@ -324,7 +324,7 @@ def repo(parser):
                 """
             ),
         )
-        command.set_defaults(func=cli.handler_repo_add)
+        command.set_defaults(func=cli.Repo.add)
         add_help(command)
 
     # def remove():
@@ -336,7 +336,7 @@ def repo(parser):
     #     )
     #     command_group = command.add_argument_group("Arguments")
     #     command_group.add_argument("name", type=str, help="Name of env to remove")
-    #     command.set_defaults(func=cli.handler_env_remove)
+    #     command.set_defaults(func=cli.Env.remove)
     #     add_help(command)
 
     # def edit():
@@ -353,7 +353,7 @@ def repo(parser):
     #     command_group.add_argument("hls", type=str, help="HLS tool")
     #     command_group.add_argument("repo", type=str, help="Repository")
     #     command_group.add_argument("board", type=str, help="Board")
-    #     command.set_defaults(func=cli.handler_env_edit)
+    #     command.set_defaults(func=cli.Env.edit)
     #     add_help(command)
 
     def show():
@@ -363,7 +363,7 @@ def repo(parser):
             add_help=False,
             description="Shows sonar repos",
         )
-        command.set_defaults(func=cli.handler_repo_show)
+        command.set_defaults(func=cli.Repo.show)
         add_help(command)
 
     def clear():
@@ -373,7 +373,7 @@ def repo(parser):
             add_help=False,
             description="Clears sonar's repos",
         )
-        command.set_defaults(func=cli.handler_repo_clear)
+        command.set_defaults(func=cli.Repo.clear)
         add_help(command)
 
     def activate():
@@ -388,13 +388,42 @@ def repo(parser):
         command_group.add_argument(
             "repo", type=str, help="Name of the repo to activate",
         )
-        command.set_defaults(func=cli.handler_repo_activate)
+        command.set_defaults(func=cli.Repo.activate)
         add_help(command)
 
     add()
     show()
     clear()
     activate()
+    add_help(subparser)
+
+
+def project(parser):
+    subparser = parser.add_parser(
+        "project", help="Manipulate the active repo", add_help=False
+    )
+    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+
+    def add():
+        command = subsubparser.add_parser(
+            "add",
+            help="Add an IP directory",
+            add_help=False,
+            description=textwrap.dedent(
+                f"""\
+                Adds an IP directory
+                """
+            ),
+        )
+
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument(
+            "name", type=str, help="Name of the directory",
+        )
+        command.set_defaults(func=cli.Project.add)
+        add_help(command)
+
+    add()
     add_help(subparser)
 
 
@@ -408,7 +437,7 @@ def add_help(parser):
 def init(parser):
     subparser = parser.add_parser("init", help="Initialize sonar")
 
-    subparser.set_defaults(func=cli.handle_init)
+    subparser.set_defaults(func=cli.Init.one_time_setup)
     subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
 
     def vivado():
@@ -422,7 +451,21 @@ def init(parser):
         command_group.add_argument(
             "path", type=str, help="Path to Xilinx install folder"
         )
-        command.set_defaults(func=cli.handler_init_vivado)
+        command.set_defaults(func=cli.Init.vivado)
+        add_help(command)
+
+    def repo():
+        command = subsubparser.add_parser(
+            "repo",
+            help="Create a new sonar repository",
+            add_help=False,
+            description="Creates a new sonar repository",
+        )
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument(
+            "-p", "--path", type=str, help="Path to create repository"
+        )
+        command.set_defaults(func=cli.Init.repo)
         add_help(command)
 
     vivado()
@@ -480,6 +523,7 @@ def parse_args():
     env(subparser)
     board(subparser)
     repo(subparser)
+    project(subparser)
 
     command_group = parser.add_argument_group("Options")
     command_group.add_argument(
@@ -496,7 +540,7 @@ def check_database():
     try:
         db = shelve.open(Constants.SONAR_DB_PATH, "r")
     except dbm.error:
-        cli.handle_init(None)
+        cli.Init.one_time_setup(None)
     else:
         db.close()
 

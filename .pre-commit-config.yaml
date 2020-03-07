@@ -43,3 +43,8 @@ repos:
     rev: 1.11.2
     hooks:
     - id: shellcheck
+  - repo: https://github.com/jorisroovers/gitlint
+    rev:  v0.13.1
+    hooks:
+    - id: gitlint
+      additional_dependencies: ["nltk"]

@@ -8,6 +8,7 @@ def init_constants(cls):
 
 @init_constants
 class Constants:
+    ARGPARSE_FAILURE = 2
     SONAR_BASE_PATH = Path.home()
     SONAR_DIRECTORY = Path(".sonar")
     SONAR_LOG_FILE = Path("sonar.log")

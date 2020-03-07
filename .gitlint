@@ -1,0 +1,5 @@
+[general]
+extra-path = sonar/repo/gitlint_rules.py
+
+[title-max-length]
+line-length = 50

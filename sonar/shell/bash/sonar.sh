@@ -8,8 +8,9 @@ sonar() {
 
     # if the command was an 'activate', source the profile script to update
     if [[ $retval == 0 && $# -ge 2 ]]; then
-        if [[ $1 == "activate" ]]; then
-            # source ~/.sonar/shell/bash/sonar_env.sh
+        if [[ $1 == "env" && $2 == "activate" ]]; then
+            # shellcheck source=/dev/null
+            source ~/.sonar/shell/bash/sonar_env.sh
             echo "Sourced file"
         fi
     fi

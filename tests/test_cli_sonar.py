@@ -1,15 +1,16 @@
 from sonar.exceptions import ReturnValue
+from sonar.include import Constants
 
 
-def test_sonar_no_args(capsys, call_sonar):
+def test_no_args(capsys, call_sonar):
     exit_code = call_sonar.cli()
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err != ""
-    assert exit_code == 2  # argparse returns 2 on ArgumentParse error
+    assert exit_code == Constants.ARGPARSE_FAILURE
 
 
-def test_sonar_help(capsys, call_sonar):
+def test_help(capsys, call_sonar):
     exit_code = call_sonar.cli("--help")
     captured = capsys.readouterr()
     assert captured.out != ""
@@ -23,7 +24,7 @@ def test_sonar_help(capsys, call_sonar):
     assert exit_code == ReturnValue.SONAR_OK
 
 
-def test_sonar_version(capsys, call_sonar):
+def test_version(capsys, call_sonar):
     exit_code = call_sonar.cli("--version")
     captured = capsys.readouterr()
     assert captured.out != ""
@@ -37,17 +38,17 @@ def test_sonar_version(capsys, call_sonar):
     assert exit_code == ReturnValue.SONAR_OK
 
 
-def test_sonar_bad_option(capsys, call_sonar):
+def test_bad_option(capsys, call_sonar):
     exit_code = call_sonar.cli("--bad_arg")
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err != ""
-    assert exit_code == 2  # argparse returns 2 on ArgumentParse error
+    assert exit_code == Constants.ARGPARSE_FAILURE
 
 
-def test_sonar_bad_command(capsys, call_sonar):
+def test_bad_command(capsys, call_sonar):
     exit_code = call_sonar.cli("bad_arg")
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err != ""
-    assert exit_code == 2  # argparse returns 2 on ArgumentParse error
+    assert exit_code == Constants.ARGPARSE_FAILURE
