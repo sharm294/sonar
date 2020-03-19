@@ -79,11 +79,18 @@ class Database:
     class Env:
         @staticmethod
         def add(args):
+            elements = []
+            for tool in ["cad_tool", "sim_tool", "hls_tool"]:
+                split = getattr(args, tool).split(":")
+                if len(split) == 2 and split[1] != "":
+                    elements.append(tuple(split))
+                else:
+                    raise SonarInvalidArgError
+            elements.append(args.board)
+            elements.append(args.repo)
             with shelve.open(Constants.SONAR_DB_PATH) as db:
                 env = db["env"]
-                env[args.name] = DBenvironment(
-                    args.cad_tool, args.sim_tool, args.hls_tool
-                )
+                env[args.name] = DBenvironment(*elements)
                 db["env"] = env
 
         # @staticmethod
@@ -123,7 +130,7 @@ class Database:
                         f"Could not find environment: {args.env}. See envs with `sonar env show`"
                     )
                     raise SonarInvalidArgError from exc
-                with open(Constants.SONAR_BASH_ENV_SOURCE, "w") as f:
+                with open(Constants.SONAR_BASH_TOOL_SOURCE, "w") as f:
                     script = []
                     for key in ["cad_tool", "sim_tool", "hls_tool"]:
                         tool_id = env[key]
@@ -142,33 +149,55 @@ class Database:
                 db["board"] = boards
 
         @staticmethod
+        def remove(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                boards = db["board"]
+                del boards[args.name]
+                db["board"] = boards
+
+        @staticmethod
         def clear():
             with shelve.open(Constants.SONAR_DB_PATH) as db:
                 db["board"] = {}
+                db["board_active"] = None
 
         @staticmethod
-        def get():
+        def get(args=None):
             with shelve.open(Constants.SONAR_DB_PATH) as db:
                 boards = db["board"]
-            return boards
+                if args:
+                    return boards[args.name]
+                return boards
 
         @staticmethod
         def activate(args):
             with shelve.open(Constants.SONAR_DB_PATH) as db:
                 try:
-                    env = db["board"][args.board]
+                    board = db["board"][args.board]
                 except KeyError as exc:
                     logger.error(
-                        f"Could not find board: {args.board}. See boards with `sonar board show`"
+                        f"Could not find board: {args.board}. See boards with `sonar board info`"
                     )
                     raise SonarInvalidArgError from exc
                 with open(Constants.SONAR_BASH_BOARD_SOURCE, "w") as f:
                     script = []
-                    board_settings = runpy.run_path(os.path.join(env, "__init__.py"))
+                    board_settings = runpy.run_path(os.path.join(board, "__init__.py"))
                     part = board_settings["PART"]
-                    script.append(f"SONAR_BOARD={args.board}")
-                    script.append(f"SONAR_PART={part}")
+                    script.append(f"export SONAR_BOARD={args.board}")
+                    script.append(f"export SONAR_PART={part}")
                     f.write("\n".join(script))
+                db["board_active"] = args.board
+
+        @staticmethod
+        def deactivate():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                os.remove(Constants.SONAR_BASH_BOARD_SOURCE)
+                db["board_active"] = None
+
+        @staticmethod
+        def get_active():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                return db["board_active"]
 
     class Repo:
         @staticmethod
@@ -277,10 +306,12 @@ class DBtools(SubscriptMixin):
 
 
 class DBenvironment(SubscriptMixin):
-    def __init__(self, _cad_tool, _sim_tool, _hls_tool):
+    def __init__(self, _cad_tool, _sim_tool, _hls_tool, _board, _project):
         self.cad_tool = _cad_tool
         self.sim_tool = _sim_tool
         self.hls_tool = _hls_tool
+        self.board = _board
+        self.project = _project
 
     def __repr__(self):
         return "<database.Environment()>"
@@ -291,7 +322,9 @@ class DBenvironment(SubscriptMixin):
             Environment:
                 cad_tool: {self.cad_tool}
                 sim_tool: {self.sim_tool}
-                hls_tool: {self.hls_tool}\
+                hls_tool: {self.hls_tool}
+                board: {self.board}
+                project: {self.project}\
             """
         )
 

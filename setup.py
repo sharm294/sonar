@@ -40,6 +40,8 @@ setup(
         "Topic :: Software Development :: Testing",
     ],
     python_requires=">=3.6",
-    entry_points={"console_scripts": ["sonar=sonar.main:main"]},
+    # this doesn't work to enable argcomplete
+    # entry_points={"console_scripts": ["sonar=sonar.main:main"]},
+    scripts=["tools/sonar"],
     include_package_data=True,
 )

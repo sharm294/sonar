@@ -16,7 +16,7 @@ class Constants:
     SONAR_DB = Path("sonar_db")
     SONAR_BASH_SCRIPTS = Path("shell/bash")
     SONAR_MAIN_SOURCE = Path("sonar.sh")
-    SONAR_ENV_SOURCE = Path("sonar_env.sh")
+    SONAR_TOOL_SOURCE = Path("sonar_tool.sh")
     SONAR_BOARD_SOURCE = Path("sonar_board.sh")
     SONAR_REPO_SOURCE = Path("sonar_repo.sh")
 
@@ -29,7 +29,7 @@ class Constants:
         )  # shelve doesn't like pathlib
         cls.SONAR_BASH_PATH = cls.SONAR_PATH.joinpath(cls.SONAR_BASH_SCRIPTS)
         cls.SONAR_BASH_MAIN_SOURCE = cls.SONAR_BASH_PATH.joinpath(cls.SONAR_MAIN_SOURCE)
-        cls.SONAR_BASH_ENV_SOURCE = cls.SONAR_BASH_PATH.joinpath(cls.SONAR_ENV_SOURCE)
+        cls.SONAR_BASH_TOOL_SOURCE = cls.SONAR_BASH_PATH.joinpath(cls.SONAR_TOOL_SOURCE)
         cls.SONAR_BASH_BOARD_SOURCE = cls.SONAR_BASH_PATH.joinpath(
             cls.SONAR_BOARD_SOURCE
         )

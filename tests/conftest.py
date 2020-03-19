@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 import sys
 
-import sonar
+import sonar.main
 from sonar.include import Constants, init_constants
 
 
@@ -50,10 +50,9 @@ def patch_constants(monkeypatch, test_home):
     class MockConstants(Constants):
         SONAR_BASE_PATH = Path(test_home)
 
-    monkeypatch.setattr("sonar.cli.Constants", MockConstants)
-    monkeypatch.setattr("sonar.main.Constants", MockConstants)
-    monkeypatch.setattr("sonar.include.Constants", MockConstants)
+    monkeypatch.setattr("sonar.api.Constants", MockConstants)
     monkeypatch.setattr("sonar.database.Constants", MockConstants)
+    monkeypatch.setattr("sonar.include.Constants", MockConstants)
 
 
 class CallSonar:
