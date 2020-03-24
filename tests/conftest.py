@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
 from unittest.mock import patch
+import os
 import sys
 
 import sonar.main
@@ -69,3 +70,56 @@ class CallSonar:
 @pytest.fixture
 def call_sonar():
     return CallSonar
+
+
+class Helper:
+    @staticmethod
+    def check_filesystem(base_path, directories=None, files=None, check_all=True):
+        assert (
+            directories is not None or files is not None
+        ), "One of directories or files must be specified"
+
+        assert (
+            isinstance(files, list) or files is None
+        ), "Argument must be list of files to search for"
+        assert (
+            isinstance(directories, list) or directories is None
+        ), "Argument must be list of directories to search for"
+
+        missing_files = []
+        extra_files = []
+
+        if files is not None:
+            full_files = []
+            for filename in files:
+                filepath = os.path.join(base_path, filename)
+                full_files.append(filepath)
+                if not os.path.exists(filepath):
+                    missing_files.append(filename)
+
+        if directories is not None:
+            full_directories = []
+            for dirname in directories:
+                dirpath = os.path.join(base_path, dirname)
+                full_directories.append(dirpath)
+                if not os.path.exists(dirpath):
+                    missing_files.append(dirname)
+
+        if check_all:
+            for dirpath, f_directories, f_files in os.walk(base_path):
+                if directories is not None:
+                    if dirpath not in full_directories:
+                        if dirpath != base_path:
+                            extra_files.append(dirpath)
+                if files is not None:
+                    for f in f_files:
+                        filepath = os.path.join(dirpath, f)
+                        if filepath not in full_files:
+                            extra_files.append(filepath)
+
+        return missing_files, extra_files
+
+
+@pytest.fixture
+def helper():
+    return Helper

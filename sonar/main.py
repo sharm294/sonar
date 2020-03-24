@@ -19,9 +19,9 @@ def parse_args():
     subparser = parser.add_subparsers(title="Commands", metavar="command")
     cli.activate(subparser)
     cli.board(subparser)
+    cli.create(subparser)
     cli.env(subparser)
     cli.init(subparser)
-    cli.project(subparser)
     cli.repo(subparser)
     cli.tool(subparser)
 

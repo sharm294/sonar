@@ -415,16 +415,16 @@ def repo(parser):
     add_help(subparser)
 
 
-def project(parser):
+def create(parser):
     subparser = parser.add_parser(
-        "project", help="Manipulate the active repo", add_help=False
+        "create", help="Manipulate the active repo", add_help=False
     )
     subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
 
-    def add():
+    def ip():
         command = subsubparser.add_parser(
-            "add",
-            help="Add an IP directory",
+            "ip",
+            help="Create an IP directory",
             add_help=False,
             description=textwrap.dedent(
                 f"""\
@@ -437,10 +437,30 @@ def project(parser):
         command_group.add_argument(
             "name", type=str, help="Name of the directory",
         )
-        command.set_defaults(func=api.Project.add)
+        command.set_defaults(func=api.Create.ip)
         add_help(command)
 
-    add()
+    def repo():
+        command = subsubparser.add_parser(
+            "repo",
+            help="Create an empty repo directory",
+            add_help=False,
+            description=textwrap.dedent(
+                f"""\
+                Create a repo directory
+                """
+            ),
+        )
+
+        command_group = command.add_argument_group("Arguments")
+        command_group.add_argument(
+            "name", type=str, help="Name of the repo",
+        )
+        command.set_defaults(func=api.Create.repo)
+        add_help(command)
+
+    ip()
+    repo()
     add_help(subparser)
 
 
@@ -471,19 +491,19 @@ def init(parser):
         command.set_defaults(func=api.Init.vivado)
         add_help(command)
 
-    def repo():
-        command = subsubparser.add_parser(
-            "repo",
-            help="Create a new sonar repository",
-            add_help=False,
-            description="Creates a new sonar repository",
-        )
-        command_group = command.add_argument_group("Arguments")
-        command_group.add_argument(
-            "-p", "--path", type=str, help="Path to create repository"
-        )
-        command.set_defaults(func=api.Init.repo)
-        add_help(command)
+    # def repo():
+    #     command = subsubparser.add_parser(
+    #         "repo",
+    #         help="Create a new sonar repository",
+    #         add_help=False,
+    #         description="Creates a new sonar repository",
+    #     )
+    #     command_group = command.add_argument_group("Arguments")
+    #     command_group.add_argument(
+    #         "-p", "--path", type=str, help="Path to create repository"
+    #     )
+    #     command.set_defaults(func=api.Init.repo)
+    #     add_help(command)
 
-    repo()
+    # repo()
     vivado()

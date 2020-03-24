@@ -1,4 +1,5 @@
 import logging
+import logging.config
 import os
 import shutil
 from pathlib import Path
@@ -170,9 +171,6 @@ class Init:
             )
             Env.add(args)
 
-    def repo(args):
-        os.makedirs()
-
 
 class Repo:
     def add(args):
@@ -189,8 +187,8 @@ class Repo:
         Database.Repo.activate(args)
 
 
-class Project:
-    def add(args):
+class Create:
+    def ip(args):
         curr_dir = Path(os.getcwd())
 
         ip_dir = curr_dir.joinpath(args.name)
@@ -202,6 +200,19 @@ class Project:
         ip_dir.joinpath("testbench").mkdir()
         ip_dir.joinpath("cad").mkdir()
         ip_dir.joinpath("hls").mkdir()
+
+    def repo(args):
+        curr_dir = Path(os.getcwd())
+
+        ip_dir = curr_dir.joinpath(args.name)
+        ip_dir.mkdir()
+
+        sonar_dir = ip_dir.joinpath(".sonar")
+        sonar_dir.mkdir()
+
+        src_dir = os.path.join(os.path.dirname(__file__), "repo", "gitlint_rules.py")
+
+        shutil.copy(src_dir, sonar_dir)
 
 
 def configure_logging():
