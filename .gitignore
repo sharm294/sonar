@@ -4,7 +4,7 @@ user/**
 !user/__init__.py
 *.log
 build/
-tmp.*
+tmp*
 
 # Environment
 .vscode/

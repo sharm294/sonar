@@ -3,7 +3,7 @@ import pprint
 import shelve
 import logging
 import os
-import configparser
+import toml
 import runpy
 
 from sonar.include import Constants
@@ -13,6 +13,15 @@ logger = logging.getLogger(__name__)
 
 
 class Database:
+    @staticmethod
+    def init():
+        with shelve.open(Constants.SONAR_DB_PATH) as db:
+            db["active"] = {}
+        Database.Tool.clear()
+        Database.Env.clear()
+        Database.Board.clear()
+        Database.Repo.clear()
+
     class Tool:
         @staticmethod
         def add(args):
@@ -130,7 +139,7 @@ class Database:
                         f"Could not find environment: {args.env}. See envs with `sonar env show`"
                     )
                     raise SonarInvalidArgError from exc
-                with open(Constants.SONAR_BASH_TOOL_SOURCE, "w") as f:
+                with open(Constants.SONAR_SHELL_TOOL_SOURCE, "w") as f:
                     script = []
                     for key in ["cad_tool", "sim_tool", "hls_tool"]:
                         tool_id = env[key]
@@ -159,7 +168,9 @@ class Database:
         def clear():
             with shelve.open(Constants.SONAR_DB_PATH) as db:
                 db["board"] = {}
-                db["board_active"] = None
+                dict_active = db["active"]
+                dict_active["board"] = None
+                db["active"] = dict_active
 
         @staticmethod
         def get(args=None):
@@ -179,25 +190,66 @@ class Database:
                         f"Could not find board: {args.board}. See boards with `sonar board info`"
                     )
                     raise SonarInvalidArgError from exc
-                with open(Constants.SONAR_BASH_BOARD_SOURCE, "w") as f:
+                with open(Constants.SONAR_SHELL_BOARD_SOURCE, "w") as f:
                     script = []
                     board_settings = runpy.run_path(os.path.join(board, "__init__.py"))
                     part = board_settings["PART"]
                     script.append(f"export SONAR_BOARD={args.board}")
                     script.append(f"export SONAR_PART={part}")
+                    part_family = Database.Board._find_part_family(part)
+                    if part_family:
+                        script.append(f"export SONAR_PART_FAMILY={part_family}")
                     f.write("\n".join(script))
-                db["board_active"] = args.board
+                dict_active = db["active"]
+                dict_active["board"] = args.board
+                db["active"] = dict_active
 
         @staticmethod
         def deactivate():
             with shelve.open(Constants.SONAR_DB_PATH) as db:
-                os.remove(Constants.SONAR_BASH_BOARD_SOURCE)
-                db["board_active"] = None
+                os.remove(Constants.SONAR_SHELL_BOARD_SOURCE)
+                dict_active = db["active"]
+                dict_active["board"] = None
+                db["active"] = dict_active
 
         @staticmethod
         def get_active():
             with shelve.open(Constants.SONAR_DB_PATH) as db:
-                return db["board_active"]
+                return db["active"]["board"]
+
+        @staticmethod
+        def _find_part_family(fpga_part):
+            family_id = fpga_part[2]
+            if family_id == "k":
+                family = "Kintex"
+            elif family_id == "v":
+                family = "Virtex"
+            elif family_id == "7":
+                family = "7series"
+            else:
+                family_id = fpga_part[2:4]
+                if family_id == "zu":
+                    return "Zynq_Ultrascale_Plus"
+                return None
+
+            if family == "7series":
+                fpga_type_id = fpga_part[3]
+                if fpga_type_id == "k":
+                    fpga_type = "Kintex"
+                elif fpga_type_id == "v":
+                    fpga_type = "Virtex"
+                elif fpga_type_id == "z":
+                    fpga_type = "Zynq"
+                else:
+                    return None
+            else:
+                fpga_type_id = fpga_part.split("-")[0][-1]
+                if fpga_type_id == "p":
+                    fpga_type = "Ultrascale_Plus"
+                else:
+                    fpga_type = "Ultrascale"
+
+            return f"{family}_{fpga_type}"
 
     class Repo:
         @staticmethod
@@ -205,9 +257,10 @@ class Database:
             with shelve.open(Constants.SONAR_DB_PATH) as db:
                 repos = db["repo"]
                 repo_path = os.getcwd()
-                config = configparser.ConfigParser()
-                config.read(os.path.join(repo_path, Constants.SONAR_CONFIG_FILE))
-                repo = config["repo"]["name"]
+                config = toml.load(
+                    os.path.join(repo_path, Constants.SONAR_CONFIG_FILE_PATH)
+                )
+                repo = config["project"]["name"]
                 repos[repo] = {"path": repo_path}
                 db["repo"] = repos
 
@@ -215,6 +268,9 @@ class Database:
         def clear():
             with shelve.open(Constants.SONAR_DB_PATH) as db:
                 db["repo"] = {}
+                dict_active = db["active"]
+                dict_active["repo"] = None
+                db["active"] = dict_active
 
         @staticmethod
         def get():
@@ -229,14 +285,41 @@ class Database:
                     env = db["repo"][args.repo]
                 except KeyError as exc:
                     logger.error(
-                        f"Could not find repo: {args.board}. See repos with `sonar repo show`"
+                        f"Could not find repo: {args.repo}. See repos with `sonar repo show`"
                     )
                     raise SonarInvalidArgError from exc
-                with open(Constants.SONAR_BASH_REPO_SOURCE, "w") as f:
+                with open(Constants.SONAR_SHELL_REPO_SOURCE, "w") as f:
                     script = []
                     path = env["path"]
-                    script.append(f"SONAR_REPO={path}")
+                    script.append(f"export SONAR_REPO={path}\n")
                     f.write("\n".join(script))
+                dict_active = db["active"]
+                dict_active["repo"] = args.repo
+                db["active"] = dict_active
+
+        @staticmethod
+        def deactivate():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                os.remove(Constants.SONAR_SHELL_REPO_SOURCE)
+                dict_active = db["active"]
+                dict_active["repo"] = None
+                db["active"] = dict_active
+
+        @staticmethod
+        def get_active():
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                return db["active"]["repo"]
+
+    class IP:
+        @staticmethod
+        def add_new(args):
+            with shelve.open(Constants.SONAR_DB_PATH) as db:
+                repos = db["repo"]
+                repo = repos[args.repo]
+                if "ips" not in repo:
+                    repo["ips"] = []
+                repo["ips"].append({"name": args.name})
+                db["repo"] = repos
 
 
 # https://stackoverflow.com/a/32107024
@@ -314,7 +397,14 @@ class DBenvironment(SubscriptMixin):
         self.project = _project
 
     def __repr__(self):
-        return "<database.Environment()>"
+        env_dict = {
+            "cad_tool": {self.cad_tool},
+            "sim_tool": {self.sim_tool},
+            "hls_tool": {self.hls_tool},
+            "board": {self.board},
+            "project": {self.project},
+        }
+        return str(env_dict)
 
     def __str__(self):
         return textwrap.dedent(
@@ -377,6 +467,7 @@ class Board(SubscriptMixin):
             f"""\
             export SONAR_BOARD={_name}"
             export SONAR_PART={_part}
+
         """
         )
 
@@ -393,8 +484,9 @@ class Board(SubscriptMixin):
         )
 
 
-def print_db(db):
-    dkeys = list(db.keys())
-    dkeys.sort()
-    for x in dkeys:
-        print(x, db[x])
+def print_db():
+    with shelve.open(Constants.SONAR_DB_PATH, "r") as db:
+        dkeys = list(db.keys())
+        dkeys.sort()
+        for x in dkeys:
+            print(x, pprint.pformat(db[x]))

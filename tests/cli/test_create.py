@@ -1,5 +1,6 @@
 import os
 import pytest
+import toml
 
 from sonar.exceptions import ReturnValue
 from sonar.include import Constants
@@ -32,8 +33,11 @@ class TestCreate:
         exit_code = self.sonar("create repo test_repo")
         repo_path = self.paths.valid.joinpath("test_repo")
         missing_files, extra_files = helper.check_filesystem(
-            str(repo_path), [".sonar"], [".sonar/gitlint_rules.py"]
+            str(repo_path), [".sonar"], [".sonar/gitlint_rules.py", ".sonar/init.toml"]
         )
         assert not missing_files
         assert not extra_files
+
+        init = toml.load(repo_path.joinpath(".sonar/init.toml"))
+        assert init["project"]["name"] == "test_repo"
         assert exit_code == ReturnValue.SONAR_OK

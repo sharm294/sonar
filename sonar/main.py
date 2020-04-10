@@ -20,8 +20,10 @@ def parse_args():
     cli.activate(subparser)
     cli.board(subparser)
     cli.create(subparser)
+    cli.database(subparser)
     cli.env(subparser)
     cli.init(subparser)
+    cli.ip(subparser)
     cli.repo(subparser)
     cli.tool(subparser)
 

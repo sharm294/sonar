@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 
 _sonar_source_tool(){
-    if [[ -f ~/.sonar/shell/bash/sonar_tool.sh ]]; then
+    if [[ -f ~/.sonar/shell/sonar_tool.sh ]]; then
         # shellcheck source=/dev/null
-        source ~/.sonar/shell/bash/sonar_tool.sh
+        source ~/.sonar/shell/sonar_tool.sh
     fi
 }
 
 _sonar_source_board(){
-    if [[ -f ~/.sonar/shell/bash/sonar_board.sh ]]; then
+    if [[ -f ~/.sonar/shell/sonar_board.sh ]]; then
         # shellcheck source=/dev/null
-        source ~/.sonar/shell/bash/sonar_board.sh
+        source ~/.sonar/shell/sonar_board.sh
     fi
 }
 
 _sonar_source_repo(){
-    if [[ -f ~/.sonar/shell/bash/sonar_repo.sh ]]; then
+    if [[ -f ~/.sonar/shell/sonar_repo.sh ]]; then
         # shellcheck source=/dev/null
-        source ~/.sonar/shell/bash/sonar_repo.sh
+        source ~/.sonar/shell/sonar_repo.sh
     fi
 }
 
@@ -32,6 +32,12 @@ sonar() {
         if [[ $1 == "env" && $2 == "activate" ]]; then
             _sonar_source_tool
             echo "Sourced file"
+        elif [[ $1 == "board" && $2 == "activate" ]]; then
+            _sonar_source_board
+            echo "Sourced file"
+        elif [[ $1 == "repo" && $2 == "activate" ]]; then
+            _sonar_source_repo
+            echo "Sourced file"
         elif [[ $1 == "activate" ]]; then
             _sonar_source_tool
             _sonar_source_board
@@ -40,3 +46,6 @@ sonar() {
         fi
     fi
 }
+
+homedir=$(readlink -f ~)
+export SONAR_PATH="$homedir"/.sonar

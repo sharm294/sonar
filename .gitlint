@@ -1,5 +1,5 @@
 [general]
-extra-path = sonar/repo/gitlint_rules.py
+extra-path = sonar/files_to_copy/repo/.sonar/gitlint_rules.py
 
 [title-max-length]
 line-length = 50

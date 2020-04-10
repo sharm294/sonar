@@ -66,6 +66,9 @@ class CallSonar:
                 sonar.main.main()
         return exc.value.code
 
+    def abs_path():
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 @pytest.fixture
 def call_sonar():
