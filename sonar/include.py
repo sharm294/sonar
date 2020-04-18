@@ -50,13 +50,3 @@ class Constants:
 #             return True
 #         return False
 #     return False
-
-
-def replace_in_file(src_file, str_to_replace, replacement_str):
-    with open(src_file, "r") as f:
-        filedata = f.read()
-
-    filedata = filedata.replace(str_to_replace, replacement_str)
-
-    with open(src_file, "w") as f:
-        f.write(filedata)

@@ -5,13 +5,11 @@ import shutil
 from pathlib import Path
 import pprint
 import sys
-import dbm
-import shelve
 import toml
 import textwrap
 
-from sonar.database import Database, DotDict
-import sonar.include
+import sonar.database as Database
+import sonar.utils
 from sonar.include import Constants
 from sonar.exceptions import ReturnValue, SonarException
 from sonar.make import MakeFile
@@ -20,87 +18,104 @@ logger = logging.getLogger(__name__)
 
 
 def activate(args):
-    if args.env is not None:
+    if args.name is not None:
         Env.activate(args)
     else:
         raise NotImplementedError
 
 
 class Env:
+    @staticmethod
     def activate(args):
         try:
-            Database.Env.activate(args)
+            Database.Env.activate(args.name)
         except SonarException as exc:
             logger.error(f"Activating environment failed: {exc.exit_str}")
             sys.exit(exc.exit_code)
 
+    @staticmethod
     def add(args):
-        Database.Env.add(args)
+        cad_tool = args.cad.split(":")
+        sim_tool = args.sim.split(":")
+        hls_tool = args.hls.split(":")
+        Database.Env.add(args.name, cad_tool, hls_tool, sim_tool, args.board, args.repo)
 
+    @staticmethod
     def remove(args):
-        Database.Env.remove(args)
+        Database.Env.remove(args.name)
 
-    def edit(args):
-        Database.Env.edit(args)
-
+    @staticmethod
     def f_list(args):
         env = Database.Env.get()
         pprint.pprint(env)
 
+    @staticmethod
     def clear(args):
         Database.Env.clear()
 
 
 class Tool:
+    @staticmethod
     def add(args):
         try:
-            Database.Tool.add(args)
+            Database.Tool.add(
+                args.type, args.version, args.cad, args.hls, args.sim, args.script
+            )
         except SonarException as exc:
             logger.exception(f"Adding a tool to the database failed: {exc.exit_str}")
             sys.exit(exc.exit_code)
 
-    def remove(args):
-        try:
-            Database.Tool.remove(args)
-        except SonarException as exc:
-            logger.error(f"Removing a tool from the database failed: {exc.exit_str}")
-            sys.exit(exc.exit_code)
+    # def remove(args):
+    #     try:
+    #         Database.Tool.remove(args)
+    #     except SonarException as exc:
+    #         logger.error(f"Removing a tool from the database failed: {exc.exit_str}")
+    #         sys.exit(exc.exit_code)
 
-    def edit(args):
-        try:
-            Database.Tool.edit(args)
-        except SonarException as exc:
-            logger.error(f"Editing a tool in the database failed: {exc.exit_str}")
-            sys.exit(exc.exit_code)
+    # def edit(args):
+    #     try:
+    #         Database.Tool.edit(args)
+    #     except SonarException as exc:
+    #         logger.error(f"Editing a tool in the database failed: {exc.exit_str}")
+    #         sys.exit(exc.exit_code)
 
+    @staticmethod
     def f_list(args):
         tools = Database.Tool.get()
         pprint.pprint(tools)
 
-    def clear(args):
+    @staticmethod
+    def clear():
         Database.Tool.clear()
 
 
 class Board:
+    @staticmethod
     def add(args):
-        Database.Board.add(args)
+        Database.Board.add(args.path)
 
+    @staticmethod
     def remove(args):
-        Database.Board.remove(args)
+        Database.Board.remove(args.name)
 
+    @staticmethod
     def show(args):
-        board = Database.Board.get(args)
+        board = Database.Board.get(args.name)
         pprint.pprint(board)
 
+    @staticmethod
     def clear(args):
         Database.Board.clear()
 
+    @staticmethod
     def activate(args):
-        Database.Board.activate(args)
+        Database.Board.activate(args.name)
 
+    @staticmethod
     def deactivate(args):
         Database.Board.deactivate()
 
+    @staticmethod
     def f_list(args):
         active_board = Database.Board.get_active()
         print(f"Active board: {active_board}")
@@ -112,13 +127,13 @@ class Board:
 
 
 class Init:
+    @staticmethod
     def one_time_setup(args):
-        os.makedirs(Constants.SONAR_PATH, exist_ok=True)
+        Database.init()
 
         src_dir = os.path.join(os.path.dirname(__file__), "files_to_copy/home/shell")
         dst_dir = os.path.join(Constants.SONAR_PATH, "shell")
         shutil.copytree(src_dir, dst_dir)
-        Database.init()
 
         with open(Path.home().joinpath(".bashrc"), "r+") as f:
             for line in f:
@@ -130,9 +145,10 @@ class Init:
         boards = [x for x in files if x != "__init__.py" and x != "__pycache__"]
         for board in boards:
             path = os.path.join(os.path.dirname(__file__), "boards", board)
-            args = DotDict({"path": path})
-            Database.Board.add(args)
+            print(path)
+            Database.Board.add(path)
 
+    @staticmethod
     def vivado(args):
         xilinx_path = os.path.abspath(args.path)
         if not os.path.exists(xilinx_path):
@@ -152,13 +168,13 @@ class Init:
                 include_dir = os.path.join(xilinx_path, f"Vivado_HLS/{version}/include")
             else:
                 include_dir = os.path.join(xilinx_path, f"Vivado/{version}/include")
-            args = DotDict(
+            args = sonar.utils.DotDict(
                 {
                     "type": "vivado",
                     # "ID": f"vivado_{version}",
-                    "cad_executable": "vivado",
-                    "sim_executable": "vivado",
-                    "hls_executable": "vivado_hls",
+                    "cad": "vivado",
+                    "sim": "vivado",
+                    "hls": "vivado_hls",
                     "version": version,
                     "hls_include": include_dir,
                     "script": textwrap.dedent(
@@ -174,11 +190,11 @@ class Init:
                 }
             )
             Tool.add(args)
-            args = DotDict(
+            args = sonar.utils.DotDict(
                 {
-                    "sim_tool": f"vivado:{version}",
-                    "hls_tool": f"vivado:{version}",
-                    "cad_tool": f"vivado:{version}",
+                    "sim": f"vivado:{version}",
+                    "hls": f"vivado:{version}",
+                    "cad": f"vivado:{version}",
                     "repo": None,
                     "board": None,
                     "name": f"vivado_{version}",
@@ -188,21 +204,26 @@ class Init:
 
 
 class Repo:
+    @staticmethod
     def add(args):
-        Database.Repo.add(args)
+        Database.Repo.add()
 
+    @staticmethod
     def f_list(args):
         repo = Database.Repo.get()
         pprint.pprint(repo)
 
+    @staticmethod
     def clear(args):
         Database.Repo.clear()
 
+    @staticmethod
     def activate(args):
-        Database.Repo.activate(args)
+        Database.Repo.activate(args.name)
 
 
 class Create:
+    @staticmethod
     def ip(args):
         curr_dir = Path(os.getcwd())
 
@@ -226,25 +247,24 @@ class Create:
         shutil.copy(os.path.join(src_dir, "generate_hls.tcl"), ip_dir.joinpath("hls"))
         shutil.copy(os.path.join(src_dir, "generate_hls.sh"), ip_dir.joinpath("hls"))
 
-        sonar.include.replace_in_file(
+        sonar.utils.replace_in_file(
             str(ip_dir.joinpath("cad").joinpath("generate_cad.tcl")),
             "BASE_PATH",
             str(ip_dir),
         )
-        sonar.include.replace_in_file(
+        sonar.utils.replace_in_file(
             str(ip_dir.joinpath("hls").joinpath("generate_hls.tcl")),
             "BASE_PATH",
             str(ip_dir),
         )
-        sonar.include.replace_in_file(
+        sonar.utils.replace_in_file(
             str(ip_dir.joinpath("hls").joinpath("generate_hls.sh")),
             "BASE_PATH",
             str(ip_dir),
         )
 
         active_repo = Database.Repo.get_active()
-        args_2 = DotDict({"name": args.name, "repo": active_repo})
-        Database.IP.add_new(args_2)
+        Database.IP.add_new(args.name)
         repos = Database.Repo.get()
         path = repos[active_repo]["path"]
         init_toml = os.path.join(path, ".sonar", Constants.SONAR_CONFIG_FILE)
@@ -254,6 +274,7 @@ class Create:
         with open(init_toml, "w") as f:
             toml.dump(init, f)
 
+    @staticmethod
     def repo(args):
         curr_dir = Path(os.getcwd())
 
@@ -273,7 +294,7 @@ class Create:
             toml.dump(init, f)
 
         os.chdir(ip_dir)
-        args = DotDict({"name": args.name})
+        args = sonar.utils.DotDict({"name": args.name})
         Repo.add(args)
         os.chdir(curr_dir)
 
@@ -285,6 +306,7 @@ class IP:
 
 
 class DB:
+    @staticmethod
     def f_list(args):
         sonar.database.print_db()
 
@@ -327,9 +349,5 @@ def configure_logging():
 
 
 def check_database():
-    try:
-        db = shelve.open(Constants.SONAR_DB_PATH, "r")
-    except dbm.error:
+    if not Database.check_database():
         Init.one_time_setup(None)
-    else:
-        db.close()

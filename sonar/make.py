@@ -1,5 +1,6 @@
 import os
 import textwrap
+import sonar.database as Database
 
 
 class MakeFile:
@@ -18,7 +19,10 @@ class MakeFile:
         self.cflags = CFlags()
 
     def add_ip_variables(self, ip_dir):
-        ip_dir_env = "$(SONAR_REPO)" + ip_dir.replace(os.environ["SONAR_REPO"], "")
+        # ip_dir_env = "$(SONAR_REPO)" + ip_dir.replace(os.environ["SONAR_REPO"], "")
+        active_repo = Database.Repo.get_active()
+        path = Database.Repo.get(active_repo)["path"]
+        ip_dir_env = "$(SONAR_REPO)" + ip_dir.replace(path, "")
         self.variables.append(("ip_dir", ip_dir_env))
         self.variables.append(("build_dir", "$(ip_dir)/build"))
         self.variables.append(("bin_dir", "$(ip_dir)/build/bin"))
@@ -67,8 +71,10 @@ class CFlags:
     def __init__(self):
         self.debug = True
         self.local_include = []
-        hls_include = os.environ["SONAR_HLS_INCLUDE"]
-        self.system_include = [hls_include]
+        if "SONAR_HLS_INCLUDE" in os.environ:
+            self.system_include = [os.environ["SONAR_HLS_INCLUDE"]]
+        else:
+            self.system_include = []
         self.errors = [
             "-Wall",
             "-Wno-unknown-pragmas",

@@ -16,18 +16,6 @@ class TestCreate:
         exit_code = self.sonar("create ip")
         assert exit_code == Constants.ARGPARSE_FAILURE
 
-    def test_create_ip(self, helper):
-        os.chdir(self.paths.valid)
-        exit_code = self.sonar("create ip ip_0")
-        ip_path = self.paths.valid.joinpath("ip_0")
-        missing_files, extra_files = helper.check_filesystem(
-            str(ip_path),
-            ["build", "build/bin", "cad", "hls", "src", "include", "testbench"],
-        )
-        assert not missing_files
-        assert not extra_files
-        assert exit_code == ReturnValue.SONAR_OK
-
     def test_create_repo(self, helper):
         os.chdir(self.paths.valid)
         exit_code = self.sonar("create repo test_repo")
@@ -41,3 +29,18 @@ class TestCreate:
         init = toml.load(repo_path.joinpath(".sonar/init.toml"))
         assert init["project"]["name"] == "test_repo"
         assert exit_code == ReturnValue.SONAR_OK
+
+        def test_create_ip():
+            self.sonar("repo activate test_repo")
+            os.chdir(repo_path)
+            exit_code = self.sonar("create ip ip_0")
+            ip_path = repo_path.joinpath("ip_0")
+            missing_files, extra_files = helper.check_filesystem(
+                str(ip_path),
+                ["build", "build/bin", "cad", "hls", "src", "include", "testbench"],
+            )
+            assert not missing_files
+            assert not extra_files
+            assert exit_code == ReturnValue.SONAR_OK
+
+        test_create_ip()

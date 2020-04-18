@@ -11,7 +11,7 @@ def activate(parser: argparse._SubParsersAction):
 
     command_group = subparser.add_argument_group("Environment")
     command_group.add_argument(
-        "env", type=str, nargs="?", default=None, help="Name of the env to activate",
+        "name", type=str, nargs="?", default=None, help="Name of the env to activate",
     )
     command_group = subparser.add_argument_group("Custom")
     command_group.add_argument("--tool")
@@ -113,7 +113,7 @@ def env(parser):
 
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument(
-            "env", type=str, help="Name of the env to activate",
+            "name", type=str, help="Name of the env to activate",
         )
         command.set_defaults(func=api.Env.activate)
         add_help(command)
@@ -376,7 +376,7 @@ def repo(parser):
     def f_list():
         command = subsubparser.add_parser(
             "list",
-            help="List sonar reps",
+            help="List sonar repos",
             add_help=False,
             description="Lists sonar repos",
         )
@@ -403,7 +403,7 @@ def repo(parser):
 
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument(
-            "repo", type=str, help="Name of the repo to activate",
+            "name", type=str, help="Name of the repo to activate",
         )
         command.set_defaults(func=api.Repo.activate)
         add_help(command)

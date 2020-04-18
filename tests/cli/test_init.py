@@ -1,7 +1,7 @@
 import pytest
 
 from sonar.exceptions import ReturnValue
-from sonar.database import Database
+import sonar.database as Database
 
 
 class TestVivado:
