@@ -1,7 +1,7 @@
 # sonar
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=sharm294_sonar&metric=alert_status)](https://sonarcloud.io/dashboard?id=sharm294_sonar)
-[![Build Status](https://travis-ci.org/sharm294/sonar.svg?branch=dev)](https://travis-ci.org/sharm294/sonar)
+[![Build Status](https://travis-ci.org/sharm294/sonar.svg?branch=master)](https://travis-ci.org/sharm294/sonar)
 [![codecov](https://codecov.io/gh/sharm294/sonar/branch/master/graph/badge.svg)](https://codecov.io/gh/sharm294/sonar)
 
 
