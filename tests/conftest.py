@@ -66,6 +66,7 @@ class CallSonar:
                 sonar.main.main()
         return exc.value.code
 
+    @staticmethod
     def abs_path():
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

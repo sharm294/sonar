@@ -1,30 +1,31 @@
 # sonar
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=sharm294_sonar&metric=alert_status)](https://sonarcloud.io/dashboard?id=sharm294_sonar)
 [![Build Status](https://travis-ci.org/sharm294/sonar.svg?branch=master)](https://travis-ci.org/sharm294/sonar)
-[![codecov](https://codecov.io/gh/sharm294/sonar/branch/master/graph/badge.svg)](https://codecov.io/gh/sharm294/sonar)
+[![codecov](https://codecov.io/gh/sharm294/sonar/branch/dev/graph/badge.svg)](https://codecov.io/gh/sharm294/sonar)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=sharm294_sonar&metric=alert_status)](https://sonarcloud.io/dashboard?id=sharm294_sonar)
 
-
-*sonar* is a project management and simulation/testbenching infrastructure for hardware.
-
-#### Project Management
-
-At present, *sonar* can create directories for repositories, and within these directories, create IPs through its command line interface.
-For IPs, a skeleton directory structure is created for the user to fill in as needed.
-It provides a set of scripts and a Makefile to compile HLS IPs, create *sonar* testbenches, and pull them all into Vivado projects.
+*sonar* is a simulation/testbenching and project management infrastructure for Vivado projects.
 
 #### Testbenching
 
-It can be imported into a Python script.
+*sonar* can be imported into a Python script.
 Then, the user can define the ports of the device-under-test (DUT) and test vectors.
-*sonar* will generate a *.sv* testbench and an associated *.dat* file containing the user specified test vectors. ~~It can also optionally generate a C++ data file and testbench for use with HLS though that is not quite as sophisticated.~~
-(this is slated for deprecation or substantial reworking.)
+It will generate a *.sv* testbench and an associated *.dat* file containing the user specified test vectors.
+~~It can also optionally generate a C++ data file and testbench for use with HLS though that is not quite as sophisticated.~~(this is slated for deprecation or substantial reworking.)
 
 All generated files are placed in the specified directory.
 To simulate the SV file, add the TB, the *.dat* file and the DUT file(s) to the simulator of your choice.
 ~~To simulate the C++ file, make a testbench executable using the generated TB file and run it.~~
 
 *sonar*'s project management and associated scripts show an example workflow where all these files are automatically added to the created Vivado projects.
+
+#### Project Management
+
+At present, *sonar* can create directories for repositories, and within these directories, create IPs through its command line interface.
+For IPs, a skeleton directory structure is created for the user to fill in as needed.
+It provides a set of scripts and a Makefile to compile HLS IPs, create *sonar* testbenches, and pull them all into Vivado projects.
+The goal with management is to provide a consistent feel to hardware projects, making them easier to navigate, build and share with others.
+The reach goal is to add hardware IP dependency information so *sonar* can go fetch dependencies from other repositories without duplicating code.
 
 ## Usage
 
@@ -52,30 +53,46 @@ The `test.sh` script in the same directory is part of the *sonar*'s internal tes
 It shows an example of *sonar*'s command line interface and the commands used to create a new repository, add an IP to it and simulate it.
 
 ```bash
+# create a repo named 'sample_repo' in the current directory
 $ sonar create repo sample_repo
-$ cd sample_repo
+$ cd sample_repo || return
+
+# activate vivado 2017.2, use this repo,
+# set the board to an Alpha Data 8k5
 $ sonar activate vivado_2017.2
 $ sonar repo activate sample_repo
 $ sonar board activate ad_8k5
+
+# create an IP in this directory named 'sample_ip'
 $ sonar create ip sample_ip
+
+# add source files and add the name of the file to the Makefile
+
+# generate the HLS IP
+$ make hw-sample_src
+
+# generate the sonar TB
+$ make config-sample_src
+
+# create a vivado project for sample_src and simulate it in terminal
+$ ./run.sh cad sample_src batch behav 1 0 0 0 0
 ```
 
 ## Dependencies
 
-These are the current dependencies of *sonar*. Note, this may become outdated.
-
 ### Testbench
 
 Installing the package is sufficient.
-Its dependencies are the argcomplete and toml packages which are installed automatically.
-It is recommended to setup [argcompete](https://github.com/kislyuk/argcomplete#global-completion) to autocomplete *sonar* CLI options.
+It is recommended to install and setup [argcompete](https://github.com/kislyuk/argcomplete#global-completion) to autocomplete *sonar*'s CLI commands.
+If the package exists, *sonar* will use it.
 
 ### Pytest
 
-[pytest](https://docs.pytest.org/en/stable/) is used for internal testing.
+[pytest](https://docs.pytest.org/en/stable/) and coverage is used for internal testing.
 
 ### Development
 
 For development, it is HIGHLY recommended to use a virtual env such as [conda](https://docs.conda.io/en/latest/miniconda.html) or docker.
 *sonar* uses the [pre-commit](https://pre-commit.com/) package to enforce style checks for every commit.
-There are a number of additional packages needed for all the pre-commit hooks to run.
+There are a number of additional packages needed for all the pre-commit hooks to run, including clang-format, cppcheck, cpplint, shellcheck, and gitlint among others.
+If you're using conda, most can be installed from conda-forge or pip but some may need custom download channels.

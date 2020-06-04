@@ -1,5 +1,9 @@
 import argparse
-import argcomplete
+
+try:
+    import argcomplete
+except ImportError:
+    pass
 
 import sys
 
@@ -34,8 +38,10 @@ def parse_args():
     command_group.add_argument(
         "-v", "--version", action="version", version="%(prog)s " + sonar.__version__
     )
-
-    argcomplete.autocomplete(parser)
+    try:
+        argcomplete.autocomplete(parser)
+    except NameError:
+        pass
     return parser.parse_args()
 
 

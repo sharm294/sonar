@@ -7,8 +7,7 @@ def get_version(rel_path):
     for line in read(rel_path).splitlines():
         if line.startswith("__version__"):
             return line.split('"')[1]
-    else:
-        raise RuntimeError("Unable to find version string.")
+    raise RuntimeError("Unable to find version string.")
 
 
 def read(filepath):
@@ -29,7 +28,7 @@ setup(
     url="https://github.com/sharm294/sonar",
     license="License :: OSI Approved :: MIT License",
     platforms="linux",
-    install_requires=["argcomplete", "toml"],
+    install_requires=["toml"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: MIT License",
