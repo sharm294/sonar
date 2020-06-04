@@ -4,8 +4,7 @@ import importlib
 
 sonar_types = ["delay", "wait", "signal", "end", "timestamp", "display", "flag"]
 
-################################################################################
-### getInterface ###
+
 # This function attempts to import an interface definition
 def getInterface(interfaceName):
     # first check user's directory
@@ -28,8 +27,6 @@ def getInterface(interfaceName):
         return interface
 
 
-################################################################################
-### getIndentation ###
 # This function extracts the indentation level of a line
 # Return: a string containing the leading whitespace
 def getIndentation(textStr):
@@ -42,8 +39,6 @@ def getIndentation(textStr):
         return indent
 
 
-################################################################################
-### GetFilePath ###
 # This function checks if a file exists and returns the absolute path to it
 #
 # Arguments:
@@ -90,8 +85,6 @@ def getFilePath(mode, modeArg, filepath):
         return testFileName
 
 
-################################################################################
-### trimFinalLine ###
 # This function removes the final line from a file
 #
 # Arguments:
@@ -110,8 +103,6 @@ def trimFinalLine(openFile):
         openFile.truncate()
 
 
-################################################################################
-### getEnvironmentVar ###
 # This function evaluates an environment variable and returns its value
 #
 # Arguments:
@@ -119,7 +110,7 @@ def trimFinalLine(openFile):
 #
 # Return: environment variable value (string) or None (if not found)
 def getEnvironmentVar(envVar):
-    variable = os.environ.get(envVar)
+    variable = os.getenv(envVar)
     if variable is None:
         printError(1, "getEnvironmentVar - environment variable not found: " + variable)
         return None
@@ -127,8 +118,6 @@ def getEnvironmentVar(envVar):
         return variable
 
 
-################################################################################
-### stripFileName ###
 # This function strips the unnecessary parts of the absolute path of a file to
 # improve legibility
 #
@@ -165,9 +154,6 @@ def stripFileName(mode, modeArg, filename):
     return localName
 
 
-################################################################################
-
-
 def printWarning(message):
     print("*** Warning *** : " + message)
 
@@ -176,8 +162,6 @@ def printError(errorCode, message):
     print("*** Fatal Error *** Code " + str(errorCode) + ": " + message)
 
 
-################################################################################
-### extractNumber ###
 # This function converts a(n encoded) string into an integer.
 #
 # Arguments:
@@ -199,8 +183,6 @@ def extractNumber(numberStr):
         return int(numberStr, 10)
 
 
-################################################################################
-
 if __name__ == "__main__":
 
     for arg in sys.argv:
@@ -213,7 +195,8 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 1:
         if sys.argv[1] == "strToInt" and len(sys.argv) == 3:
-            print(strToInt(sys.argv[2]))
+            # print(strToInt(sys.argv[2]))
+            print("deprecated")
         elif sys.argv[1] == "extractNumber" and len(sys.argv) == 3:
             print(extractNumber(sys.argv[2]))
         else:

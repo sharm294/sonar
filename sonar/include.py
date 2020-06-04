@@ -12,7 +12,7 @@ class Constants:
     SONAR_BASE_PATH = Path.home()
     SONAR_DIRECTORY = Path(".sonar")
     SONAR_LOG_FILE = Path("sonar.log")
-    SONAR_CONFIG_FILE = Path("init.toml")
+    SONAR_CONFIG_FILE = Path(".sonar.toml")
     SONAR_DB = Path("sonar_db")
     SONAR_SHELL_SCRIPTS = Path("shell")
     SONAR_MAIN_SOURCE = Path("sonar.sh")

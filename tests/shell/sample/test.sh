@@ -28,16 +28,21 @@ mkdir "$base_dir"/tmp
 source "$SONAR_PATH"/shell/sonar.sh
 
 cd "$base_dir"/tmp || return
-sonar create repo sample
-cd sample || return
-sonar repo activate sample
-sonar board activate ad_8k5
+sonar create repo sample_repo
+cd sample_repo || return
 sonar activate vivado_2017.2
-sonar create ip sample
+sonar repo activate sample_repo
+sonar board activate ad_8k5
+sonar create ip sample_ip
 
 cd "$base_dir" || return
-cp sample.cpp tmp/sample/sample/src/
-cp sample.hpp tmp/sample/sample/include/
-cp sample.py tmp/sample/sample/testbench/
+cp sample_src.cpp tmp/sample_repo/sample_ip/src/
+cp sample_src.hpp tmp/sample_repo/sample_ip/include/
+cp sample_src.py tmp/sample_repo/sample_ip/testbench/
 
-cd tmp/sample || return
+cd tmp/sample_repo/sample_ip || return
+
+sed -i 's/c_modules =/c_modules = sample_src/g' sonar.mk
+make hw-sample_src
+make config-sample_src
+./run.sh cad sample_src batch behav 1 0 0 0 0

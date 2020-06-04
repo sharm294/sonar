@@ -290,7 +290,7 @@ def board(parser):
 
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument(
-            "board", type=str, help="Name of the board to activate",
+            "name", type=str, help="Name of the board to activate",
         )
         command.set_defaults(func=api.Board.activate)
         add_help(command)
@@ -509,52 +509,52 @@ def init(parser):
     vivado()
 
 
-def ip(parser):
-    subparser = parser.add_parser(
-        "ip", help="Manage the ip in current directory", add_help=False
-    )
-    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+# def ip(parser):
+#     subparser = parser.add_parser(
+#         "ip", help="Manage the ip in current directory", add_help=False
+#     )
+#     subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
 
-    def add():
-        add_parser = subsubparser.add_parser(
-            "add",
-            help="Add something",
-            add_help=False,
-            description=textwrap.dedent(
-                f"""\
-                Adds something
-                """
-            ),
-        )
-        add_subparser = add_parser.add_subparsers(title="Commands", metavar="command")
+#     def add():
+#         add_parser = subsubparser.add_parser(
+#             "add",
+#             help="Add something",
+#             add_help=False,
+#             description=textwrap.dedent(
+#                 f"""\
+#                 Adds something
+#                 """
+#             ),
+#         )
+#         add_subparser = add_parser.add_subparsers(title="Commands", metavar="command")
 
-        def src():
-            command = add_subparser.add_parser(
-                "src",
-                help="Add a src object",
-                add_help=False,
-                description=textwrap.dedent(
-                    f"""\
-                    Adds a src object
-                    """
-                ),
-            )
+#         def src():
+#             command = add_subparser.add_parser(
+#                 "src",
+#                 help="Add a src object",
+#                 add_help=False,
+#                 description=textwrap.dedent(
+#                     f"""\
+#                     Adds a src object
+#                     """
+#                 ),
+#             )
 
-            command_group = command.add_argument_group("Arguments")
-            command_group.add_argument(
-                "name", type=str, help="Name of the object",
-            )
-            command_group.add_argument(
-                "type", type=str, help="Type of object",
-            )
-            command.set_defaults(func=api.IP.Add.src)
-            add_help(command)
+#             command_group = command.add_argument_group("Arguments")
+#             command_group.add_argument(
+#                 "name", type=str, help="Name of the object",
+#             )
+#             command_group.add_argument(
+#                 "type", type=str, help="Type of object",
+#             )
+#             command.set_defaults(func=api.IP.Add.src)
+#             add_help(command)
 
-        src()
-        add_help(add_parser)
+#         src()
+#         add_help(add_parser)
 
-    add()
-    add_help(subparser)
+#     add()
+#     add_help(subparser)
 
 
 def database(parser):

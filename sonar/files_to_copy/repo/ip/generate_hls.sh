@@ -21,7 +21,7 @@ finalName=$file
 mkdir -p "$projectPath"
 mkdir -p "$repoPath"
 cd "$projectPath" || exit
-vivado_hls -f $hlsDir/generate.tcl "$file"
+vivado_hls -f $hlsDir/generate_hls.tcl "$file"
 vivado_return=$?
 if [[ $vivado_return != 0 ]]; then
     exit $vivado_return

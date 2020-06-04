@@ -23,7 +23,7 @@ def parse_args():
     cli.database(subparser)
     cli.env(subparser)
     cli.init(subparser)
-    cli.ip(subparser)
+    # cli.ip(subparser)
     cli.repo(subparser)
     cli.tool(subparser)
 

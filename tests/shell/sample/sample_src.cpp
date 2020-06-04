@@ -23,10 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "sample.hpp"
+#include "sample_src.hpp"
 
-void sample(const axis_t &axis_input, const axis_t &axis_output,
-            const uint_1_t &ack, uint_1_t enable,
+void sample_src(axis_t* axis_input, axis_t* axis_output,
+            uint_1_t* ack, uint_1_t enable,
             volatile uint_3_t *state_out) {
 #pragma HLS INTERFACE axis port = axis_input
 #pragma HLS INTERFACE axis port = axis_output
@@ -50,8 +50,8 @@ void sample(const axis_t &axis_input, const axis_t &axis_output,
 
   switch (currentState) {
     case st_header: {
-      if (!axis_input.empty() && enable == 1) {
-        axis_input.read(axis_word);
+      if (!axis_input->empty() && enable == 1) {
+        axis_input->read(axis_word);
         currentState = ack1;
       } else {
         currentState = st_header;
@@ -65,8 +65,8 @@ void sample(const axis_t &axis_input, const axis_t &axis_output,
       break;
     }
     case st_payload: {
-      if (!axis_input.empty()) {
-        axis_input.read(axis_word);
+      if (!axis_input->empty()) {
+        axis_input->read(axis_word);
         payload = axis_word.data;
         currentState = ack2;
       } else {
@@ -82,7 +82,7 @@ void sample(const axis_t &axis_input, const axis_t &axis_output,
     }
     case st_output: {
       axis_word.data = payload + 1;
-      axis_output.write(axis_word);
+      axis_output->write(axis_word);
       currentState = st_header;
       ack_wire = 0;
       break;
@@ -90,5 +90,5 @@ void sample(const axis_t &axis_input, const axis_t &axis_output,
   }
 
   *state_out = currentState;
-  ack = ack_wire;
+  *ack = ack_wire;
 }

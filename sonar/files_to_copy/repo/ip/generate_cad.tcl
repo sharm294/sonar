@@ -90,18 +90,15 @@ source ${::env(SONAR_PATH)}/tcl/utilities.tcl
 variable part_name
 set part_name ${::env(SONAR_PART)}
 
-set $base_path BASE_PATH
+set base_path BASE_PATH
 
 # Set the reference directory for source file relative paths
-set origin_dir $base_path/vivado
+set origin_dir $base_path/cad
 set src_dir $origin_dir/src/$project_name
 set cad_ver ${::env(SONAR_CAD_VERSION)}
 
 # Set the directory path for the original project from where this script was exported
 set orig_proj_dir "[file normalize "$origin_dir/projects/$cad_ver/$part_name/$project_name"]"
-
-# Set the directory path for the original project from where this script was exported
-set orig_proj_dir "[file normalize "$origin_dir/build/vivado/sample"]"
 
 ################################################################################
 # Body
@@ -123,12 +120,12 @@ if { $create_proj > 0 } {
   set_property -name "ip_cache_permissions" -value "read write" -objects $obj
   set_property -name "ip_output_repo" -value "$proj_dir/$project_name.cache/ip" -objects $obj
   set_property -name "part" -value "$part_name" -objects $obj
-  if {[info exists env(SHOAL_BOARD)]} {
-    if { [ lsearch [get_board_parts] ${::env(SHOAL_BOARD)}] != -1 } {
-      set_property board_part ${::env(SHOAL_BOARD)} -objects $obj
+  if {[info exists env(SONAR_VIVADO_BOARD)]} {
+    if { [ lsearch [get_board_parts] ${::env(SONAR_VIVADO_BOARD)}] != -1 } {
+      set_property board_part ${::env(SONAR_VIVADO_BOARD)} -objects $obj
     } else {
       puts ""
-      catch {common::send_msg_id "BD_TCL-109" "ERROR" "${::env(SHOAL_BOARD)} \
+      catch {common::send_msg_id "BD_TCL-109" "ERROR" "${::env(SONAR_VIVADO_BOARD)} \
         not found in this Vivado installation"
         return -1
       }

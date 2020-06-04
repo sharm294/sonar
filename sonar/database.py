@@ -98,8 +98,9 @@ class Tool:
 
     @staticmethod
     def deactivate():
-        with shelve.open(Constants.SONAR_DB_PATH) as db:
+        if os.path.exists(Constants.SONAR_SHELL_TOOL_SOURCE):
             os.remove(Constants.SONAR_SHELL_TOOL_SOURCE)
+        with shelve.open(Constants.SONAR_DB_PATH) as db:
             active = db["active"]
             active["cad"] = None
             active["hls"] = None
@@ -154,16 +155,16 @@ class Env:
 
         if env["board"]:
             Board.activate(env["board"])
-        else:
-            Board.deactivate()
+        # else:
+        #     Board.deactivate()
         if env["repo"]:
             Repo.activate(env["repo"])
-        else:
-            Repo.deactivate()
+        # else:
+        #     Repo.deactivate()
         if env["cad"] or env["hls"] or env["sim"]:
             Tool.activate(env["cad"], env["hls"], env["sim"])
-        else:
-            Tool.deactivate()
+        # else:
+        #     Tool.deactivate()
 
     @staticmethod
     def deactivate():
@@ -227,7 +228,10 @@ class Board:
                 script = []
                 board_settings = runpy.run_path(os.path.join(board, "__init__.py"))
                 part = board_settings["PART"]
-                script.append(f"export SONAR_BOARD={name}")
+                if "BOARD" in board_settings:
+                    board = board_settings["BOARD"]
+                    script.append(f"export SONAR_VIVADO_BOARD={board}")
+                script.append(f"export SONAR_BOARD_NAME={name}")
                 script.append(f"export SONAR_PART={part}")
                 part_family = Board._find_part_family(part)
                 if part_family:
@@ -239,8 +243,9 @@ class Board:
 
     @staticmethod
     def deactivate():
-        with shelve.open(Constants.SONAR_DB_PATH) as db:
+        if os.path.exists(Constants.SONAR_SHELL_BOARD_SOURCE):
             os.remove(Constants.SONAR_SHELL_BOARD_SOURCE)
+        with shelve.open(Constants.SONAR_DB_PATH) as db:
             active = db["active"]
             active["board"] = None
             db["active"] = active
@@ -340,8 +345,9 @@ class Repo:
 
     @staticmethod
     def deactivate():
-        with shelve.open(Constants.SONAR_DB_PATH) as db:
+        if os.path.exists(Constants.SONAR_SHELL_REPO_SOURCE):
             os.remove(Constants.SONAR_SHELL_REPO_SOURCE)
+        with shelve.open(Constants.SONAR_DB_PATH) as db:
             active = db["active"]
             active["repo"] = None
             db["active"] = active
@@ -354,16 +360,57 @@ class Repo:
 
 class IP:
     @staticmethod
-    def add_new(name):
+    def add_new(name, path):
         active_repo = Repo.get_active()
         repo = Repo.get(active_repo)
-        with shelve.open(Constants.SONAR_DB_PATH) as db:
-            if "ips" not in repo:
-                repo["ips"] = []
-            repo["ips"].append({"name": name})
-            repos = db["repo"]
-            repos[active_repo] = repo
-            db["repo"] = repos
+        repo_path = repo["path"]
+        init_toml = os.path.join(repo_path, Constants.SONAR_CONFIG_FILE_PATH)
+        init = toml.load(init_toml)
+        init["project"]["ips"] = [name]
+        if "ips" not in init:
+            init["ips"] = {}
+        init["ips"][name] = {"path": str(path).replace(str(repo_path), "")}
+        with open(init_toml, "w") as f:
+            toml.dump(init, f)
+
+    # @staticmethod
+    # def add_src(name, path, src_type):
+    #     ip = IP._find_active_ip(path)
+    #     active_repo = Repo.get_active()
+    #     repo = Repo.get(active_repo)
+    #     repo_path = repo["path"]
+    #     init_toml = os.path.join(repo_path, Constants.SONAR_CONFIG_FILE_PATH)
+    #     init = toml.load(init_toml)
+    #     assert ip is not None
+
+    #     if "src" not in init["ips"][ip]:
+    #         init["ips"][ip]["src"] = {
+    #             "c": [],
+    #             "hdl": [],
+    #             "custom": []
+    #         }
+    #     init["ips"][ip]["src"][src_type].append(name)
+    #     with open(init_toml, "w") as f:
+    #         toml.dump(init, f)
+
+    #     # with shelve.open(Constants.SONAR_DB_PATH) as db:
+    #     #     repos = db["repo"]
+    #     #     repos[active_repo] = repo
+    #     #     db["repo"] = repos
+
+    # @staticmethod
+    # def _find_active_ip(path):
+    #     active_repo = Repo.get_active()
+    #     repo = Repo.get(active_repo)
+    #     repo_path = repo["path"]
+    #     init_toml = os.path.join(repo_path, Constants.SONAR_CONFIG_FILE_PATH)
+    #     init = toml.load(init_toml)
+    #     if "ips" in init["project"]:
+    #         for ip, ip_data in init["ips"].items():
+    #             if path.endswith(ip_data["path"]):
+    #                 return ip
+    #         return None
+    #     return None
 
 
 # class SubscriptMixin:

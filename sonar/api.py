@@ -1,3 +1,4 @@
+from distutils.dir_util import copy_tree
 import logging
 import logging.config
 import os
@@ -131,9 +132,11 @@ class Init:
     def one_time_setup(args):
         Database.init()
 
-        src_dir = os.path.join(os.path.dirname(__file__), "files_to_copy/home/shell")
-        dst_dir = os.path.join(Constants.SONAR_PATH, "shell")
-        shutil.copytree(src_dir, dst_dir)
+        src_dir = os.path.join(os.path.dirname(__file__), "files_to_copy/home")
+        # dst_dir = os.path.join(Constants.SONAR_PATH)
+        # need to use this copy tree instead of shutil because shutil copytree
+        # expects the dst directory doesn't exist
+        copy_tree(src_dir, str(Constants.SONAR_PATH))
 
         with open(Path.home().joinpath(".bashrc"), "r+") as f:
             for line in f:
@@ -145,7 +148,6 @@ class Init:
         boards = [x for x in files if x != "__init__.py" and x != "__pycache__"]
         for board in boards:
             path = os.path.join(os.path.dirname(__file__), "boards", board)
-            print(path)
             Database.Board.add(path)
 
     @staticmethod
@@ -239,70 +241,96 @@ class Create:
 
         with open(ip_dir.joinpath(Constants.SONAR_IP_MAKEFILE), "w") as f:
             ip_makefile = MakeFile()
-            ip_makefile.add_ip_variables(str(ip_dir))
-            f.write(str(ip_makefile))
+            # ip_makefile.add_ip_variables(str(ip_dir))
+            f.write(str(ip_makefile.ip(str(ip_dir))))
+
+        with open(ip_dir.joinpath("Makefile"), "w") as f:
+            f.write("include sonar.mk")
 
         src_dir = os.path.join(os.path.dirname(__file__), "files_to_copy/repo/ip")
         shutil.copy(os.path.join(src_dir, "generate_cad.tcl"), ip_dir.joinpath("cad"))
+        shutil.copy(os.path.join(src_dir, "generate_cad.sh"), ip_dir.joinpath("cad"))
         shutil.copy(os.path.join(src_dir, "generate_hls.tcl"), ip_dir.joinpath("hls"))
         shutil.copy(os.path.join(src_dir, "generate_hls.sh"), ip_dir.joinpath("hls"))
+        shutil.copy(os.path.join(src_dir, "run.sh"), ip_dir)
+
+        base_ip_path_sh = str(ip_dir).replace(os.getenv("SONAR_REPO"), "$SONAR_REPO")
+        base_ip_path_tcl = str(ip_dir).replace(
+            os.getenv("SONAR_REPO"), "${::env(SONAR_REPO)}"
+        )
 
         sonar.utils.replace_in_file(
             str(ip_dir.joinpath("cad").joinpath("generate_cad.tcl")),
             "BASE_PATH",
-            str(ip_dir),
+            base_ip_path_tcl,
+        )
+        sonar.utils.replace_in_file(
+            str(ip_dir.joinpath("cad").joinpath("generate_cad.sh")),
+            "BASE_PATH",
+            base_ip_path_sh,
         )
         sonar.utils.replace_in_file(
             str(ip_dir.joinpath("hls").joinpath("generate_hls.tcl")),
             "BASE_PATH",
-            str(ip_dir),
+            base_ip_path_tcl,
         )
         sonar.utils.replace_in_file(
             str(ip_dir.joinpath("hls").joinpath("generate_hls.sh")),
             "BASE_PATH",
-            str(ip_dir),
+            base_ip_path_sh,
+        )
+        sonar.utils.replace_in_file(
+            str(ip_dir.joinpath("run.sh")), "BASE_PATH", base_ip_path_sh,
         )
 
-        active_repo = Database.Repo.get_active()
-        Database.IP.add_new(args.name)
-        repos = Database.Repo.get()
-        path = repos[active_repo]["path"]
-        init_toml = os.path.join(path, ".sonar", Constants.SONAR_CONFIG_FILE)
-        init = toml.load(init_toml)
-        init["project"]["ips"] = [args.name]
-        print(init)
-        with open(init_toml, "w") as f:
-            toml.dump(init, f)
+        # active_repo = Database.Repo.get_active()
+        Database.IP.add_new(args.name, ip_dir)
+        # repos = Database.Repo.get()
+        # path = repos[active_repo]["path"]
+        # init_toml = os.path.join(path, Constants.SONAR_CONFIG_FILE)
+        # init = toml.load(init_toml)
+        # init["project"]["ips"] = [args.name]
+        # print(init)
+        # with open(init_toml, "w") as f:
+        #     toml.dump(init, f)
 
     @staticmethod
     def repo(args):
         curr_dir = Path(os.getcwd())
 
-        ip_dir = curr_dir.joinpath(args.name)
-        ip_dir.mkdir()
+        repo_dir = curr_dir.joinpath(args.name)
+        repo_dir.mkdir()
 
         src_dir = os.path.join(os.path.dirname(__file__), "files_to_copy/repo/.sonar")
-        sonar_dir = ip_dir.joinpath(".sonar")
+        sonar_dir = repo_dir.joinpath(".sonar")
         shutil.copytree(
             src_dir, sonar_dir, ignore=shutil.ignore_patterns("__pycache__*")
         )
 
-        init_toml = sonar_dir.joinpath(Constants.SONAR_CONFIG_FILE)
+        src_file = os.path.join(
+            os.path.dirname(__file__), "files_to_copy/repo/.gitignore"
+        )
+        shutil.copy(src_file, repo_dir)
+
+        init_toml = repo_dir.joinpath(Constants.SONAR_CONFIG_FILE_PATH)
         init = toml.load(init_toml)
         init["project"]["name"] = args.name
         with open(init_toml, "w") as f:
             toml.dump(init, f)
 
-        os.chdir(ip_dir)
+        os.chdir(repo_dir)
         args = sonar.utils.DotDict({"name": args.name})
         Repo.add(args)
         os.chdir(curr_dir)
 
 
-class IP:
-    class Add:
-        def src(args):
-            pass
+# class IP:
+#     class Add:
+#         def src(args):
+#             current_path = os.getcwd()
+#             # active_repo = Database.Repo.get_active()
+#             # repo = Database.Repo.get(active_repo)
+#             Database.IP.add_src(args.name, current_path, args.type)
 
 
 class DB:

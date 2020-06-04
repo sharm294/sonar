@@ -45,6 +45,8 @@ sonar() {
             echo "Sourced file"
         fi
     fi
+
+    return $retval
 }
 
 homedir=$(readlink -f ~)

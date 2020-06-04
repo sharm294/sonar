@@ -118,7 +118,7 @@ proc create_VIP {bd_name addr_width data_width address address_offset} {
   close_bd_design [get_bd_designs $bd_name]
 }
 
-source ${::env(SONAR_PATH)}/sonar/core/utilities.tcl
+source ${::env(SONAR_PATH)}/tcl/utilities.tcl
 
 check_vivado_version {2017.2, 2018.1} WARNING
 create_VIP #DESIGN_NAME# #ADDR_WIDTH# #DATA_WIDTH# #ADDRESS# #ADDRESS_OFFSET#

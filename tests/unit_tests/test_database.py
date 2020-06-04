@@ -144,7 +144,7 @@ class TestBoard:
         file_str = open(sonar.include.Constants.SONAR_SHELL_BOARD_SOURCE, "r").read()
         assert file_str == textwrap.dedent(
             """\
-            export SONAR_BOARD=ad_8k5
+            export SONAR_BOARD_NAME=ad_8k5
             export SONAR_PART=xcku115-flva1517-2-e
             export SONAR_PART_FAMILY=Kintex_Ultrascale"""
         )
@@ -265,7 +265,7 @@ class TestEnv:
         file_str = open(sonar.include.Constants.SONAR_SHELL_BOARD_SOURCE, "r").read()
         assert file_str == textwrap.dedent(
             """\
-            export SONAR_BOARD=ad_8k5
+            export SONAR_BOARD_NAME=ad_8k5
             export SONAR_PART=xcku115-flva1517-2-e
             export SONAR_PART_FAMILY=Kintex_Ultrascale"""
         )

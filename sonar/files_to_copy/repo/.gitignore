@@ -1,0 +1,24 @@
+# vivado projects and other generated files
+build/
+projects/
+repo
+
+# temporary files
+*.tmp
+tmp.*
+.Xil/
+*.pyc
+vivado_pid*.str
+
+# user files
+*.dat
+*.jou
+*.log
+.vscode/
+
+# c++ files
+*.d
+*.o
+*.a
+*.exe
+*.app

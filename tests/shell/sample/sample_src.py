@@ -7,8 +7,8 @@ from sonar.interfaces import AXIS, SAXILite
 # create top-level entity for the testbench using the default constructor
 # and set the Module_Name metadata tag to 'sample' as specified by the
 # default constructor.
-sample_TB = Testbench.default("sample")
-filepath = os.path.join(os.path.dirname(__file__), "build/sample/")
+sample_TB = Testbench.default("sample_src")
+filepath = os.path.join(os.path.dirname(__file__), "build/sample_src/")
 
 # the DUT ------------------------------------------------------------------
 
