@@ -4,7 +4,7 @@ from sonar.testbench import Testbench, Module, TestVector, Thread
 from sonar.interfaces import AXIS, SAXILite
 
 
-def test_testbench_sample(test_dir):
+def test_testbench_sample(test_dir, monkeypatch):
     # create top-level entity for the testbench using the default constructor
     # and set the Module_Name metadata tag to 'sample' as specified by the
     # default constructor.
@@ -88,4 +88,5 @@ def test_testbench_sample(test_dir):
 
     # generate the output testbenches and data files for the specified languages
     # at the designated path
+    monkeypatch.setenv("SONAR_CAD_VERSION", str(2018.1))
     sample_TB.generateTB(filepath, "sv")

@@ -69,14 +69,14 @@ json_struct = {
 
 
 def import_packages_global(imports):
-    import subprocess
-    from sonar.core.include.utilities import printError
-    from sonar.core.include.utilities import printWarning
+    # from sonar.core.include.utilities import printError
+    # from sonar.core.include.utilities import printWarning
 
-    versionInfo = subprocess.check_output("vivado -version", shell=True)
-    version = versionInfo.split()[1].decode("utf-8")
+    # versionInfo = subprocess.check_output("vivado -version", shell=True)
+    version = os.getenv("SONAR_CAD_VERSION")
+    # version = versionInfo.split()[1].decode("utf-8")
 
-    if version.startswith("v2017.2"):
+    if version == "2017.2":
         imports += "import axi_vip_v1_0_2_pkg::*;\n"
         return imports
     else:
@@ -134,7 +134,7 @@ def exerciser_prologue(prologue, interface, indent):
 
 
 def source_tcl(interface, path):
-    from sonar.core.include.utilities import getFilePath
+    # from sonar.core.include.utilities import getFilePath
 
     tclFileName = os.path.join(os.path.dirname(__file__), "s_axilite_vip.tcl")
     # getFilePath("env", "SONAR_PATH", "/include/interfaces/s_axilite_vip.tcl")
