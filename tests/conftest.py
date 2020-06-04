@@ -31,6 +31,7 @@ def test_dir(tmpdir_factory):
 
         vivado = VivadoPaths()
         repos = RepoPaths()
+        base = base_path
 
     one_vivado = TestPaths.vivado.one_vivado.joinpath("Vivado/2017.2")
     two_vivado_0 = TestPaths.vivado.many_vivado.joinpath("Vivado/2017.3")

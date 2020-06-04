@@ -2,6 +2,8 @@ import json
 
 
 class SonarObject(object):
+    __test__ = False
+
     def __str__(self):
         """
         Prints the object as a string
