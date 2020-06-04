@@ -29,7 +29,7 @@ setup(
     url="https://github.com/sharm294/sonar",
     license="License :: OSI Approved :: MIT License",
     platforms="linux",
-    install_requires=[],
+    install_requires=["argcomplete", "toml"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: MIT License",

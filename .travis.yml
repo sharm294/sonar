@@ -7,7 +7,7 @@ python:
     - '3.7'
 
 before_install:
-  - pip install pytest pytest-cov argcomplete
+  - pip install pytest pytest-cov
 
 install:
   - pip install .
@@ -16,7 +16,7 @@ cache: pip
 
 # run tests
 script:
-  - pytest
+  - pytest -k 'not shell'
 
-# after_success:
-#   - bash <(curl -s https://codecov.io/bash)
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

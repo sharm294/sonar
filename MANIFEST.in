@@ -1,2 +1,5 @@
 graft sonar/boards
 graft sonar/shell
+graft sonar/files_to_copy
+graft sonar/core/templates
+global-include *.tcl *.sv

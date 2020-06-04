@@ -1,6 +1,5 @@
 from math import ceil
 
-from .base_types import SonarObject
 from .interfaces import AXIS
 
 
@@ -101,7 +100,7 @@ class Ethernet(object):
             byteArray: Represents the header
         """
 
-        binArray = bytearray.fromhex(header)
+        binArray = bytearray.fromhex(self.header)
 
         if self.prefix is not None:
             binArray.extend(bytearray.fromhex(self.prefix[2:]))
@@ -152,8 +151,8 @@ class Ethernet(object):
             word = "0x"
             if endian == "little":
                 for i in range(min_value):
-                    upper_index = (((min_value - i)) * 8) - 1
-                    lower_index = (min_value - i - 1) * 8
+                    # upper_index = (((min_value - i)) * 8) - 1
+                    # lower_index = (min_value - i - 1) * 8
                     octet_index = octet_count + min_value - i - 1
                     word += octet[octet_index]
                 wait_str += (
@@ -166,8 +165,8 @@ class Ethernet(object):
                 )
             else:
                 for i in range(min_value):
-                    upper_index = ((i + 1) * 8) - 1
-                    lower_index = i * 8
+                    # upper_index = ((i + 1) * 8) - 1
+                    # lower_index = i * 8
                     octet_index = octet_count + i
                     word += octet[octet_index]
                 wait_str += (
