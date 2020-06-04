@@ -7,7 +7,7 @@ python:
     - '3.7'
 
 before_install:
-  - pip install pytest pytest coverage
+  - pip install pytest coverage
 
 install:
   - pip install .
@@ -16,7 +16,7 @@ cache: pip
 
 # run tests
 script:
-  - coverage run pytest -k 'not shell'
+  - coverage run -m pytest -k 'not shell'
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
