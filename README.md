@@ -33,10 +33,13 @@ To install, clone this repository, go to the cloned directory and run:
 ```bash
 $ pip install .
 
+# start a new shell or login again
+
 # initialize with local Xilinx path
 $ sonar init vivado /path/to/Xilinx/directory
 # then use "sonar activate vivado_{version}" to change versions
 $ sonar activate vivado_2017.2
+# for now, this should print "sourced file" if successful
 ```
 
 The best example for usage can be found in `tests/shell/sample`.

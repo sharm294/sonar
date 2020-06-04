@@ -33,6 +33,9 @@ if [ ! -d "$xilinx_path/Vivado/$version" ]; then
     return 1
 fi
 
+# shellcheck disable=SC2034
+# set $DIR to hold the current path if needed in the settings.sh scripts
+DIR="$xilinx_path"
 # shellcheck source=/dev/null
 source "$xilinx_path"/DocNav/.settings64-DocNav.sh
 # shellcheck source=/dev/null
