@@ -21,12 +21,17 @@ master_output_channels = {
 # index in sv_args.
 slave_action = [
     "@(posedge $$clock iff $$name_tready && $$name_tvalid);",
-    "assert($$name_tdata == args[0]) begin",
-    "end else begin",
-    '    $error("AXI-S Assert failed at %t on $$name_tdata. Expected: %h, Received: %h", $time, args[0], $$name_tdata);',
-    "    error = 1'b1;",
-    "    $stop;",
-    "end",
+    {
+        "channels": {"tdata", "tlast", "tkeep", "tdest"},
+        "commands": [
+            "assert($$name_$$channel == args[$$i]) begin\n"
+            "end else begin\n"
+            '    $error("AXI-S Assert failed at %t on $$name_$$channel. Expected: %h, Received: %h", $time, args[$$i], $$name_$$channel);\n'
+            "    error = 1'b1;\n"
+            "    $stop;\n"
+            "end"
+        ],
+    },
 ]
 
 master_action = [

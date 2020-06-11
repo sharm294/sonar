@@ -60,7 +60,7 @@ def channelToIndex(channelType, args):
 ### replaceVar ###
 # This function relaces all $$X variables using the interface as the source
 def replaceVar(inputStr, interface):
-    regex_variable = re.compile("\$\$[^_|\W]+")
+    regex_variable = re.compile(r"\$\$[^_|\W]+")
     for variable in re.findall(regex_variable, inputStr):
         inputStr = inputStr.replace(variable, str(interface[variable[2:]]))
     return inputStr
@@ -76,6 +76,7 @@ def commandVarReplaceSub(elseif_interfaceIn, command, interface, indent):
     # regex_variable = re.compile("\$\$[^_|\W]+")
     # for variable in re.findall(regex_variable, command):
     #     command = command.replace(variable, interface[variable[2:]])
+    command = command.replace("\n", "\n" + indent)
     elseif_interfaceIn += indent + command + "\n"
     return elseif_interfaceIn
 
@@ -107,7 +108,7 @@ def commandVarReplace(elseif_interfaceIn, interface, actions, indent, args):
         # check if there is a command to repeat for a set of channels
         if isinstance(action, dict):
             for command in action["commands"]:
-                regex_channel = re.compile("\$\$channel")
+                regex_channel = re.compile(r"\$\$channel")
                 if re.findall(regex_channel, command):  # if $$channel in command
                     elseif_interfaceIn = commandVarReplaceChannel(
                         interface, action, command, elseif_interfaceIn, indent, args
@@ -984,7 +985,7 @@ def sonar(mode, modeArg, filepath, languages):
     largestClock = ""
     largestPeriod = 0
     # regex_int_str = re.compile("([0-9]+)([a-z]+)")
-    regex_int_str = re.compile("([0-9]+([\.][0-9]+)*)([a-z]+)")
+    regex_int_str = re.compile(r"([0-9]+([\.][0-9]+)*)([a-z]+)")
     with open(templateTB_sv, "r") as f:
         lineStr = [line for line in f if "SONAR_INITIAL_CLOCK" in line]
     leading_spaces = getIndentation(lineStr)
