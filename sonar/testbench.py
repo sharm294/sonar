@@ -202,6 +202,7 @@ class Module(SonarObject):
 
         self.name = ""
         self.ports = []
+        self.parameters = {}
 
     @classmethod
     def default(cls, name):
@@ -234,6 +235,16 @@ class Module(SonarObject):
         port["size"] = size
         port["direction"] = direction
         self.ports.append(port)
+
+    def add_parameter(self, name, value):
+        """
+        Add a named parameter to this module's instantiation
+
+        Args:
+            name (str): Name of parameter
+            value (str): Value to assign to parameter
+        """
+        self.parameters[name] = value
 
     def add_clock_port(self, name, period):
         """
@@ -294,6 +305,7 @@ class Module(SonarObject):
                 module["ports"].append(port.asdict())
             else:
                 module["ports"].append(port)
+        module["parameters"] = self.parameters
         return module
 
 

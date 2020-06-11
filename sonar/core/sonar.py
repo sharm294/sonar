@@ -278,6 +278,7 @@ def sonar(mode, modeArg, filepath, languages):
     signals_out = []
     interface_in = []
     interface_out = []
+    parameters = []
 
     interface_indices = {}
     usedInterfaces = {}
@@ -338,6 +339,8 @@ def sonar(mode, modeArg, filepath, languages):
                         signals_in.append(portCopy)
                     else:
                         signals_out.append(portCopy)
+            for parameter, parameter_value in module["parameters"].items():
+                parameters.append((parameter, parameter_value))
 
     waitConditions = []
     if "wait_conditions" in configFileData:
@@ -487,12 +490,37 @@ def sonar(mode, modeArg, filepath, languages):
     with open(templateTB_sv, "r") as f:
         lineStr = [line for line in f if "SONAR_DUT_INST" in line]
     leading_spaces = getIndentation(lineStr)
-    dut_inst += (
-        configFileData["metadata"]["Module_Name"]
-        + " "
-        + configFileData["metadata"]["Module_Name"]
-        + "_i(\n"
-    )
+    if parameters:
+        dut_inst += configFileData["metadata"]["Module_Name"] + " #(\n"
+        for parameter in parameters[:-1]:
+            dut_inst += (
+                leading_spaces
+                + tabSize
+                + "."
+                + parameter[0]
+                + "("
+                + str(parameter[1])
+                + "),\n"
+            )
+        dut_inst += (
+            leading_spaces
+            + tabSize
+            + "."
+            + parameters[-1][0]
+            + "("
+            + str(parameters[-1][1])
+            + ")\n"
+        )
+        dut_inst += (
+            leading_spaces + ") " + configFileData["metadata"]["Module_Name"] + "_i (\n"
+        )
+    else:
+        dut_inst += (
+            configFileData["metadata"]["Module_Name"]
+            + " "
+            + configFileData["metadata"]["Module_Name"]
+            + "_i (\n"
+        )
     for clock in clocks_in:
         dut_inst += (
             leading_spaces

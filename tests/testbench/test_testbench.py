@@ -19,6 +19,8 @@ def test_testbench_sample(test_dir, monkeypatch):
     dut.add_reset_port("ap_rst_n")
     dut.add_port("state_out_V", size=3, direction="output")
     dut.add_port("ack_V", direction="output")
+    dut.add_parameter("WIDTH", 32)
+    dut.add_parameter("LENGTH", 64)
     sample_TB.add_module(dut)
 
     # create an AXI-M interface with the default side channels and a data width
