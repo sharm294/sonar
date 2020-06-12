@@ -143,6 +143,7 @@ def setFromConfig(templateTB_sv_str, configFileData):
         "Module_Name",
         "Timescale",
         "Flag_Count",
+        "Timeout_Value",
     ]
 
     for tbMetadataTag in tbMetadataTags:

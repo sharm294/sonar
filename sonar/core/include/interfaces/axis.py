@@ -131,11 +131,10 @@ def count(packet):
 def write_sv(packet):
     line = ""
     for word in packet["payload"]:
-        if word["tkeep"] != 0:  # exclude debug statements
-            line += packet["type"] + " " + packet["interface"] + " " + str(len(sv_args))
-            for arg in sv_args:
-                line += " " + str(word[arg])
-            line += "\n"
+        line += packet["type"] + " " + packet["interface"] + " " + str(len(sv_args))
+        for arg in sv_args:
+            line += " " + str(word[arg])
+        line += "\n"
     return line[:-1]
 
 

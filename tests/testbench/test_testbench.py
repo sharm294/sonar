@@ -10,6 +10,7 @@ def test_testbench_sample(test_dir, monkeypatch):
     # default constructor.
     sample_TB = Testbench.default("sample_src")
     filepath = os.path.join(str(test_dir.base), "build/sample_src/")
+    sample_TB.set_metadata("Timeout_Value", "1us")
 
     # the DUT ------------------------------------------------------------------
 

@@ -36,6 +36,7 @@ class Testbench(SonarObject):
             "Timescale": "1ns / 1ps",
             "Time_Format": {"unit": "1us", "precision": 3},
             "Flag_Count": 1,
+            "Timeout_Value": "10s",  # arbitrary large amount
             "Company": None,
             "Engineer": None,
             "Project_Name": None,

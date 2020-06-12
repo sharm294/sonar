@@ -206,20 +206,31 @@ module exerciser (
                     threadSync_golden[gen_i] = 1'b0;
                     if (parallelSections[gen_i] != 0) begin
                         threadSync_golden[gen_i] = 1'b1;
-                        status_par = $fseek(dataFile, parallelSections[gen_i],
-                            0);
-                        status_par = $fscanf(dataFile, "%s %s %d",
-                            packetType_par, interfaceType_par, packetCount);
-                        for(int k = 0; k < packetCount; k++) begin
-                            status_par = $fscanf(dataFile, "%s %s %d",
-                                packetType_par, interfaceType_par, argCount);
-                            for(int l = 0; l < argCount; l++) begin
-                                status_par = $fscanf(dataFile, "%d", args[l]);
+                        fork
+                            begin
+                                status_par = $fseek(dataFile, parallelSections[gen_i],
+                                    0);
+                                status_par = $fscanf(dataFile, "%s %s %d",
+                                    packetType_par, interfaceType_par, packetCount);
+                                for(int k = 0; k < packetCount; k++) begin
+                                    status_par = $fscanf(dataFile, "%s %s %d",
+                                        packetType_par, interfaceType_par, argCount);
+                                    for(int l = 0; l < argCount; l++) begin
+                                        status_par = $fscanf(dataFile, "%d", args[l]);
+                                    end
+                                    evaluateData(args, packetType_par,
+                                        interfaceType_par, testVectorEnd[gen_i], errorCheck[gen_i]);
+                                end
+                                threadSync[gen_i] = 1'b1;
                             end
-                            evaluateData(args, packetType_par,
-                                interfaceType_par, testVectorEnd[gen_i], errorCheck[gen_i]);
-                        end
-                        threadSync[gen_i] = 1'b1;
+                            begin
+                                #(SONAR_TIMEOUT_VALUE) $display("Timed out");
+                                errorCheck[gen_i] = 1'b1;
+                                @(posedge SONAR_VECTOR_CLOCK)
+                                threadSync[gen_i] = 1'b1;
+                                testVectorEnd[gen_i] = 1'b1;
+                            end
+                        join_any
                     end
                     wait(updateEnd == '0);
                     testVectorEnd = '0;
