@@ -23,7 +23,7 @@ setup(
     author_email="varuns.sharma@mail.utoronto.ca",
     packages=find_packages(),
     description=("Manage and test hardware and mixed language projects"),
-    long_description=read("README.md"),
+    long_description=read("README.rst"),
     long_description_content_type="text/markdown",
     url="https://github.com/sharm294/sonar",
     license="License :: OSI Approved :: MIT License",
