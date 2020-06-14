@@ -12,9 +12,9 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../sonar/'))
+sys.path.insert(0, os.path.abspath('../../'))
 
-from sonar import __version__
+import sonar
 
 # -- Project information -----------------------------------------------------
 
@@ -23,7 +23,7 @@ copyright = '2020, Varun Sharma'
 author = 'Varun Sharma'
 
 # The full version, including alpha/beta/rc tags
-release = __version__
+release = sonar.__version__
 
 
 # -- General configuration ---------------------------------------------------
