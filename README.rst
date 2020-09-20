@@ -1,5 +1,6 @@
+*****
 sonar
-=====
+*****
 
 |Build Status| |codecov| |Quality Gate Status| |Docs|
 
@@ -7,27 +8,25 @@ sonar
 infrastructure for Vivado projects.
 
 Testbenching
-------------
+============
 
 *sonar* can be imported into a Python script. Then, the user can define
 the ports of the device-under-test (DUT) and test vectors. It will
 generate a *.sv* testbench and an associated *.dat* file containing the
-user specified test vectors. [STRIKEOUT:It can also optionally generate
-a C++ data file and testbench for use with HLS though that is not quite
-as sophisticated.]\ (this is slated for deprecation or substantial
-reworking.)
+user specified test vectors. It can also optionally generate a C++ data file
+and testbench for use with HLS though that is not quite as sophisticated.
 
 All generated files are placed in the specified directory. To simulate
 the SV file, add the TB, the *.dat* file and the DUT file(s) to the
-simulator of your choice. [STRIKEOUT:To simulate the C++ file, make a
-testbench executable using the generated TB file and run it.]
+simulator of your choice. To simulate the C++ file, make a testbench executable
+using the generated TB file and run it.
 
 *sonar*'s project management and associated scripts show an example
 workflow where all these files are automatically added to the created
 Vivado projects.
 
 Project Management
-------------------
+==================
 
 At present, *sonar* can create directories for repositories, and within
 these directories, create IPs through its command line interface. For
@@ -43,7 +42,7 @@ code.
 For now, this is experimental.
 
 Usage
------
+=====
 
 To install, clone this repository, go to the cloned directory and run:
 
@@ -102,22 +101,22 @@ it and simulate it.
    $ ./run.sh cad sample_src batch behav 1 0 0 0 0
 
 Dependencies
-------------
+============
 
 Testbench
-~~~~~~~~~
+---------
 
 Installing the package is sufficient. It is recommended to install and
 setup `argcompete`_ to autocomplete *sonar*'s CLI commands. If the
 package exists, *sonar* will use it.
 
 Pytest
-~~~~~~
+------
 
 `pytest`_ and coverage is used for internal testing.
 
 Development
-~~~~~~~~~~~
+-----------
 
 For development, it is HIGHLY recommended to use a virtual env such as
 `conda`_ or docker. *sonar* uses the `pre-commit`_ package to enforce

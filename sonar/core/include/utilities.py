@@ -2,7 +2,16 @@ import sys
 import os
 import importlib
 
-sonar_types = ["delay", "wait", "signal", "end", "timestamp", "display", "flag"]
+sonar_types = [
+    "delay",
+    "wait",
+    "signal",
+    "end",
+    "timestamp",
+    "display",
+    "flag",
+    "call_dut",
+]
 
 
 # This function attempts to import an interface definition

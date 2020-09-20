@@ -85,14 +85,14 @@ def writeLine_c(dataFile_c, packet):
         elif packetType == "end":
             # NULL is added as a dummy string
             dataFile_c.write(
-                "end " + str(packet["id"]) + " NULL 1 0 " + str(packet["value"]) + "\n"
+                "end " + str(packet["id"]) + " NULL 1 " + str(packet["value"]) + "\n"
             )
         elif packetType == "timestamp":
             dataFile_c.write(
                 "timestamp "
                 + str(packet["interface"])
                 + " "
-                + "NULL 1 0 "
+                + "NULL 1 "
                 + str(packet["value"])
                 + "\n"
             )
@@ -107,7 +107,16 @@ def writeLine_c(dataFile_c, packet):
                 "display "
                 + str(packet["interface"])
                 + " "
-                + "NULL 1 0 "
+                + "NULL 1 "
+                + str(packet["value"])
+                + "\n"
+            )
+        elif packetType == "call_dut":
+            dataFile_c.write(
+                "call_dut "
+                + str(packet["interface"])
+                + " "
+                + "NULL 1 "
                 + str(packet["value"])
                 + "\n"
             )
@@ -165,6 +174,8 @@ def writeLine_sv(dataFile_sv, packet):
                 + " "
                 + str(packet["value"])
             )
+        elif packetType == "call_dut":
+            pass
         elif packetType == "flag":
             dataFile_sv.append(
                 "flag "

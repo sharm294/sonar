@@ -4,7 +4,7 @@ repos:
     hooks:
       - id: black
         language_version: python3.7
-  - repo: https://gitlab.com/daverona-env/pre-commit-cpp
+  - repo: https://gitlab.com/daverona/pre-commit/cpp
     rev: master
     hooks:
     - id: clang-format

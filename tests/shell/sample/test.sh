@@ -58,5 +58,9 @@ make hw-sample_src
 # generate the sonar TB
 make config-sample_src
 
+# run the C++ TB
+make cpptb-sample_src
+make runtb-sample_src
+
 # create a vivado project for sample_src and simulate it in terminal
 ./run.sh cad sample_src batch behav 1 0 0 0 0

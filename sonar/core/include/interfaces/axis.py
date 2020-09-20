@@ -60,9 +60,10 @@ json_struct = {
     "interface": "",
     "width": 0,
     "id": "",
-    "c_stream": "",
+    "iClass": "",
     "payload": [],
 }
+
 
 # this function defines operations (if any) that should be performed at any keys
 # in the top level of the JSON struct object. If none, just use pass
@@ -71,8 +72,8 @@ def json_top(json_struct, interface):
         if channel["type"] == "tdata":
             json_struct["width"] = channel["size"]
 
-    if "c_stream" in interface:
-        json_struct["c_stream"] = interface["c_stream"]
+    if "iClass" in interface:
+        json_struct["iClass"] = interface["iClass"]
 
     return json_struct
 
@@ -90,8 +91,8 @@ def json_payload(payload):
     else:
         if "tkeep" not in payload:
             payload["tkeep"] = "KEEP_ALL"
-        if "callTB" not in payload:
-            payload["callTB"] = 0
+        # if "callTB" not in payload:
+        #     payload["callTB"] = 0
         if "tlast" not in payload:
             payload["tlast"] = 0
         if "tdest" not in payload:
@@ -146,11 +147,11 @@ def write_c(packet):
             + " "
             + str(word["id"])
             + " "
-            + str(packet["c_stream"])
+            + str(packet["iClass"])
             + " "
             + str(len(c_args))
-            + " "
-            + str(word["callTB"])
+            # + " "
+            # + str(word["callTB"])
         )
         for arg in c_args:
             line += " " + str(word[arg])
@@ -158,49 +159,67 @@ def write_c(packet):
     return line
 
 
-def c_interface_in(tb_str, prev_str, interface, indent, tabSize):
-    if tb_str != "":
-        tb_str += indent + "else "
-    if prev_str != "" and tb_str == "":
-        tb_str += "else "
-    tb_str += 'if(!strcmp(interfaceType,"' + interface["name"] + '")){\n'
-    tb_str += (
-        indent
-        + tabSize
-        + "WRITE("
-        + ""
-        + interface["c_stream"]
-        + ", "
-        + interface["c_struct"]
-        + ", "
-        + interface["name"]
-        + ")\n"
-    )
-    tb_str += indent + "}\n"
-    return tb_str
+# def c_interface_in(tb_str, prev_str, interface, indent, tabSize):
+#     if tb_str != "":
+#         tb_str += indent + "else "
+#     if prev_str != "" and tb_str == "":
+#         tb_str += "else "
+#     tb_str += 'if(!strcmp(interfaceType,"' + interface["name"] + '")){\n'
+#     tb_str += (
+#         indent
+#         + tabSize
+#         + "WRITE("
+#         + ""
+#         + interface["iClass"]
+#         + ", "
+#         + interface["flit"]
+#         + ", "
+#         + interface["name"]
+#         + ")\n"
+#     )
+#     tb_str += indent + "}\n"
+#     return tb_str
+
+c_interface_in = [
+    {
+        "channels": {"tdata", "tlast", "tkeep", "tdest"},
+        "commands": ["$$name_flit.$$channel = args[$$i];"],
+    },
+    "$$name.write($$name_flit);",
+]
 
 
-def c_interface_out(tb_str, prev_str, interface, indent, tabSize):
-    if tb_str != "":
-        tb_str += indent + "else "
-    if prev_str != "" and tb_str == "":
-        tb_str += "else "
-    tb_str += 'if(!strcmp(interfaceType,"' + interface["name"] + '")){\n'
-    tb_str += indent + tabSize + "read = true;\n"
-    tb_str += (
-        indent
-        + tabSize
-        + "READ("
-        + ""
-        + interface["c_stream"]
-        + ", "
-        + interface["c_struct"]
-        + ", "
-        + interface["name"]
-        + ")\n"
-    )
-    tb_str += indent + "}\n"
-    return tb_str
+# def c_interface_out(tb_str, prev_str, interface, indent, tabSize):
+#     if tb_str != "":
+#         tb_str += indent + "else "
+#     if prev_str != "" and tb_str == "":
+#         tb_str += "else "
+#     tb_str += 'if(!strcmp(interfaceType,"' + interface["name"] + '")){\n'
+#     tb_str += indent + tabSize + "read = true;\n"
+#     tb_str += (
+#         indent
+#         + tabSize
+#         + "READ("
+#         + ""
+#         + interface["iClass"]
+#         + ", "
+#         + interface["flit"]
+#         + ", "
+#         + interface["name"]
+#         + ")\n"
+#     )
+#     tb_str += indent + "}\n"
+#     return tb_str
+
+c_interface_out = [
+    "$$name.read($$name_flit);",
+    {
+        "channels": {"tdata", "tlast", "tkeep", "tdest"},
+        "commands": [
+            'assert($$name_flit.$$channel == args[$$i] && "Assert failed on $$name_flit.$$channel");'
+        ],
+    },
+]
 
 
 # Not currently used or supported

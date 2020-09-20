@@ -196,8 +196,8 @@ def json_payload(payload):
         payload["loop"]["body"] = newDataSeq2
         return payload
     else:
-        if "callTB" not in payload:
-            payload["callTB"] = 0
+        # if "callTB" not in payload:
+        #     payload["callTB"] = 0
         return payload
 
 
@@ -240,8 +240,8 @@ def write_c(packet):
             + "NULL"
             + " "
             + str(len(c_args))
-            + " "
-            + str(word["callTB"])
+            # + " "
+            # + str(word["callTB"])
         )
         for arg in c_args:
             line += " " + str(word[arg])
@@ -249,21 +249,28 @@ def write_c(packet):
     return line
 
 
-def c_interface_in(tb_str, prev_str, interface, indent, tabSize):
-    if tb_str != "":
-        tb_str += indent + "else "
-    if prev_str != "" and tb_str == "":
-        tb_str += "else "
-    tb_str += 'if(!strcmp(interfaceType,"' + interface["name"] + '")){\n'
-    for idx, addr in enumerate(interface["reg_addrs"]):
-        tb_str += indent + tabSize + "if(args[0] == " + str(addr) + "){\n"
-        tb_str += (
-            indent + tabSize + tabSize + interface["registers"][idx] + " = args[1];\n"
-        )
-        tb_str += indent + tabSize + "}\n"
+# def c_interface_in(tb_str, prev_str, interface, indent, tabSize):
+#     if tb_str != "":
+#         tb_str += indent + "else "
+#     if prev_str != "" and tb_str == "":
+#         tb_str += "else "
+#     tb_str += 'if(!strcmp(interfaceType,"' + interface["name"] + '")){\n'
+#     for idx, addr in enumerate(interface["addresses"]):
+#         tb_str += indent + tabSize + "if(args[0] == " + str(addr) + "){\n"
+#         tb_str += (
+#             indent + tabSize + tabSize + interface["registers"][idx] + " = args[1];\n"
+#         )
+#         tb_str += indent + tabSize + "}\n"
 
-    tb_str += indent + "}\n"
-    return tb_str
+#     tb_str += indent + "}\n"
+#     return tb_str
+
+c_interface_in = [
+    {
+        "foreach": "registers",
+        "commands": ["if(args[0] == $$addresses){", "    $$registers = args[1];", "}"],
+    },
+]
 
 
 def c_interface_out(tb_str, interface, indent, tabSize):

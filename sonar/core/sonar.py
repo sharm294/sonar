@@ -59,10 +59,13 @@ def channelToIndex(channelType, args):
 ################################################################################
 ### replaceVar ###
 # This function relaces all $$X variables using the interface as the source
-def replaceVar(inputStr, interface):
+def replaceVar(inputStr, interface, key=None):
     regex_variable = re.compile(r"\$\$[^_|\W]+")
     for variable in re.findall(regex_variable, inputStr):
-        inputStr = inputStr.replace(variable, str(interface[variable[2:]]))
+        new_variable = interface[variable[2:]]
+        if isinstance(new_variable, (list, dict, tuple)):
+            new_variable = new_variable[key]
+        inputStr = inputStr.replace(variable, str(new_variable))
     return inputStr
 
 
@@ -70,9 +73,9 @@ def replaceVar(inputStr, interface):
 ### commandVarReplaceSub ###
 # This function replaces any $variables with their corresponding key from the
 # YAML
-def commandVarReplaceSub(elseif_interfaceIn, command, interface, indent):
+def commandVarReplaceSub(elseif_interfaceIn, command, interface, indent, key=None):
     command = command.replace("$$name", interface["name"])
-    command = replaceVar(command, interface)
+    command = replaceVar(command, interface, key)
     # regex_variable = re.compile("\$\$[^_|\W]+")
     # for variable in re.findall(regex_variable, command):
     #     command = command.replace(variable, interface[variable[2:]])
@@ -107,17 +110,25 @@ def commandVarReplace(elseif_interfaceIn, interface, actions, indent, args):
     for action in actions:
         # check if there is a command to repeat for a set of channels
         if isinstance(action, dict):
-            for command in action["commands"]:
-                regex_channel = re.compile(r"\$\$channel")
-                if re.findall(regex_channel, command):  # if $$channel in command
-                    elseif_interfaceIn = commandVarReplaceChannel(
-                        interface, action, command, elseif_interfaceIn, indent, args
-                    )
-                else:
-                    commandCopy = copy.deepcopy(command)
-                    elseif_interfaceIn = commandVarReplaceSub(
-                        elseif_interfaceIn, commandCopy, interface, indent
-                    )
+            if "channels" in action:
+                for command in action["commands"]:
+                    regex_channel = re.compile(r"\$\$channel")
+                    if re.findall(regex_channel, command):  # if $$channel in command
+                        elseif_interfaceIn = commandVarReplaceChannel(
+                            interface, action, command, elseif_interfaceIn, indent, args
+                        )
+                    else:
+                        commandCopy = copy.deepcopy(command)
+                        elseif_interfaceIn = commandVarReplaceSub(
+                            elseif_interfaceIn, commandCopy, interface, indent
+                        )
+            else:
+                for index, entity in enumerate(interface[action["foreach"]]):
+                    for command in action["commands"]:
+                        commandCopy = copy.deepcopy(command)
+                        elseif_interfaceIn = commandVarReplaceSub(
+                            elseif_interfaceIn, commandCopy, interface, indent, index
+                        )
         else:
             commandCopy = copy.deepcopy(action)
             elseif_interfaceIn = commandVarReplaceSub(
@@ -164,6 +175,10 @@ def setFromConfig(templateTB_sv_str, configFileData):
     return templateTB_sv_str
 
 
+def modify_signal_names():
+    pass
+
+
 # TODO error handling
 # TODO make seek size programmatic
 # TODO add comments
@@ -193,7 +208,7 @@ def sonar(mode, modeArg, filepath, languages):
             printError(1, "YAML module not installed in Python")
             configFile.close()
             exit(1)
-        configFileData = yaml.load(configFile)
+        configFileData = yaml.safe_load(configFile)
         fileType = ".yaml"
     elif userFileName.endswith(".json"):
         configFileData = json_load_byteified(configFile)
@@ -263,10 +278,32 @@ def sonar(mode, modeArg, filepath, languages):
         templateTB_c_str = templateTB_c_str.replace(
             "SONAR_DATA_FILE", '"' + dataFile_c + '"'
         )
-        templateTB_c_str = templateTB_c_str.replace(
-            "SONAR_HEADER_FILE",
-            '"' + configFileData["metadata"]["Module_Name"] + '.hpp"',
-        )
+
+    if "Headers" in configFileData["metadata"]:
+        sv_headers = ""
+        c_headers = ""
+        for header_tuple in configFileData["metadata"]["Headers"]:
+            if isinstance(header_tuple, tuple):
+                header_file = header_tuple[0]
+                header_mode = header_tuple[1]
+            else:
+                header_file = header_tuple
+                header_mode = "auto"
+            if header_mode == "c":
+                c_headers += f'#include "{header_file}"\n'
+            elif header_mode == "sv":
+                sv_headers += f'`include "{header_file}"\n'
+            else:
+                if header_file.endswith((".h", ".hpp")):
+                    c_headers += f'#include "{header_file}"\n'
+                elif header_file.endswith((".v", ".sv")):
+                    sv_headers += f'`include "{header_file}"\n'
+                else:
+                    print(f"Skipped adding unknown header file type: {header_file}")
+
+        if enable_C:
+            templateTB_c_str = templateTB_c_str.replace("SONAR_HEADER_FILE", c_headers)
+        templateTB_sv_str = templateTB_sv_str.replace("SONAR_HEADER_FILE", sv_headers)
 
     vectorNum = len(configFileData["vectors"])
     templateTB_sv_str = templateTB_sv_str.replace("SONAR_MAX_VECTORS", str(vectorNum))
@@ -295,11 +332,11 @@ def sonar(mode, modeArg, filepath, languages):
                         portCopy = port.copy()
                         if "size" not in portCopy:
                             portCopy["size"] = 1
-                        del portCopy["type"]
+                        # del portCopy["type"]
                         clocks_in.append(portCopy)
                     elif port["type"] == "reset":
                         portCopy = port.copy()
-                        del portCopy["type"]
+                        # del portCopy["type"]
                         if "size" not in portCopy:
                             portCopy["size"] = 1
                         if portCopy["direction"] == "input":
@@ -337,6 +374,8 @@ def sonar(mode, modeArg, filepath, languages):
                     portCopy = port.copy()
                     if "size" not in portCopy:
                         portCopy["size"] = 1
+                    if "type" not in portCopy:
+                        portCopy["type"] = "signal"
                     if portCopy["direction"] == "input":
                         signals_in.append(portCopy)
                     else:
@@ -533,25 +572,24 @@ def sonar(mode, modeArg, filepath, languages):
             + clock["name"]
             + "),\n"
         )
+    dut_type = configFileData["modules"][0]["type"]
     for signal in signals_in:
+        port_name = signal["name"]
+        if dut_type["lang"] != "sv":  # TODO temporary workaround
+            if dut_type["hls"] == "vivado" and dut_type["hls_version"] == "2018.1":
+                if "type" not in signal or signal["type"] != "reset":
+                    port_name = port_name + "_V"
         dut_inst += (
-            leading_spaces
-            + tabSize
-            + "."
-            + signal["name"]
-            + "("
-            + signal["name"]
-            + "),\n"
+            leading_spaces + tabSize + "." + port_name + "(" + signal["name"] + "),\n"
         )
     for signal in signals_out:
+        if dut_type["lang"] != "sv":
+            if dut_type["hls"] == "vivado" and dut_type["hls_version"] == "2018.1":
+                port_name = signal["name"] + "_V"
+        else:
+            port_name = signal["name"]
         dut_inst += (
-            leading_spaces
-            + tabSize
-            + "."
-            + signal["name"]
-            + "("
-            + signal["name"]
-            + "),\n"
+            leading_spaces + tabSize + "." + port_name + "(" + signal["name"] + "),\n"
         )
     for interface in interface_in:
         for channel in interface["channels"]:
@@ -586,6 +624,27 @@ def sonar(mode, modeArg, filepath, languages):
     dut_inst = dut_inst[:-2] + "\n"
     dut_inst += leading_spaces + ");"
     templateTB_sv_str = templateTB_sv_str.replace("SONAR_DUT_INST", dut_inst)
+
+    if enable_C:
+        with open(templateTB_c, "r") as f:
+            lineStr = [line for line in f if "SONAR_DUT_INST" in line]
+        dut_inst = configFileData["metadata"]["Module_Name"] + "("
+
+        for port in configFileData["modules"][0]["ports"]:
+            if "type" in port and port["type"] in ["clock", "reset"]:
+                continue
+            if "type" in port and port["type"] == "s_axilite":
+                for regs in port["registers"]:
+                    dut_inst += f"{regs}, "
+                continue
+            if "type" in port and port["type"] == "axis":
+                dut_inst += "&"
+            if port["direction"] == "output":
+                dut_inst += "&"
+            dut_inst += port["name"] + ", "
+
+        dut_inst = dut_inst[:-2] + ");"
+        templateTB_c_str = templateTB_c_str.replace("SONAR_DUT_INST", dut_inst)
 
     # ------------------------------------------------------------------------------#
     # Instantiate the exerciser
@@ -682,10 +741,14 @@ def sonar(mode, modeArg, filepath, languages):
     # Declare all the signals connecting the exerciser and the DUT
 
     tb_signal_list = ""
+    tb_signal_list_c = ""
     maxSignalSize = 0
     with open(templateTB_sv, "r") as f:
         lineStr = [line for line in f if "SONAR_TB_SIGNAL_LIST" in line]
+    with open(templateTB_c, "r") as f:
+        lineStr_c = [line for line in f if "SONAR_TB_SIGNAL_LIST" in line]
     leading_spaces = getIndentation(lineStr)
+    leading_spaces_c = getIndentation(lineStr_c)
     for clock in clocks_in:
         if tb_signal_list != "":
             tb_signal_list += leading_spaces
@@ -702,6 +765,17 @@ def sonar(mode, modeArg, filepath, languages):
                 + signal["name"]
                 + ";\n"
             )
+        if (
+            enable_C and signal["type"] != "reset"
+        ):  # TODO fix leading spaces on first entry
+            tb_signal_list_c += (
+                leading_spaces_c
+                + f"ap_uint<"
+                + str(signal["size"])
+                + "> "
+                + signal["name"]
+                + ";\n"
+            )
         if int(signal["size"]) > maxSignalSize:
             maxSignalSize = int(signal["size"])
     for signal in signals_out:
@@ -713,6 +787,15 @@ def sonar(mode, modeArg, filepath, languages):
                 + "logic ["
                 + str(int(signal["size"]) - 1)
                 + ":0] "
+                + signal["name"]
+                + ";\n"
+            )
+        if enable_C:
+            tb_signal_list_c += (
+                leading_spaces_c
+                + f"ap_uint<"
+                + str(signal["size"])
+                + "> "
                 + signal["name"]
                 + ";\n"
             )
@@ -742,6 +825,24 @@ def sonar(mode, modeArg, filepath, languages):
                 )
             if int(channel["size"]) > maxSignalSize:
                 maxSignalSize = int(channel["size"])
+            if channel["type"] == "wdata":
+                data_width_c = channel["size"]
+        if enable_C and interface["type"] == "s_axilite":
+            for regs in interface["registers"]:
+                tb_signal_list_c += (
+                    leading_spaces_c + f"ap_uint<{data_width_c}> {regs};\n"
+                )
+        elif enable_C and interface["type"] == "axis":
+            tb_signal_list_c += (
+                leading_spaces_c + interface["iClass"] + " " + interface["name"] + ";\n"
+            )
+            tb_signal_list_c += (
+                leading_spaces_c
+                + interface["flit"]
+                + " "
+                + interface["name"]
+                + "_flit;\n"
+            )
     for interface in interface_out:
         for channel in interface["channels"]:
             if int(channel["size"]) == 1:
@@ -766,6 +867,17 @@ def sonar(mode, modeArg, filepath, languages):
                 )
             if int(channel["size"]) > maxSignalSize:
                 maxSignalSize = int(channel["size"])
+        if enable_C and interface["type"] == "axis":
+            tb_signal_list_c += (
+                leading_spaces_c + interface["iClass"] + " " + interface["name"] + ";\n"
+            )
+            tb_signal_list_c += (
+                leading_spaces_c
+                + interface["flit"]
+                + " "
+                + interface["name"]
+                + "_flit;\n"
+            )
     templateTB_sv_str = templateTB_sv_str.replace(
         "SONAR_TB_SIGNAL_LIST", tb_signal_list[:-1]
     )
@@ -773,6 +885,9 @@ def sonar(mode, modeArg, filepath, languages):
         "SONAR_MAX_DATA_SIZE", str(maxSignalSize)
     )
     if enable_C:
+        templateTB_c_str = templateTB_c_str.replace(
+            "SONAR_TB_SIGNAL_LIST", tb_signal_list_c[:-1]
+        )
         templateTB_c_str = templateTB_c_str.replace(
             "SONAR_MAX_DATA_SIZE", str(maxSignalSize)
         )
@@ -868,7 +983,7 @@ def sonar(mode, modeArg, filepath, languages):
                 ifelse_signal += leading_spaces + "}\n"
 
         # TODO fix this
-        ifelse_signal = ""  # clear this since it's not being used right now
+        # ifelse_signal = ""  # clear this since it's not being used right now
 
         templateTB_c_str = templateTB_c_str.replace(
             "SONAR_ELSE_IF_SIGNAL", ifelse_signal[:-1]
@@ -953,10 +1068,23 @@ def sonar(mode, modeArg, filepath, languages):
             lineStr = [line for line in f if "SONAR_ELSE_IF_INTERFACE_IN" in line]
         leading_spaces = getIndentation(lineStr)
         for interface in interface_in:
-            currInterface = usedInterfaces[interface["type"]]
-            elseif_interfaceIn = currInterface.c_interface_in(
-                elseif_interfaceIn, ifelse_signal, interface, leading_spaces, tabSize
+            if elseif_interfaceIn != "":
+                elseif_interfaceIn += leading_spaces + "else "
+            elseif_interfaceIn += (
+                'if(!strcmp(interfaceType, "' + interface["name"] + '")){\n'
             )
+            currInterface = usedInterfaces[interface["type"]]
+            elseif_interfaceIn = commandVarReplace(
+                elseif_interfaceIn,
+                interface,
+                currInterface.c_interface_in,
+                leading_spaces + tabSize,
+                currInterface.c_args,
+            )
+            # elseif_interfaceIn = currInterface.c_interface_in(
+            #     elseif_interfaceIn, ifelse_signal, interface, leading_spaces, tabSize
+            # )
+            elseif_interfaceIn += leading_spaces + "}\n"
         templateTB_c_str = templateTB_c_str.replace(
             "SONAR_ELSE_IF_INTERFACE_IN", elseif_interfaceIn[:-1]
         )
@@ -966,14 +1094,25 @@ def sonar(mode, modeArg, filepath, languages):
             lineStr = [line for line in f if "SONAR_ELSE_IF_INTERFACE_OUT" in line]
         leading_spaces = getIndentation(lineStr)
         for interface in interface_out:
-            currInterface = usedInterfaces[interface["type"]]
-            elseif_interfaceOut = currInterface.c_interface_out(
-                elseif_interfaceOut,
-                elseif_interfaceIn,
-                interface,
-                leading_spaces,
-                tabSize,
+            if elseif_interfaceOut != "" or elseif_interfaceIn != "":
+                elseif_interfaceOut += (
+                    leading_spaces + "else "
+                )  # TODO fix this on first one. too many spaces
+            elseif_interfaceOut += (
+                'if(!strcmp(interfaceType, "' + interface["name"] + '")){\n'
             )
+            currInterface = usedInterfaces[interface["type"]]
+            elseif_interfaceOut = commandVarReplace(
+                elseif_interfaceOut,
+                interface,
+                currInterface.c_interface_out,
+                leading_spaces + tabSize,
+                currInterface.c_args,
+            )
+            # elseif_interfaceOut = currInterface.c_interface_out(
+            #     elseif_interfaceOut, ifelse_signal, interface, leading_spaces, tabSize
+            # )
+            elseif_interfaceOut += leading_spaces + "}\n"
         templateTB_c_str = templateTB_c_str.replace(
             "SONAR_ELSE_IF_INTERFACE_OUT", elseif_interfaceOut[:-1]
         )

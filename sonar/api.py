@@ -235,7 +235,7 @@ class Create:
         ip_dir.joinpath("build/bin").mkdir(parents=True)
         ip_dir.joinpath("include").mkdir()
         ip_dir.joinpath("src").mkdir()
-        ip_dir.joinpath("testbench").mkdir()
+        ip_dir.joinpath("testbench/build/bin").mkdir(parents=True)
         ip_dir.joinpath("cad").mkdir()
         ip_dir.joinpath("hls").mkdir()
 
@@ -280,7 +280,9 @@ class Create:
             base_ip_path_sh,
         )
         sonar.utils.replace_in_file(
-            str(ip_dir.joinpath("run.sh")), "BASE_PATH", base_ip_path_sh,
+            str(ip_dir.joinpath("run.sh")),
+            "BASE_PATH",
+            base_ip_path_sh,
         )
 
         # active_repo = Database.Repo.get_active()

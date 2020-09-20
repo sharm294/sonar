@@ -5,7 +5,7 @@ from .base_types import InterfacePort
 
 
 class AXIS(SonarObject):
-    def __init__(self, name, direction, clock, c_struct=None, c_stream=None):
+    def __init__(self, name, direction, clock, flit=None, iClass=None):
         """
         Initializes an empty AXIS object
 
@@ -14,24 +14,27 @@ class AXIS(SonarObject):
             direction (str): master|slave
             clock (str): Associated clock signal
 
-            c_struct (str, optional): Defaults to None. See below.
-            c_stream (str, optional): Defaults to None. See below
-                c_struct and c_stream are needed only for C++ simulation. They
-                represent information about the hls::stream objects used in HLS
-                to define this AXIS interface. c_stream is the name of the
-                struct itself and c_struct is a variable of the c_stream type:
+            flit (str, optional): Defaults to None. See below.
+            iClass (str, optional): Defaults to None. See below
+                flit and iClass are needed only for C++ simulation. They
+                represent information about the stream objects used in HLS
+                to define this AXIS interface. iClass is the name of the
+                stream type and flit is a struct used in the iClass type:
 
                 template<int D>
-                struct uaxis_l{ <--------------------- uaxis_l would be c_stream
+                struct simple_flit{
                     ap_uint<D> data;
                     ap_uint<1> last;
                 };
-                uaxis_l<64> axis_word; <------------ axis_word would be c_struct
-                typedef hls::stream<uaxis_l<64> > axis_t;
+                simple_flit<64> axis_word;
+                typedef hls::stream<simple_flit<64> > axis_t;
+
+                Here, axis_t would be the iClass and simple_flit<64> would be the
+                flit.
         """
 
         self.name = name
-        self.port = self._Port(name, direction, clock, c_struct, c_stream)
+        self.port = self._Port(name, direction, clock, flit, iClass)
 
     def write(self, thread, data, **kwargs):
         """
@@ -307,7 +310,7 @@ class AXIS(SonarObject):
         return tlast
 
     class _Port(InterfacePort):
-        def __init__(self, name, direction, clock, c_struct, c_stream):
+        def __init__(self, name, direction, clock, flit, iClass):
             """
             Initializes an InterfacePort for AXI Stream
 
@@ -315,17 +318,17 @@ class AXIS(SonarObject):
                 name (str): Name of the AXIS interface
                 direction (str): slave|master
                 clock (str): Name of associated clock
-                c_struct (str): See below
-                c_stream (str): See below
+                flit (str): See below
+                iClass (str): See below
                     See the docstring for AXIS.__init__(). These are used for
-                    C++ simulation and represent the HLS stream struct
+                    C++ simulation and represent the HLS stream
             """
 
             super(AXIS._Port, self).__init__(name, direction)
             self.type = "axis"
             self.clock = clock
-            self.c_struct = c_struct
-            self.c_stream = c_stream
+            self.flit = flit
+            self.iClass = iClass
 
         def init_channels(self, mode, dataWidth=None, nameToUpperCase=True):
             """
@@ -396,10 +399,10 @@ class AXIS(SonarObject):
             port = super(AXIS._Port, self).asdict()
             port["type"] = self.type
             port["clock"] = self.clock
-            if self.c_struct is not None:
-                port["c_struct"] = self.c_struct
-            if self.c_stream is not None:
-                port["c_stream"] = self.c_stream
+            if self.flit is not None:
+                port["flit"] = self.flit
+            if self.iClass is not None:
+                port["iClass"] = self.iClass
             return port
 
 
@@ -462,7 +465,7 @@ class SAXILite(SonarObject):
         address = None
         for index, reg in enumerate(self.port.registers):
             if reg == register:
-                address = self.port.reg_addrs[index]
+                address = self.port.addresses[index]
                 break
         transaction = {
             "interface": {
@@ -486,7 +489,7 @@ class SAXILite(SonarObject):
         address = None
         for index, reg in enumerate(self.port.registers):
             if reg == register:
-                address = self.port.reg_addrs[index]
+                address = self.port.addresses[index]
                 break
         transaction = {
             "interface": {
@@ -524,7 +527,7 @@ class SAXILite(SonarObject):
             self.reset = reset
             self.connection_mode = "ip"
             self.registers = []
-            self.reg_addrs = []
+            self.addresses = []
             self.addr_range = ""
             self.addr_offset = ""
 
@@ -550,7 +553,7 @@ class SAXILite(SonarObject):
             """
 
             self.registers.append(name)
-            self.reg_addrs.append(address)
+            self.addresses.append(address)
 
         def del_register(self, name):
             """
@@ -563,7 +566,7 @@ class SAXILite(SonarObject):
             for index, name_ in enumerate(self.registers):
                 if name_ == name:
                     del self.registers[index]
-                    del self.reg_addrs[index]
+                    del self.addresses[index]
                     break
 
         def init_channels(
@@ -632,7 +635,7 @@ class SAXILite(SonarObject):
             port["clock"] = self.clock
             port["reset"] = self.reset
             port["registers"] = self.registers
-            port["reg_addrs"] = self.reg_addrs
+            port["addresses"] = self.addresses
             port["addr_offset"] = self.addr_offset
             port["addr_range"] = self.addr_range
             port["connection_mode"] = self.connection_mode

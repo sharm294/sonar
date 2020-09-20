@@ -9,23 +9,25 @@ from sonar.interfaces import AXIS, SAXILite
 # default constructor.
 sample_TB = Testbench.default("sample_src")
 filepath = os.path.join(os.path.dirname(__file__), "build/sample_src/")
+sample_TB.set_metadata("Timeout_Value", "1us")
+sample_TB.set_metadata("Headers", ["sample_src.hpp"])
 
 # the DUT ------------------------------------------------------------------
 
 # create a DUT module named 'DUT' and specify its signal ports
-dut = Module.default("DUT")
-dut.add_clock_port("ap_clk", "20ns")
-dut.add_reset_port("ap_rst_n")
-dut.add_port("state_out_V", size=3, direction="output")
-dut.add_port("ack_V", direction="output")
+dut = Module.cpp_vivado("DUT")
+# dut.add_clock_port("ap_clk", "20ns")
+# dut.add_reset_port("ap_rst_n")
+dut.add_port("state_out", size=3, direction="output")
+dut.add_port("ack", direction="output")
 sample_TB.add_module(dut)
 
 # create an AXI-M interface with the default side channels and a data width
 # of 64 and add it to the DUT.
 axis_out = AXIS("axis_output", "master", "ap_clk")
 axis_out.port.init_channels("default", 64)
-axis_out.port.c_stream = "uaxis_l"  # this field is needed for C++ TBs
-axis_out.port.c_struct = "axis_word"  # this field is needed for C++ TBs
+axis_out.port.iClass = "axis_t"  # this field is needed for C++ TBs
+axis_out.port.flit = "axis_word_t"  # this field is needed for C++ TBs
 # axis_out.ports.addChannel('TKEEP', 'tkeep', 8) # e.g. to add a new channel
 dut.add_interface(axis_out)
 
@@ -33,8 +35,8 @@ dut.add_interface(axis_out)
 # of 64 and add it to the DUT.
 axis_in = AXIS("axis_input", "slave", "ap_clk")
 axis_in.port.init_channels("default", 64)
-axis_in.port.c_stream = "uaxis_l"
-axis_in.port.c_struct = "axis_word"
+axis_in.port.iClass = "axis_t"
+axis_in.port.flit = "axis_word_t"
 dut.add_interface(axis_in)
 
 # create a S-AXILite interface, set up its register space and add it to the
@@ -64,10 +66,12 @@ inputT = test_vector_0.add_thread()
 inputT.add_delay("100ns")
 inputT.init_timer()  # zeros a timer that can be evaluated for runtime
 ctrl_bus.write(inputT, "enable", 1)
-axis_in.write(inputT, 0xABCD, callTB=2)  # callTB is used in C++ TBs
-inputT.wait_level("ack_V == $value", value=1)
-axis_in.write(inputT, 0, callTB=3)
-inputT.wait_level("ack_V == $value", value=1)
+axis_in.write(inputT, 0xABCD)
+inputT.call_dut(2)
+inputT.wait_level("ack == $value", value=1)
+axis_in.write(inputT, 0)
+inputT.call_dut(3)
+inputT.wait_level("ack == $value", value=1)
 inputT.add_delay("110ns")
 inputT.set_flag(0)  # sets flag 0 that another thread may be waiting on
 
@@ -87,4 +91,4 @@ sample_TB.add_test_vector(test_vector_0)
 
 # generate the output testbenches and data files for the specified languages
 # at the designated path
-sample_TB.generateTB(filepath, "sv")
+sample_TB.generateTB(filepath, "all")

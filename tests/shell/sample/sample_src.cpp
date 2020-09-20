@@ -25,9 +25,13 @@ SOFTWARE.
 
 #include "sample_src.hpp"
 
-void sample_src(axis_t* axis_input, axis_t* axis_output,
-            uint_1_t* ack, uint_1_t enable,
-            volatile uint_3_t *state_out) {
+void sample_src(
+  volatile uint_3_t *state_out,
+  uint_1_t* ack,
+  axis_t* axis_output,
+  axis_t* axis_input,
+  uint_1_t enable
+) {
 #pragma HLS INTERFACE axis port = axis_input
 #pragma HLS INTERFACE axis port = axis_output
 #pragma HLS INTERFACE ap_none port = state_out
@@ -67,7 +71,7 @@ void sample_src(axis_t* axis_input, axis_t* axis_output,
     case st_payload: {
       if (!axis_input->empty()) {
         axis_input->read(axis_word);
-        payload = axis_word.data;
+        payload = axis_word.tdata;
         currentState = ack2;
       } else {
         currentState = st_payload;
@@ -81,7 +85,7 @@ void sample_src(axis_t* axis_input, axis_t* axis_output,
       break;
     }
     case st_output: {
-      axis_word.data = payload + 1;
+      axis_word.tdata = payload + 1;
       axis_output->write(axis_word);
       currentState = st_header;
       ack_wire = 0;

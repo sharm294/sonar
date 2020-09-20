@@ -4,7 +4,7 @@ import sonar.database as Database
 
 
 class MakeFile:
-    def __init__(self,):
+    def __init__(self):
         self.include = ["$(SONAR_PATH)/make/include.mk"]
         self.prologue = [
             "MAKEFLAGS += --warn-undefined-variables",
@@ -37,6 +37,7 @@ class MakeFile:
         self.variables.append(("src_dir", "$(ip_dir)/src"))
         self.variables.append(("test_dir", "$(ip_dir)/testbench"))
         self.variables.append(("test_build_dir", "$(test_dir)/build"))
+        self.variables.append(("test_bin_dir", "$(test_dir)/build/bin"))
         self.variables.append(("include_dir", "$(ip_dir)/include"))
         self.variables.append(("hls_dir", "$(ip_dir)/hls"))
         self.variables.append(("cad_dir", "$(ip_dir)/cad"))
@@ -48,10 +49,10 @@ class MakeFile:
         self.variables.append(
             (
                 "obj",
-                "$(shell find $(obj_dir) -name '*.o' -printf '%f\\n' | sort -k 1nr | cut -f2-)",
+                "$(shell find $(build_dir) -name '*.o' -printf '%f\\n' | sort -k 1nr | cut -f2-)",
             )
         )
-        self.variables.append(("dep", "$(obj:%.o=$(obj_dir)/%.d)"))
+        self.variables.append(("dep", "$(obj:%.o=$(build_dir)/%.d)"))
         self.variables.append(None)
 
     def _add_src_objs(self):
@@ -178,6 +179,34 @@ class MakeFile:
             $(foreach module, $(custom_modules),$(eval $(call make-sim-custom,$(module))))"""
         )
 
+        makefile += self._add_light_header("C++ Simulation")
+        makefile += textwrap.dedent(
+            """\
+            define run-executable
+            runtb-$1: cpptb-$1
+            \t$(test_bin_dir)/$1_tb
+            endef
+            $(foreach module, $(c_modules),$(eval $(call run-executable,$(module))))
+
+            define make-executable
+            cpptb-$1: $(test_build_dir)/$1_tb.o $(build_dir)/$1.o
+            \t$(CC) $(CFLAGS) -o $(test_bin_dir)/$1_tb $(test_build_dir)/$1_tb.o $(build_dir)/$1.o
+            endef
+            $(foreach module, $(c_modules),$(eval $(call make-executable,$(module))))
+
+            define make-testbench
+            $(test_build_dir)/$1_tb.o: $(test_build_dir)/$1/$1_tb.cpp
+            \t$(CC) $(CFLAGS) -o $(test_build_dir)/$1_tb.o -c $(test_build_dir)/$1/$1_tb.cpp
+            endef
+            $(foreach module, $(c_modules),$(eval $(call make-testbench,$(module))))
+
+            define make-object
+            $(build_dir)/$1.o: $(src_dir)/$1.cpp
+            \t$(CC) $(CFLAGS) -o $(build_dir)/$1.o -c $(src_dir)/$1.cpp
+            endef
+            $(foreach module, $(c_modules),$(eval $(call make-object,$(module))))"""
+        )
+
         return makefile
 
 
@@ -201,7 +230,7 @@ class CFlags:
         cflags = []
 
         if self.debug:
-            cflags.append("-g")
+            cflags.append("-g -O0")
 
         for include in self.local_include:
             cflags.append(f"-I{include}")

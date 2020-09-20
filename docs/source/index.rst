@@ -6,3 +6,4 @@
    :hidden:
 
    autodoc/modules
+   versions

@@ -26,7 +26,8 @@ SOFTWARE.
 #include <stdio.h>
 #include <cstdlib>
 #include <iostream>
-#include SONAR_HEADER_FILE
+#include <assert.h>
+SONAR_HEADER_FILE
 
 #define DAT_FILE SONAR_DATA_FILE
 
@@ -51,9 +52,13 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  DECLARE_VARIABLES
+  SONAR_TB_SIGNAL_LIST
 
   FILE* dataFile = fopen(DAT_FILE, "r");
+  if (dataFile == NULL) {
+    perror("Failed: ");
+    return 1;
+  }
 
   std::cout << "\n*** Starting SONAR_FUNCTION_TB ***\n\n";
 
@@ -61,20 +66,20 @@ int main(int argc, char* argv[]) {
   char cStreamType[SONAR_MAX_STRING_SIZE];
   char id[SONAR_MAX_STRING_SIZE];
   int argCount;
-  ap_uint<SONAR_MAX_DATA_SIZE> readArgs[SONAR_MAX_ARG_NUM];
-  ap_uint<SONAR_MAX_DATA_SIZE> args[SONAR_MAX_ARG_NUM];
+  // ap_uint<SONAR_MAX_DATA_SIZE> readArgs[SONAR_MAX_ARG_NUM];
+  long long args[SONAR_MAX_ARG_NUM];
   bool valid = true;
-  int callTB = 0;
+  // int callTB = 0;
 #ifdef DEBUG
   int dbg_currentState;
 #endif
   while (1) {
     bool read = false;
 
-    fscanf(dataFile, "%s %s %s %d %d", interfaceType, id, cStreamType,
-           &argCount, &callTB);
+    fscanf(dataFile, "%s %s %s %d", interfaceType, id, cStreamType,
+           &argCount);
     for (int l = 0; l < argCount; l++) {
-      fscanf(dataFile, "%ld", args[l]);  // C++ can only support 64bit args
+      fscanf(dataFile, "%lld", &(args[l]));  // C++ can only support 64bit args
     }
 
     SONAR_ELSE_IF_SIGNAL
@@ -86,13 +91,19 @@ int main(int argc, char* argv[]) {
         std::cout << id << "\n";
       }
     }
-    else if (!strcmp(interfaceType, "end")) {
-      if (!valid) {
-        std::cout << "Test " << args[0] << " failed\n";
-      } else {
-        std::cout << "Test " << args[0] << " successful\n";
+    else if (!strcmp(interfaceType, "call_dut")) {
+      for (int l = 0; l < args[0]; l++) {
+        SONAR_DUT_INST
+        // #if defined(DEBUG) && defined(FSM_EXISTS)
+        // if (printState) {
+        //   std::cout << "Current State is " + stateParse(dbg_currentState)
+        //             << "\n";
+        // }
+        // #endif
       }
-      valid = true;
+    }
+    else if (!strcmp(interfaceType, "end")) {
+      std::cout << "Test " << args[0] << " successful\n";
     }
     else if (!strcmp(interfaceType, "finish")) {
       break;
@@ -102,35 +113,23 @@ int main(int argc, char* argv[]) {
       return 1;
     }
 
-    if (read) {
-      VERIFY(cStreamType)
-      else if (printMatches) {
-        std::cout << "Match at id: " << id << "\n";
-        std::cout << std::hex << "   Received: " << readArgs[0] << " "
-                  << readArgs[1] << "\n";
-      }
-    }
+    // if (read) {
+    //   VERIFY(cStreamType)
+    //   else if (printMatches) {
+    //     std::cout << "Match at id: " << id << "\n";
+    //     std::cout << std::hex << "   Received: " << readArgs[0] << " "
+    //               << readArgs[1] << "\n";
+    //   }
+    // }
 
-    if (callTB > 0) {
-      for (int l = 0; l < callTB; l++) {
-        CALL_TB
-#if defined(DEBUG) && defined(FSM_EXISTS)
-        if (printState) {
-          std::cout << "Current State is " + stateParse(dbg_currentState)
-                    << "\n";
-        }
-#endif
-      }
-    }
-
-    if (printInterfaces) {
-      PRINT_INTERFACES
-    }
+    // if (printInterfaces) {
+    //   PRINT_INTERFACES
+    // }
   }
 
-  if (readInterfaces) {
-    READ_INTERFACES
-  }
+  // if (readInterfaces) {
+  //   READ_INTERFACES
+  // }
 
   std::cout << "\n*** Finishing SONAR_FUNCTION_TB ***\n";
 

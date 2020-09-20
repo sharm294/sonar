@@ -3,8 +3,7 @@ import re
 import json
 from .include.utilities import printError
 
-################################################################################
-### writeJSONPacket ###
+# writeJSONPacket
 # This function converts a YAML command into its equivalent JSON.
 
 
@@ -22,7 +21,7 @@ def writeJSONPacket(
 ):
     signal_json = {"type": "signal", "interface": "", "value": 0, "id": ""}
     # regex_int_str = re.compile("([0-9]+)([a-z]+)")
-    regex_int_str = re.compile("([0-9]+([\.][0-9]+)*)([a-z]+)")
+    regex_int_str = re.compile(r"([0-9]+([\.][0-9]+)*)([a-z]+)")
 
     if "macro" in packet:
         if packet["macro"] == "INIT_SIGNALS":
@@ -135,6 +134,13 @@ def writeJSONPacket(
         )
         counters["displayCounter"] += 1
         parallelSection_json["data"].append(cur_signal_json)
+    elif "call_dut" in packet:
+        cur_signal_json = copy.deepcopy(signal_json)
+        cur_signal_json["type"] = "call_dut"
+        cur_signal_json["interface"] = "NULL"
+        cur_signal_json["id"] = "NULL"
+        cur_signal_json["value"] = packet["call_dut"]
+        parallelSection_json["data"].append(cur_signal_json)
     elif "timestamp" in packet:
         cur_signal_json = copy.deepcopy(signal_json)
         cur_signal_json["type"] = "timestamp"
@@ -224,8 +230,7 @@ def writeJSONPacket(
     return counters
 
 
-################################################################################
-### writeJSON ###
+# writeJSON
 # This function converts the YAML test vectors to JSON and calls any interface
 # specific functions to fill in the JSON structs
 def writeJSON(

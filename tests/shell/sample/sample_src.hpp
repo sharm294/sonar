@@ -31,19 +31,24 @@ SOFTWARE.
 // #include "utilities.hpp"
 
 template <int D>
-struct uaxis_l {
-  ap_uint<D> data;
-  ap_uint<1> last;
+struct simple_flit {
+  ap_uint<D> tdata;
+  ap_uint<1> tlast;
 };
 
-typedef uaxis_l<64> axis_word_t;
+typedef simple_flit<64> axis_word_t;
 typedef hls::stream<axis_word_t> axis_t;
 typedef ap_uint<1> uint_1_t;
 typedef ap_uint<3> uint_3_t;
 typedef ap_uint<64> uint_64_t;
 
-void sample_src(axis_t* axis_input, axis_t* axis_output,
-            uint_1_t* ack, uint_1_t enable, volatile uint_3_t *state_out);
+void sample_src(
+  volatile uint_3_t *state_out,
+  uint_1_t* ack,
+  axis_t* axis_output,
+  axis_t* axis_input,
+  uint_1_t enable
+);
 
 // #define DECLARE_VARIABLES \
 //   axis_t axis_input;      \
@@ -55,7 +60,7 @@ void sample_src(axis_t* axis_input, axis_t* axis_output,
 
 // #define CALL_TB sample(axis_input, axis_output, ack, enable, &state_out);
 
-// #define COMPARE_uaxis_l(x) x
+// #define COMPARE_simple_flit(x) x
 
 // #define WRITE_WORD_L(Aword, Adata, Alast, Aaxis) \
 //   Aword.data = Adata;                            \
@@ -67,15 +72,15 @@ void sample_src(axis_t* axis_input, axis_t* axis_output,
 //   Alast = Aword.last;
 // // the arg numbers correspond to the c_args order in axis.py in Sonar
 // #define WRITE(key, word_type, interface) \
-//   WHEN(EQUAL(key, uaxis_l))              \
+//   WHEN(EQUAL(key, simple_flit))              \
 //   (WRITE_WORD_L(word_type, args[0], args[1], interface))
 
 // #define READ(key, word_type, interface) \
-//   WHEN(EQUAL(key, uaxis_l))             \
+//   WHEN(EQUAL(key, simple_flit))             \
 //   (READ_WORD_L(word_type, readArgs[0], readArgs[1], interface))
 
 // #define VERIFY(key)                                                         \
-//   if (!strcmp(key, "uaxis_l")) {                                            \
+//   if (!strcmp(key, "simple_flit")) {                                        \
 //     if (args[0] != readArgs[0] || args[1] != readArgs[1]) {                 \
 //       valid = false;                                                        \
 //       std::cout << "Mismatch at id: " << id << "\n";                        \
@@ -93,12 +98,12 @@ void sample_src(axis_t* axis_input, axis_t* axis_output,
 
 // #define READ_STREAM_INTERFACE(name, key, stream, word_type)   \
 //   while (stream.size() > 0) {                                 \
-//     WHEN(EQUAL(key, uaxis_l))                                 \
+//     WHEN(EQUAL(key, simple_flit))                                 \
 //     (READ(key, word_type, stream) std::cout                   \
 //          << std::hex << name << " - Data: " << word_type.data \
 //          << " Last: " << word_type.last << "\n";)             \
 //   }
 
 // #define READ_INTERFACES                                          \
-//   READ_STREAM_INTERFACE("Input", uaxis_l, axis_input, axis_word) \
-//   READ_STREAM_INTERFACE("Output", uaxis_l, axis_output, axis_word)
+//   READ_STREAM_INTERFACE("Input", simple_flit, axis_input, axis_word) \
+//   READ_STREAM_INTERFACE("Output", simple_flit, axis_output, axis_word)

@@ -1,7 +1,5 @@
 import json
-import math
 import os
-import sys
 
 from .base_types import SonarObject, InterfacePort
 from .core import sonar as SonarCore
@@ -37,6 +35,7 @@ class Testbench(SonarObject):
             "Time_Format": {"unit": "1us", "precision": 3},
             "Flag_Count": 1,
             "Timeout_Value": "10s",  # arbitrary large amount
+            "Headers": [],
             "Company": None,
             "Engineer": None,
             "Project_Name": None,
@@ -202,6 +201,9 @@ class Module(SonarObject):
         """
 
         self.name = ""
+        self.lang = "sv"
+        self.hls = None
+        self.hls_version = None
         self.ports = []
         self.parameters = {}
 
@@ -219,6 +221,51 @@ class Module(SonarObject):
 
         module = cls()
         module.name = name
+        return module
+
+    @classmethod
+    def cpp(cls, name, lang, hls, hls_version):
+        """
+        Creates a default cpp module with the given name, language and HLS tool
+
+        Args:
+            name (str): Name of the module to create
+            lang (str): Language used for the module
+            hls (str): HLS tool used to synthesize
+            hls_version (str): HLS tool version
+
+        Returns:
+            Module: Object representing a module
+        """
+
+        module = cls()
+        module.lang = lang
+        module.hls = hls
+        module.hls_version = hls_version
+        module.name = name
+        return module
+
+    @classmethod
+    def cpp_vivado(cls, name, clk_period="20ns", reset_low=True):
+        """
+        Creates a default cpp module with the given name, language and HLS tool
+
+        Args:
+            name (str): Name of the module to create
+            clk_period (str, optional): Defaults to 20ns. Clock period to use
+            reset_low (bool, optional): Defaults to True. Enable active low reset
+                Set False to use active high reset
+
+        Returns:
+            Module: Object representing a module
+        """
+
+        module = cls().cpp(name, "cpp", "vivado", "2018.1")
+        module.add_clock_port("ap_clk", clk_period)
+        if reset_low:
+            module.add_reset_port("ap_rst_n")
+        else:
+            module.add_reset_port("ap_rst")
         return module
 
     def add_port(self, name, direction, size=1):
@@ -307,6 +354,11 @@ class Module(SonarObject):
             else:
                 module["ports"].append(port)
         module["parameters"] = self.parameters
+        module["type"] = {
+            "lang": self.lang,
+            "hls": self.hls,
+            "hls_version": self.hls_version,
+        }
         return module
 
 
@@ -402,6 +454,15 @@ class Thread(SonarObject):
         """
 
         self.commands.append({"macro": "INIT_SIGNALS"})
+
+    def call_dut(self, num):
+        """
+        Call the DUT function some number of times (only for C++ TBs)
+
+        Args:
+            num (int): Number of times to call the DUT function
+        """
+        self.commands.append({"call_dut": num})
 
     def enable_timestamps(self, prefix, index):
         """
