@@ -1,22 +1,32 @@
+"""
+The main entry point for the sonar CLI. Here, we check the status of the
+local user database and pass in the command-line arguments to their parsers.
+"""
+
 import argparse
-
-try:
-    import argcomplete
-except ImportError:
-    pass
-
 import sys
 
 import sonar
 import sonar.api as api
 import sonar.cli as cli
 
+try:
+    import argcomplete
+except ImportError:
+    pass
+
 
 def parse_args():
+    """
+    Defines the command-line argument parser. All the parsing functions are in
+    the CLI module
+
+    Returns:
+        args: The parsed args
+    """
     parser = argparse.ArgumentParser(
         prog="sonar",
         description="sonar is a tool to manage and test your hardware projects.",
-        # usage="%(prog)s [-h] command [command args]",
         add_help=False,
     )
     parser.set_defaults(func=lambda x: parser.print_help())
@@ -27,7 +37,6 @@ def parse_args():
     cli.database(subparser)
     cli.env(subparser)
     cli.init(subparser)
-    # cli.ip(subparser)
     cli.repo(subparser)
     cli.tool(subparser)
 
@@ -46,6 +55,10 @@ def parse_args():
 
 
 def main():
+    """
+    Main CLI usage. Parses the command-line arguments, checks the local database
+    and calls the appropriate CLI function.
+    """
     args = parse_args()
 
     api.check_database()

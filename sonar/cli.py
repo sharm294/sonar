@@ -1,17 +1,30 @@
-import argparse
+"""
+Defines all the CLI argument parsing functions
+"""
+
 import textwrap
 
 import sonar.api as api
 
 
-def activate(parser: argparse._SubParsersAction):
-    subparser: argparse.ArgumentParser = parser.add_parser(
+def activate(parser):
+    """
+    Parse the "activate" argument
+
+    Args:
+        parser (argparse._SubParsersAction): The parser object
+    """
+    subparser = parser.add_parser(
         "activate", help="Activate environment settings", add_help=False
     )
 
     command_group = subparser.add_argument_group("Environment")
     command_group.add_argument(
-        "name", type=str, nargs="?", default=None, help="Name of the env to activate",
+        "name",
+        type=str,
+        nargs="?",
+        default=None,
+        help="Name of the env to activate",
     )
     command_group = subparser.add_argument_group("Custom")
     command_group.add_argument("--tool")
@@ -23,6 +36,12 @@ def activate(parser: argparse._SubParsersAction):
 
 
 def env(parser):
+    """
+    Parse the "env" argument
+
+    Args:
+        parser (argparse._SubParserAction): The parser object
+    """
     subparser = parser.add_parser("env", help="Manage sonar envs", add_help=False)
     subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
 
@@ -32,7 +51,7 @@ def env(parser):
             help="Add an env to sonar",
             add_help=False,
             description=textwrap.dedent(
-                f"""\
+                """\
                 Adds an env to sonar's database that can be activated with 'sonar
                 activate'. Env elements must be already added to sonar.
                 """
@@ -103,7 +122,7 @@ def env(parser):
         command.set_defaults(func=api.Env.clear)
         add_help(command)
 
-    def activate():
+    def f_activate():
         command = subsubparser.add_parser(
             "activate",
             help="Activate an env",
@@ -113,12 +132,14 @@ def env(parser):
 
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument(
-            "name", type=str, help="Name of the env to activate",
+            "name",
+            type=str,
+            help="Name of the env to activate",
         )
         command.set_defaults(func=api.Env.activate)
         add_help(command)
 
-    activate()
+    f_activate()
     add()
     clear()
     # edit()
@@ -128,6 +149,12 @@ def env(parser):
 
 
 def tool(parser):
+    """
+    Parse the "tool" argument
+
+    Args:
+        parser (argparse._SubParserAction): The parser object
+    """
     subparser = parser.add_parser("tool", help="Manage hw tools", add_help=False)
     subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
 
@@ -223,6 +250,12 @@ def tool(parser):
 
 
 def board(parser):
+    """
+    Parse the "board" argument
+
+    Args:
+        parser (argparse._SubParserAction): The parser object
+    """
     subparser = parser.add_parser(
         "board", help="Manage board definitions", add_help=False
     )
@@ -234,7 +267,7 @@ def board(parser):
             help="Add a board",
             add_help=False,
             description=textwrap.dedent(
-                f"""\
+                """\
                 Adds a board to the database
                 """
             ),
@@ -280,7 +313,7 @@ def board(parser):
         command.set_defaults(func=api.Board.clear)
         add_help(command)
 
-    def activate():
+    def f_activate():
         command = subsubparser.add_parser(
             "activate",
             help="Activate a board",
@@ -290,7 +323,9 @@ def board(parser):
 
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument(
-            "name", type=str, help="Name of the board to activate",
+            "name",
+            type=str,
+            help="Name of the board to activate",
         )
         command.set_defaults(func=api.Board.activate)
         add_help(command)
@@ -316,7 +351,7 @@ def board(parser):
         command.set_defaults(func=api.Board.f_list)
         add_help(command)
 
-    activate()
+    f_activate()
     add()
     clear()
     deactivate()
@@ -327,6 +362,12 @@ def board(parser):
 
 
 def repo(parser):
+    """
+    Parse the "repo" argument
+
+    Args:
+        parser (argparse._SubParserAction): The parser object
+    """
     subparser = parser.add_parser("repo", help="Manage sonar repos", add_help=False)
     subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
 
@@ -336,7 +377,7 @@ def repo(parser):
             help="Add the repo to sonar",
             add_help=False,
             description=textwrap.dedent(
-                f"""\
+                """\
                 Adds the current repo to sonar's database
                 """
             ),
@@ -393,7 +434,7 @@ def repo(parser):
         command.set_defaults(func=api.Repo.clear)
         add_help(command)
 
-    def activate():
+    def f_activate():
         command = subsubparser.add_parser(
             "activate",
             help="Activate a repo",
@@ -403,12 +444,14 @@ def repo(parser):
 
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument(
-            "name", type=str, help="Name of the repo to activate",
+            "name",
+            type=str,
+            help="Name of the repo to activate",
         )
         command.set_defaults(func=api.Repo.activate)
         add_help(command)
 
-    activate()
+    f_activate()
     add()
     clear()
     f_list()
@@ -416,6 +459,12 @@ def repo(parser):
 
 
 def create(parser):
+    """
+    Parse the "create" argument
+
+    Args:
+        parser (argparse._SubParserAction): The parser object
+    """
     subparser = parser.add_parser(
         "create", help="Manipulate the active repo", add_help=False
     )
@@ -427,7 +476,7 @@ def create(parser):
             help="Create an IP directory",
             add_help=False,
             description=textwrap.dedent(
-                f"""\
+                """\
                 Adds an IP directory
                 """
             ),
@@ -435,18 +484,20 @@ def create(parser):
 
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument(
-            "name", type=str, help="Name of the directory",
+            "name",
+            type=str,
+            help="Name of the directory",
         )
         command.set_defaults(func=api.Create.ip)
         add_help(command)
 
-    def repo():
+    def f_repo():
         command = subsubparser.add_parser(
             "repo",
             help="Create an empty repo directory",
             add_help=False,
             description=textwrap.dedent(
-                f"""\
+                """\
                 Create a repo directory
                 """
             ),
@@ -454,17 +505,25 @@ def create(parser):
 
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument(
-            "name", type=str, help="Name of the repo",
+            "name",
+            type=str,
+            help="Name of the repo",
         )
         command.set_defaults(func=api.Create.repo)
         add_help(command)
 
     ip()
-    repo()
+    f_repo()
     add_help(subparser)
 
 
 def add_help(parser):
+    """
+    Add generic help message to parsers
+
+    Args:
+        parser (argparse._SubParserAction): The parser object
+    """
     command_group = parser.add_argument_group("Options")
     command_group.add_argument(
         "-h", "--help", action="help", help="show this help message and exit"
@@ -472,6 +531,12 @@ def add_help(parser):
 
 
 def init(parser):
+    """
+    Parse the "init" argument
+
+    Args:
+        parser (argparse._SubParserAction): The parser object
+    """
     subparser = parser.add_parser("init", help="Initialize sonar")
 
     subparser.set_defaults(func=api.Init.one_time_setup)
@@ -558,6 +623,12 @@ def init(parser):
 
 
 def database(parser):
+    """
+    Parse the "database" argument
+
+    Args:
+        parser (argparse._SubParserAction): The parser object
+    """
     subparser = parser.add_parser(
         "database", help="Manipulate the sonar database", add_help=False
     )
@@ -569,13 +640,13 @@ def database(parser):
             help="Print the database",
             add_help=False,
             description=textwrap.dedent(
-                f"""\
+                """\
                 Prints the database
                 """
             ),
         )
 
-        command.set_defaults(func=api.DB.f_list)
+        command.set_defaults(func=api.Database.f_list)
         add_help(command)
 
     f_list()

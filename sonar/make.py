@@ -1,9 +1,18 @@
+"""
+A Python wrapper around Make
+"""
+
 import os
 import textwrap
+
 import sonar.database as Database
 
 
 class MakeFile:
+    """
+    Represents a complete Makefile. For now, many aspects are hard coded
+    """
+
     def __init__(self):
         self.include = ["$(SONAR_PATH)/make/include.mk"]
         self.prologue = [
@@ -20,6 +29,15 @@ class MakeFile:
         self.phony = []
 
     def ip(self, ip_dir):
+        """
+        Add the IP-related variables and targets to the Makefile
+
+        Args:
+            ip_dir (str): Path to the IP directory
+
+        Returns:
+            str: Text to be added to the Makefile
+        """
         self._add_ip_variables(ip_dir)
         self._add_obj_deps()
         self._add_src_objs()
@@ -61,7 +79,8 @@ class MakeFile:
         self.variables.append(("custom_modules", ""))
         self.variables.append(None)
 
-    def _add_header(self, title):
+    @staticmethod
+    def _add_header(title):
         return textwrap.dedent(
             f"""
         ################################################################################
@@ -71,7 +90,8 @@ class MakeFile:
         """
         )
 
-    def _add_light_header(self, title):
+    @staticmethod
+    def _add_light_header(title):
         return textwrap.dedent(
             f"""
         #-------------------------------------------------------------------------------
@@ -211,6 +231,10 @@ class MakeFile:
 
 
 class CFlags:
+    """
+    Object holding the flags used for compilation.
+    """
+
     def __init__(self):
         self.debug = True
         self.local_include = []

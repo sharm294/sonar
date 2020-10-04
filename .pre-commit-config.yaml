@@ -25,10 +25,10 @@ repos:
     - id: check-json
     - id: check-merge-conflict
     - id: pretty-format-json
-  # - repo: https://github.com/PyCQA/pylint
-  #   rev: pylint-2.4.4
-  #   hooks:
-  #   - id: pylint
+  - repo: https://github.com/PyCQA/pylint
+    rev: pylint-2.6.0
+    hooks:
+    - id: pylint
   - repo: https://github.com/PyCQA/bandit
     rev: 1.6.2
     hooks:

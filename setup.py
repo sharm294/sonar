@@ -1,19 +1,48 @@
-from setuptools import setup, find_packages
-import os
+"""
+Python build script for setuptools
+
+Raises:
+    RuntimeError: Raised if __version__ information is not found
+"""
+
 import codecs
+import os
+
+from setuptools import find_packages, setup
 
 
-def get_version(rel_path):
-    for line in read(rel_path).splitlines():
+def get_version(filepath):
+    """
+    Extracts the version string from a file
+
+    Args:
+        filepath (str): Path to the file to search for the version
+
+    Raises:
+        RuntimeError: Raised if __version__ not found
+
+    Returns:
+        str: Version of the project
+    """
+    for line in read(filepath).splitlines():
         if line.startswith("__version__"):
             return line.split('"')[1]
     raise RuntimeError("Unable to find version string.")
 
 
 def read(filepath):
+    """
+    Reads the file at the filepath
+
+    Args:
+        filepath (str): Path to the file to read
+
+    Returns:
+        str: File contents as a string
+    """
     here = os.path.abspath(os.path.dirname(__file__))
-    with codecs.open(os.path.join(here, filepath), encoding="utf-8") as fp:
-        return fp.read()
+    with codecs.open(os.path.join(here, filepath), encoding="utf-8") as f:
+        return f.read()
 
 
 setup(

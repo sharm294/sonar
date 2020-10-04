@@ -107,7 +107,7 @@ Testbench
 ---------
 
 Installing the package is sufficient. It is recommended to install and
-setup `argcompete`_ to autocomplete *sonar*'s CLI commands. If the
+setup `argcomplete`_ to autocomplete *sonar*'s CLI commands. If the
 package exists, *sonar* will use it.
 
 Pytest
@@ -120,11 +120,31 @@ Development
 
 For development, it is HIGHLY recommended to use a virtual env such as
 `conda`_ or docker. *sonar* uses the `pre-commit`_ package to enforce
-style checks for every commit. There are a number of additional packages
-needed for all the pre-commit hooks to run, including clang-format,
-cppcheck, cpplint, shellcheck, and gitlint among others. If you're using
-conda, most can be installed from conda-forge or pip but some may need
-custom download channels.
+style checks for every commit. Conda instructions to set up the development
+environment are below:
+
+.. code:: bash
+
+   # install sonar as editable
+   $ pip install -e .
+
+   # install optional but RECOMMENDED packages
+   conda install argcomplete
+
+   # install testing dependencies
+   $ conda install pytest coverage
+
+   # install pre-commit and pre-commit hooks
+   $ conda install pylint
+   $ conda install -c conda-forge pre-commit cpplint cppcheck shellcheck
+   $ conda install -c sarcasm clang-format
+
+   # activate argcomplete globally for your user if it's not otherwise activated
+   # note: make sure user bash completion scripts are picked up by .bashrc!
+   $ activate-global-python-argcomplete --user
+
+   # install pre-commit if not installed for this repository
+   $ pre-commit install
 
 .. |Build Status| image:: https://travis-ci.org/sharm294/sonar.svg?branch=master
    :target: https://travis-ci.org/sharm294/sonar
@@ -135,7 +155,7 @@ custom download channels.
 .. |Docs| image:: https://readthedocs.org/projects/sonar/badge/?version=latest
    :target: https://sonar.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
-.. _argcompete: https://github.com/kislyuk/argcomplete#global-completion
+.. _argcomplete: https://github.com/kislyuk/argcomplete#global-completion
 .. _pytest: https://docs.pytest.org/en/stable/
 .. _conda: https://docs.conda.io/en/latest/miniconda.html
 .. _pre-commit: https://pre-commit.com/

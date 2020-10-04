@@ -5,7 +5,7 @@ Comparisons
 Purpose
 =======
 
-These testbenches are adapations of existing publically-available testbenches
+These testbenches are adapations of existing publicly-available testbenches
 as a way to show what Sonar can (and cannot) do and to show how different
 testbenches can be adapted as Sonar testbenches.
 

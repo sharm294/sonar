@@ -1,18 +1,26 @@
-import pprint
-import shelve
+"""
+Manage the sonar database
+"""
+
 import dbm
 import logging
 import os
-import toml
+import pprint
 import runpy
+import shelve
 
-from sonar.include import Constants
+import toml
+
 from sonar.exceptions import SonarInvalidArgError, SonarInvalidOpError
+from sonar.include import Constants
 
 logger = logging.getLogger(__name__)
 
 
 def init():
+    """
+    Initialize the database with empty sections
+    """
     os.makedirs(Constants.SONAR_PATH, exist_ok=True)
     with shelve.open(Constants.SONAR_DB_PATH) as db:
         db["active"] = {
@@ -29,8 +37,27 @@ def init():
 
 
 class Tool:
+    """
+    Manage the tools in the database
+    """
+
     @staticmethod
     def add(tool_name, version, cad_exe, hls_exe, sim_exe, script):
+        """
+        Add a new tool to the database
+
+        Args:
+            tool_name (str): Name of the tool
+            version (str): Tool version
+            cad_exe (str): Name of CAD tool executable. None if not applicable
+            hls_exe (str): Name of HLS tool executable. None if not applicable
+            sim_exe (str): Name of simulation tool executable. None if not applicable
+            script (str): Shell script to initialize the tool
+
+        Raises:
+            SonarInvalidOpError: Raised if attempting to add an already existing
+                tool.
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             tools = db["tool"]
             try:
@@ -39,7 +66,7 @@ class Tool:
                 _dict = {"versions": [], "executable": {}, "script": {}}
             if version in _dict["versions"]:
                 logger.error(
-                    f"{version} already exists. Use 'edit' to modify existing tools"
+                    "%s already exists. Use 'edit' to modify existing tools", version
                 )
                 raise SonarInvalidOpError
             _dict["versions"].append(version)
@@ -52,6 +79,18 @@ class Tool:
 
     @staticmethod
     def get(tool=None):
+        """
+        Get a tool from the database
+
+        Args:
+            tool (str, optional): Get a particular tool only. Defaults to None.
+
+        Raises:
+            SonarInvalidArgError: Raised if named tool not found in the database
+
+        Returns:
+            dict: Tool entry from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             tools = db["tool"]
         if tool is None:
@@ -62,12 +101,21 @@ class Tool:
 
     @staticmethod
     def get_active():
+        """
+        Get the active tool
+
+        Returns:
+            dict: Tool entry from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             active = db["active"]
             return {k: active[k] for k in ("cad", "hls", "sim")}
 
     @staticmethod
     def clear():
+        """
+        Clear all tools from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             db["tool"] = {}
             active = db["active"]
@@ -77,6 +125,14 @@ class Tool:
 
     @staticmethod
     def activate(cad_tool, hls_tool, sim_tool):
+        """
+        Activate a set of tools
+
+        Args:
+            cad_tool (str): Name of CAD tool
+            hls_tool (str): Name of HLS tool
+            sim_tool (str): Name of SIM tool
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             active = db["active"]
             active["cad"] = cad_tool
@@ -98,6 +154,9 @@ class Tool:
 
     @staticmethod
     def deactivate():
+        """
+        Deactivate all active tools
+        """
         if os.path.exists(Constants.SONAR_SHELL_TOOL_SOURCE):
             os.remove(Constants.SONAR_SHELL_TOOL_SOURCE)
         with shelve.open(Constants.SONAR_DB_PATH) as db:
@@ -109,8 +168,23 @@ class Tool:
 
 
 class Env:
+    """
+    Manage the environments in the database
+    """
+
     @staticmethod
     def add(name, cad_tool, hls_tool, sim_tool, board, repo):
+        """
+        Add a new environment to the database
+
+        Args:
+            name (str): Name of environment
+            cad_tool (str): Name of CAD tool
+            hls_tool (str): Name of HLS tool
+            sim_tool (str): Name of SIM tool
+            board (str): Name of board
+            repo (str): Name of repository
+        """
         _dict = {}
         _dict["cad"] = cad_tool
         _dict["hls"] = hls_tool
@@ -124,6 +198,18 @@ class Env:
 
     @staticmethod
     def get(name=None):
+        """
+        Get information about an environment or all environments
+
+        Args:
+            name (str, optional): Name a particular env to get. Defaults to None.
+
+        Raises:
+            SonarInvalidArgError: If named env is not found in the database
+
+        Returns:
+            dict: Environment entry from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             envs = db["env"]
             if name is None:
@@ -134,16 +220,34 @@ class Env:
 
     @staticmethod
     def get_active():
+        """
+        Get active environment
+
+        Returns:
+            Dict: Environment entry from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             return db["active"]["env"]
 
     @staticmethod
     def clear():
+        """
+        Clear all environments from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             db["env"] = {}
 
     @staticmethod
     def activate(name):
+        """
+        Activate an environment
+
+        Args:
+            name (str): Name of the environment
+
+        Raises:
+            SonarInvalidArgError: If environment is not found in the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             try:
                 env = db["env"][name]
@@ -168,12 +272,21 @@ class Env:
 
     @staticmethod
     def deactivate():
+        """
+        Deactivate the active environment
+        """
         Board.deactivate()
         Repo.deactivate()
         Tool.deactivate()
 
     @staticmethod
     def remove(name):
+        """
+        Remove a particular environment from the database
+
+        Args:
+            name (str): Name of environment
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             env = db["env"]
             del env[name]
@@ -181,8 +294,18 @@ class Env:
 
 
 class Board:
+    """
+    Manage the boards in the database
+    """
+
     @staticmethod
     def add(path):
+        """
+        Add a new board to the database
+
+        Args:
+            path (str): Path to the board files
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             boards = db["board"]
             board_name = os.path.basename(path)
@@ -191,6 +314,12 @@ class Board:
 
     @staticmethod
     def remove(name):
+        """
+        Remove a board from the database
+
+        Args:
+            name (str): Name of board to remove
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             boards = db["board"]
             del boards[name]
@@ -198,6 +327,9 @@ class Board:
 
     @staticmethod
     def clear():
+        """
+        Remove all boards from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             db["board"] = {}
             active = db["active"]
@@ -206,6 +338,18 @@ class Board:
 
     @staticmethod
     def get(name=None):
+        """
+        Get all boards or a particular one from the database
+
+        Args:
+            name (str, optional): Name of board to get. Defaults to None.
+
+        Raises:
+            SonarInvalidArgError: If board is not in the database
+
+        Returns:
+            dict: Board entry from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             boards = db["board"]
             if name is None:
@@ -216,12 +360,21 @@ class Board:
 
     @staticmethod
     def activate(name):
+        """
+        Activate a board
+
+        Args:
+            name (str): Name of board
+
+        Raises:
+            SonarInvalidArgError: If board is not in the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             try:
                 board = db["board"][name]
             except KeyError as exc:
                 logger.error(
-                    f"Could not find board: {name}. See boards with `sonar board info`"
+                    "Could not find board: %s. See boards with `sonar board info`", name
                 )
                 raise SonarInvalidArgError from exc
             with open(Constants.SONAR_SHELL_BOARD_SOURCE, "w") as f:
@@ -243,6 +396,9 @@ class Board:
 
     @staticmethod
     def deactivate():
+        """
+        Deactivate the active board
+        """
         if os.path.exists(Constants.SONAR_SHELL_BOARD_SOURCE):
             os.remove(Constants.SONAR_SHELL_BOARD_SOURCE)
         with shelve.open(Constants.SONAR_DB_PATH) as db:
@@ -252,11 +408,17 @@ class Board:
 
     @staticmethod
     def get_active():
+        """
+        Get the active board
+
+        Returns:
+            dict: Board entry from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             return db["active"]["board"]
 
     @staticmethod
-    def _find_part_family(fpga_part):
+    def _find_part_family(fpga_part):  # pylint: disable=too-many-branches
         family_id = fpga_part[2]
         if family_id == "k":
             family = "Kintex"
@@ -291,8 +453,18 @@ class Board:
 
 
 class Repo:
+    """
+    Manage the repositories in the database
+    """
+
     @staticmethod
     def add(path=None):
+        """
+        Add a new repository
+
+        Args:
+            path (str, optional): Path to the repository. Defaults to CWD.
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             repos = db["repo"]
             if path is None:
@@ -308,6 +480,9 @@ class Repo:
 
     @staticmethod
     def clear():
+        """
+        Clear all repositories from the database and deactivate the active repo
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             db["repo"] = {}
             active = db["active"]
@@ -316,6 +491,18 @@ class Repo:
 
     @staticmethod
     def get(name=None):
+        """
+        Get a particular repository or all of them
+
+        Args:
+            name (str, optional): Name of repository. Defaults to None.
+
+        Raises:
+            SonarInvalidArgError: If repository is not found in the database
+
+        Returns:
+            dict: Repository entry from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             repos = db["repo"]
             if name is None:
@@ -326,12 +513,21 @@ class Repo:
 
     @staticmethod
     def activate(name):
+        """
+        Activate a repository
+
+        Args:
+            name (str): Name of repository
+
+        Raises:
+            SonarInvalidArgError: If repository not found
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             try:
                 repo = db["repo"][name]
             except KeyError as exc:
                 logger.error(
-                    f"Could not find repo: {name}. See repos with `sonar repo show`"
+                    "Could not find repo: %s. See repos with `sonar repo show`", name
                 )
                 raise SonarInvalidArgError from exc
             with open(Constants.SONAR_SHELL_REPO_SOURCE, "w") as f:
@@ -345,6 +541,9 @@ class Repo:
 
     @staticmethod
     def deactivate():
+        """
+        Deactivate the active repo
+        """
         if os.path.exists(Constants.SONAR_SHELL_REPO_SOURCE):
             os.remove(Constants.SONAR_SHELL_REPO_SOURCE)
         with shelve.open(Constants.SONAR_DB_PATH) as db:
@@ -354,24 +553,41 @@ class Repo:
 
     @staticmethod
     def get_active():
+        """
+        Get the active repository
+
+        Returns:
+            Dict: Repository entry from the database
+        """
         with shelve.open(Constants.SONAR_DB_PATH) as db:
             return db["active"]["repo"]
 
 
 class IP:
+    """
+    Manage the IPs in the database
+    """
+
     @staticmethod
     def add_new(name, path):
+        """
+        Add a new IP to the database
+
+        Args:
+            name (str): Name of the IP
+            path (str): Path for the IP
+        """
         active_repo = Repo.get_active()
         repo = Repo.get(active_repo)
         repo_path = repo["path"]
         init_toml = os.path.join(repo_path, Constants.SONAR_CONFIG_FILE_PATH)
-        init = toml.load(init_toml)
-        init["project"]["ips"] = [name]
-        if "ips" not in init:
-            init["ips"] = {}
-        init["ips"][name] = {"path": str(path).replace(str(repo_path), "")}
+        init_dict = toml.load(init_toml)
+        init_dict["project"]["ips"] = [name]
+        if "ips" not in init_dict:
+            init_dict["ips"] = {}
+        init_dict["ips"][name] = {"path": str(path).replace(str(repo_path), "")}
         with open(init_toml, "w") as f:
-            toml.dump(init, f)
+            toml.dump(init_dict, f)
 
     # @staticmethod
     # def add_src(name, path, src_type):
@@ -541,14 +757,23 @@ class IP:
 
 
 def print_db():
+    """
+    Print the database to stdout
+    """
     with shelve.open(Constants.SONAR_DB_PATH, "r") as db:
         dkeys = list(db.keys())
         dkeys.sort()
-        for x in dkeys:
-            print(x, pprint.pformat(db[x]))
+        for i in dkeys:
+            print(i, pprint.pformat(db[i]))
 
 
 def check_database():
+    """
+    Check if the database exists
+
+    Returns:
+        Bool: True if database exists
+    """
     try:
         db = shelve.open(Constants.SONAR_DB_PATH, "r")
     except dbm.error:

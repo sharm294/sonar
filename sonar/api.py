@@ -1,136 +1,286 @@
-from distutils.dir_util import copy_tree
+"""
+The Sonar API is defined here to interact with the sonar database and perform
+the CLI tasks.
+"""
+
 import logging
 import logging.config
 import os
-import shutil
-from pathlib import Path
 import pprint
+import shutil
 import sys
-import toml
 import textwrap
+from distutils.dir_util import copy_tree
+from pathlib import Path
 
-import sonar.database as Database
-import sonar.utils
-from sonar.include import Constants
+import toml
+
+import sonar.database
 from sonar.exceptions import ReturnValue, SonarException
+from sonar.include import Constants
 from sonar.make import MakeFile
 
 logger = logging.getLogger(__name__)
 
 
 def activate(args):
+    """
+    Activate a particular environment by name.
+
+    Args:
+        args (object): Holds attributes
+            name (str): Name of the enviroment to activate
+    """
     if args.name is not None:
         Env.activate(args)
     else:
-        raise NotImplementedError
+        logger.error("Activating environment failed: no name specified")
 
 
 class Env:
+    """
+    The Env class defines functions to interact with sonar's environments.
+    Environments define a particular set of tools, board and repository that
+    users can switch between.
+    """
+
     @staticmethod
     def activate(args):
+        """
+        Activate a particular environment by name.
+
+        Args:
+            args (object): Holds attributes
+                name (str): Name of the enviroment to activate
+        """
         try:
-            Database.Env.activate(args.name)
+            sonar.database.Env.activate(args.name)
         except SonarException as exc:
-            logger.error(f"Activating environment failed: {exc.exit_str}")
+            logger.error("Activating environment failed: %s", exc.exit_str)
             sys.exit(exc.exit_code)
 
     @staticmethod
     def add(args):
+        """
+        Add a new environment to the database.
+
+        Args:
+            args (object): Holds attributes
+                cad (str): CAD tool of the form "name:version"
+                sim (str): Simulation tool of the form "name:version"
+                hls (str): HLS tool of the form "name:version"
+                name (str): Name of the environment
+                board (str): Name of the board
+                repo (str): Name of the repository
+        """
         cad_tool = args.cad.split(":")
         sim_tool = args.sim.split(":")
         hls_tool = args.hls.split(":")
-        Database.Env.add(args.name, cad_tool, hls_tool, sim_tool, args.board, args.repo)
+        sonar.database.Env.add(
+            args.name, cad_tool, hls_tool, sim_tool, args.board, args.repo
+        )
 
     @staticmethod
     def remove(args):
-        Database.Env.remove(args.name)
+        """
+        Remove an environment from the database
+
+        Args:
+            args (object): Holds attributes
+                name (str): Name of the environment to remove
+        """
+        sonar.database.Env.remove(args.name)
 
     @staticmethod
-    def f_list(args):
-        env = Database.Env.get()
+    def f_list(_args):
+        """
+        List the environments in the database
+
+        Args:
+            _args (object): Unused
+        """
+        env = sonar.database.Env.get()
         pprint.pprint(env)
 
     @staticmethod
-    def clear(args):
-        Database.Env.clear()
+    def clear(_args):
+        """
+        Clear all environments in the database
+
+        Args:
+            _args (object): Unused
+        """
+        sonar.database.Env.clear()
 
 
 class Tool:
+    """
+    The Tool class defines functions to interact with sonar's CAD, HLS and
+    simulation tools.
+    """
+
     @staticmethod
     def add(args):
+        """
+        Add a new tool to the database.
+
+        Args:
+            args (object): Holds attributes
+                name (str): Name of tool
+                version (str): Version of tool
+                cad (str): Name of CAD executable
+                hls (str): Name of HLS executable
+                sim (str): Name of simulation executable
+                script (str): Shell script to initialize tool
+        """
         try:
-            Database.Tool.add(
-                args.type, args.version, args.cad, args.hls, args.sim, args.script
+            sonar.database.Tool.add(
+                args.name, args.version, args.cad, args.hls, args.sim, args.script
             )
         except SonarException as exc:
-            logger.exception(f"Adding a tool to the database failed: {exc.exit_str}")
+            logger.exception("Adding a tool to the database failed: %s", exc.exit_str)
             sys.exit(exc.exit_code)
 
     # def remove(args):
     #     try:
-    #         Database.Tool.remove(args)
+    #         sonar.database.Tool.remove(args)
     #     except SonarException as exc:
     #         logger.error(f"Removing a tool from the database failed: {exc.exit_str}")
     #         sys.exit(exc.exit_code)
 
     # def edit(args):
     #     try:
-    #         Database.Tool.edit(args)
+    #         sonar.database.Tool.edit(args)
     #     except SonarException as exc:
     #         logger.error(f"Editing a tool in the database failed: {exc.exit_str}")
     #         sys.exit(exc.exit_code)
 
     @staticmethod
-    def f_list(args):
-        tools = Database.Tool.get()
+    def f_list(_args):
+        """
+        List the tools in the sonar database
+
+        Args:
+            _args (object): Unused
+        """
+        tools = sonar.database.Tool.get()
         pprint.pprint(tools)
 
     @staticmethod
-    def clear():
-        Database.Tool.clear()
+    def clear(_args):
+        """
+        Clear the database of tools
+
+        Args:
+            _args (object): Unused
+        """
+        sonar.database.Tool.clear()
 
 
 class Board:
+    """
+    The Board class defines functions to interact with sonar's list of hardware
+    boards.
+    """
+
     @staticmethod
     def add(args):
-        Database.Board.add(args.path)
+        """
+        Add a new board to sonar database
+
+        Args:
+            args (object): Holds attributes
+                path (str): Path to the board definition
+        """
+        sonar.database.Board.add(args.path)
 
     @staticmethod
     def remove(args):
-        Database.Board.remove(args.name)
+        """
+        Remove a board from the sonar database
+
+        Args:
+            args (object): Holds attributes
+                name (str): Name of board to remove
+        """
+        sonar.database.Board.remove(args.name)
 
     @staticmethod
     def show(args):
-        board = Database.Board.get(args.name)
+        """
+        Print a particular board by name
+
+        Args:
+            args (object): Holds attributes
+                name (str): Name of board to show
+        """
+        board = sonar.database.Board.get(args.name)
         pprint.pprint(board)
 
     @staticmethod
-    def clear(args):
-        Database.Board.clear()
+    def clear(_args):
+        """
+        Remove all boards from the sonar database
+
+        Args:
+            _args (object): Unused
+        """
+        sonar.database.Board.clear()
 
     @staticmethod
     def activate(args):
-        Database.Board.activate(args.name)
+        """
+        Activate a board by name
+
+        Args:
+            args (object): Holds attributes
+                name (str): Name of board to activate
+        """
+        sonar.database.Board.activate(args.name)
 
     @staticmethod
-    def deactivate(args):
-        Database.Board.deactivate()
+    def deactivate(_args):
+        """
+        Deactivate the active board
+
+        Args:
+            _args (object): Unused
+        """
+        sonar.database.Board.deactivate()
 
     @staticmethod
-    def f_list(args):
-        active_board = Database.Board.get_active()
+    def f_list(_args):
+        """
+        List the active board and all boards in the sonar database
+
+        Args:
+            _args (object): Holds attributes
+        """
+        active_board = sonar.database.Board.get_active()
         print(f"Active board: {active_board}")
         print("Available boards:")
 
-        boards = Database.Board.get()
+        boards = sonar.database.Board.get()
         for board in boards:
             print("  " + board)
 
 
 class Init:
+    """
+    The Init class defines functions to initialize sonar in various ways.
+    """
+
     @staticmethod
-    def one_time_setup(args):
-        Database.init()
+    def one_time_setup(_args):
+        """
+        Performs initial setup for sonar. It creates the database, copies files
+        over to the user sonar directory and adds the default boards to the
+        database.
+
+        Args:
+            _args (object): Unused
+        """
+        sonar.database.init()
 
         src_dir = os.path.join(os.path.dirname(__file__), "files_to_copy/home")
         # dst_dir = os.path.join(Constants.SONAR_PATH)
@@ -145,23 +295,30 @@ class Init:
             else:  # not found, we are at the eof
                 f.write(f"source {Constants.SONAR_SHELL_MAIN_SOURCE} # added by sonar")
         files = os.listdir(os.path.join(os.path.dirname(__file__), "boards"))
-        boards = [x for x in files if x != "__init__.py" and x != "__pycache__"]
+        boards = [x for x in files if x not in ("__init__.py", "__pycache__")]
         for board in boards:
             path = os.path.join(os.path.dirname(__file__), "boards", board)
-            Database.Board.add(path)
+            sonar.database.Board.add(path)
 
     @staticmethod
     def vivado(args):
+        """
+        Helper function to initialize Xilinx tools
+
+        Args:
+            args (object): Holds attributes
+                path (str): Path to the Xilinx directory containing Vivado
+        """
         xilinx_path = os.path.abspath(args.path)
         if not os.path.exists(xilinx_path):
-            logger.error(f"Path does not exist: {xilinx_path}")
+            logger.error("Path does not exist: %s", xilinx_path)
             sys.exit(ReturnValue.SONAR_NONEXISTENT_PATH)
 
         vivado_path = os.path.join(xilinx_path, "Vivado")
         try:
             vivado_versions = os.listdir(vivado_path)
         except FileNotFoundError:
-            logger.error(f"No 'Vivado/' directory found in {xilinx_path}")
+            logger.error("No 'Vivado/' directory found in %s", xilinx_path)
             sys.exit(ReturnValue.SONAR_INVALID_PATH)
 
         vivado_script = Constants.SONAR_SHELL_PATH.joinpath("setup_vivado.sh")
@@ -170,7 +327,7 @@ class Init:
                 include_dir = os.path.join(xilinx_path, f"Vivado_HLS/{version}/include")
             else:
                 include_dir = os.path.join(xilinx_path, f"Vivado/{version}/include")
-            args = sonar.utils.DotDict(
+            args = sonar.include.DotDict(
                 {
                     "type": "vivado",
                     # "ID": f"vivado_{version}",
@@ -192,7 +349,7 @@ class Init:
                 }
             )
             Tool.add(args)
-            args = sonar.utils.DotDict(
+            args = sonar.include.DotDict(
                 {
                     "sim": f"vivado:{version}",
                     "hls": f"vivado:{version}",
@@ -206,27 +363,66 @@ class Init:
 
 
 class Repo:
-    @staticmethod
-    def add(args):
-        Database.Repo.add()
+    """
+    The Repo class defines functions to interact with sonar's repositories.
+    """
 
     @staticmethod
-    def f_list(args):
-        repo = Database.Repo.get()
+    def add(_args):
+        """
+        Add a new repository to the database
+
+        Args:
+            _args (object): Unused
+        """
+        sonar.database.Repo.add()
+
+    @staticmethod
+    def f_list(_args):
+        """
+        List all the repositories in the database
+
+        Args:
+            _args (object): Unused
+        """
+        repo = sonar.database.Repo.get()
         pprint.pprint(repo)
 
     @staticmethod
-    def clear(args):
-        Database.Repo.clear()
+    def clear(_args):
+        """
+        Clear the list of repositories in the database
+
+        Args:
+            _args (object): Unused
+        """
+        # TODO accept an argument to remove a particular one
+        sonar.database.Repo.clear()
 
     @staticmethod
     def activate(args):
-        Database.Repo.activate(args.name)
+        """
+        Activate a particular repository
+
+        Args:
+            args (object): Should have "name" attribute
+        """
+        sonar.database.Repo.activate(args.name)
 
 
 class Create:
+    """
+    The Create class defines functions to create new IPs and repos in sonar.
+    """
+
     @staticmethod
     def ip(args):
+        """
+        Create a new sonar IP in the current working directory.
+
+        Args:
+            args (object): Should have "name" attribute
+        """
         curr_dir = Path(os.getcwd())
 
         ip_dir = curr_dir.joinpath(args.name)
@@ -259,35 +455,35 @@ class Create:
             os.getenv("SONAR_REPO"), "${::env(SONAR_REPO)}"
         )
 
-        sonar.utils.replace_in_file(
+        sonar.include.replace_in_file(
             str(ip_dir.joinpath("cad").joinpath("generate_cad.tcl")),
             "BASE_PATH",
             base_ip_path_tcl,
         )
-        sonar.utils.replace_in_file(
+        sonar.include.replace_in_file(
             str(ip_dir.joinpath("cad").joinpath("generate_cad.sh")),
             "BASE_PATH",
             base_ip_path_sh,
         )
-        sonar.utils.replace_in_file(
+        sonar.include.replace_in_file(
             str(ip_dir.joinpath("hls").joinpath("generate_hls.tcl")),
             "BASE_PATH",
             base_ip_path_tcl,
         )
-        sonar.utils.replace_in_file(
+        sonar.include.replace_in_file(
             str(ip_dir.joinpath("hls").joinpath("generate_hls.sh")),
             "BASE_PATH",
             base_ip_path_sh,
         )
-        sonar.utils.replace_in_file(
+        sonar.include.replace_in_file(
             str(ip_dir.joinpath("run.sh")),
             "BASE_PATH",
             base_ip_path_sh,
         )
 
-        # active_repo = Database.Repo.get_active()
-        Database.IP.add_new(args.name, ip_dir)
-        # repos = Database.Repo.get()
+        # active_repo = sonar.database.Repo.get_active()
+        sonar.database.IP.add_new(args.name, ip_dir)
+        # repos = sonar.database.Repo.get()
         # path = repos[active_repo]["path"]
         # init_toml = os.path.join(path, Constants.SONAR_CONFIG_FILE)
         # init = toml.load(init_toml)
@@ -298,6 +494,12 @@ class Create:
 
     @staticmethod
     def repo(args):
+        """
+        Create a new sonar repo in the current working directory.
+
+        Args:
+            args (object): Should have "name" attribute
+        """
         curr_dir = Path(os.getcwd())
 
         repo_dir = curr_dir.joinpath(args.name)
@@ -321,7 +523,7 @@ class Create:
             toml.dump(init, f)
 
         os.chdir(repo_dir)
-        args = sonar.utils.DotDict({"name": args.name})
+        args = sonar.include.DotDict({"name": args.name})
         Repo.add(args)
         os.chdir(curr_dir)
 
@@ -330,18 +532,31 @@ class Create:
 #     class Add:
 #         def src(args):
 #             current_path = os.getcwd()
-#             # active_repo = Database.Repo.get_active()
-#             # repo = Database.Repo.get(active_repo)
-#             Database.IP.add_src(args.name, current_path, args.type)
+#             # active_repo = sonar.database.Repo.get_active()
+#             # repo = sonar.database.Repo.get(active_repo)
+#             sonar.database.IP.add_src(args.name, current_path, args.type)
 
 
-class DB:
+class Database:
+    """
+    The Database class defines functions to interact with sonar's sonar database.
+    """
+
     @staticmethod
-    def f_list(args):
+    def f_list(_args=None):
+        """
+        Print the database to stdout.
+
+        Args:
+            _args (object): unused
+        """
         sonar.database.print_db()
 
 
 def configure_logging():
+    """
+    Defines a standard set of logging practices across sonar
+    """
     config = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -379,5 +594,9 @@ def configure_logging():
 
 
 def check_database():
-    if not Database.check_database():
+    """
+    Checks to see if the sonar database exists. If it does not, performs the
+    setup to initialize the database.
+    """
+    if not sonar.database.check_database():
         Init.one_time_setup(None)

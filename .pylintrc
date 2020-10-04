@@ -1,0 +1,32 @@
+[MESSAGES CONTROL]
+
+disable=no-name-in-module, # module detection doesn't always work correctly
+        c-extension-no-member, # module detection doesn't always work correctly
+        trailing-whitespace, # handled by black
+        fixme, # allow fixme / TODO etc. in code
+
+
+[FORMAT]
+
+# Maximum number of characters on a single line.
+max-line-length=160 # handled by black
+
+[BASIC]
+
+# Good variable names which should always be accepted, separated by a comma.
+good-names=i,
+           j,
+           k,
+           ex,
+           _,
+           f,
+           ip,
+           db
+
+[DESIGN]
+
+# Minimum number of public methods for a class (see R0903).
+min-public-methods=0
+
+# Maximum number of arguments for function / method.
+max-args=6
