@@ -1,9 +1,16 @@
+"""
+This module defines protocols on top of base interfaces for convenience
+"""
+
 from math import ceil
 
 from .interfaces import AXIS
 
 
 class Ethernet(object):
+    """
+    The Ethernet protocol over AXI-Stream
+    """
     def __init__(self, mac_src, mac_dst, ether_type, prefix=None, suffix=None):
         """
         Initialize an Ethernet object
@@ -25,18 +32,18 @@ class Ethernet(object):
         self.header = self.mac_dst[2:] + self.mac_src[2:] + self.ether_type[2:]
 
     def file_to_stream(
-        self, thread, interface, filePath, parsingFunc=None, endian="little"
+        self, thread, interface, filepath, parsing_func=None, endian="little"
     ):
         """
         Stream the given file over the interface using the provided thread. The
-        file is parsed using the parsingFunc. By default, a binary file containing
+        file is parsed using the parsing_func. By default, a binary file containing
         only data is assumed
 
         Args:
             thread (Thread): Thread to use to stream the file over
             interface (Interface): An instance of a Sonar interface such as AXIS
-            filePath (str): Path to the file to stream
-            parsingFunc (Function, optional): Defaults to None. Function to parse
+            filepath (str): Path to the file to stream
+            parsing_func (Function, optional): Defaults to None. Function to parse
                 the file with. This should return a list containing dicts
             endian (str, optional): Defaults to 'little'. Use 'little' or 'big'
 
@@ -44,35 +51,35 @@ class Ethernet(object):
             NotImplementedError: Unhandled exception
         """
 
-        if parsingFunc is None:
-            parsingFunc = interface._f2sBinData
-        if filePath.endswith(".bin"):
-            with open(filePath) as f:
-                readData = f.read()
-                binData = bytearray(readData)
+        if parsing_func is None:
+            parsing_func = interface._f2s_bin_data
+        if filepath.endswith(".bin"):
+            with open(filepath) as f:
+                read_data = f.read()
+                bin_data = bytearray(read_data)
                 if self.prefix is not None:
-                    binData[0:0] = bytearray.fromhex(self.prefix[2:])
+                    bin_data[0:0] = bytearray.fromhex(self.prefix[2:])
 
-                binData[0:0] = bytearray.fromhex(self.header)
+                bin_data[0:0] = bytearray.fromhex(self.header)
 
                 if self.suffix is not None:
-                    binData.extend(bytearray.fromhex(self.suffix[2:]))
-                interface._file_to_stream(thread, binData, parsingFunc, endian)
+                    bin_data.extend(bytearray.fromhex(self.suffix[2:]))
+                interface._file_to_stream(thread, bin_data, parsing_func, endian)
         else:
             raise NotImplementedError()
 
     def bin_to_stream(
-        self, thread, interface, binData, parsingFunc=None, endian="little"
+        self, thread, interface, bin_data, parsing_func=None, endian="little"
     ):
         """
         Stream the binary data over the interface using the provided thread. The
-        file is parsed using the parsingFunc.
+        file is parsed using the parsing_func.
 
         Args:
             thread (Thread): Thread to use to stream the file over
             interface (Interface): An instance of a Sonar interface such as AXIS
-            binData (byteArray): Binary data to stream
-            parsingFunc (Function, optional): Defaults to None. Function to parse
+            bin_data (byteArray): Binary data to stream
+            parsing_func (Function, optional): Defaults to None. Function to parse
                 the file with. This should return a list containing dicts
             endian (str, optional): Defaults to 'little'. Use 'little' or 'big'
 
@@ -80,16 +87,16 @@ class Ethernet(object):
             NotImplementedError: Unhandled exception
         """
 
-        if parsingFunc is None:
-            parsingFunc = interface._f2sBinData
+        if parsing_func is None:
+            parsing_func = interface._f2s_bin_data
         if self.prefix is not None:
-            binData[0:0] = bytearray.fromhex(self.prefix[2:])
+            bin_data[0:0] = bytearray.fromhex(self.prefix[2:])
 
-        binData[0:0] = bytearray.fromhex(self.header)
+        bin_data[0:0] = bytearray.fromhex(self.header)
 
         if self.suffix is not None:
-            binData.extend(bytearray.fromhex(self.suffix[2:]))
-        interface._file_to_stream(thread, binData, parsingFunc, endian)
+            bin_data.extend(bytearray.fromhex(self.suffix[2:]))
+        interface._file_to_stream(thread, bin_data, parsing_func, endian)
 
     def get_header_bytes(self):
         """
@@ -100,12 +107,12 @@ class Ethernet(object):
             byteArray: Represents the header
         """
 
-        binArray = bytearray.fromhex(self.header)
+        bin_array = bytearray.fromhex(self.header)
 
         if self.prefix is not None:
-            binArray.extend(bytearray.fromhex(self.prefix[2:]))
+            bin_array.extend(bytearray.fromhex(self.prefix[2:]))
 
-        return binArray
+        return bin_array
 
     def wait_for_header(self, thread, interface, endian="little"):
         """
@@ -137,7 +144,7 @@ class Ethernet(object):
         octet[12] = self.ether_type[2:4]
         octet[13] = self.ether_type[4:6]
 
-        if type(interface) is AXIS:
+        if isinstance(interface, AXIS):
             data_channel = "tdata"
         else:
             raise NotImplementedError

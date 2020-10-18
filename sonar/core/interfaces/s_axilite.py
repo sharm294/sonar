@@ -68,9 +68,8 @@ json_struct = {
 }
 
 
-def import_packages_global(imports):
-    # from sonar.core.include.utilities import printError
-    # from sonar.core.include.utilities import printWarning
+def import_packages_global():
+    imports = ""
 
     # versionInfo = subprocess.check_output("vivado -version", shell=True)
     version = os.getenv("SONAR_CAD_VERSION")
@@ -84,9 +83,8 @@ def import_packages_global(imports):
         return imports
 
 
-def import_packages_local(imports, interface):
-    imports += "import vip_bd_" + str(interface["index"]) + "_axi_vip_0_0_pkg::*;\n"
-    return imports
+def import_packages_local(interface):
+    return "import vip_bd_" + str(interface.index) + "_axi_vip_0_0_pkg::*;\n" 
 
 
 # this function defines operations (if any) that should be performed at any keys
@@ -134,7 +132,6 @@ def exerciser_prologue(prologue, interface, indent):
 
 
 def source_tcl(interface, path):
-    # from sonar.core.include.utilities import getFilePath
 
     tclFileName = os.path.join(os.path.dirname(__file__), "s_axilite_vip.tcl")
     # getFilePath("env", "SONAR_PATH", "/include/interfaces/s_axilite_vip.tcl")
@@ -142,26 +139,26 @@ def source_tcl(interface, path):
         exit(1)
     with open(tclFileName) as f:
         tclFile = f.read()
-        tclFile = tclFile.replace("#DESIGN_NAME#", "vip_bd_" + str(interface["index"]))
-        tclFile = tclFile.replace("#ADDR_WIDTH#", str(interface["addrWidth"]))
-        tclFile = tclFile.replace("#DATA_WIDTH#", str(interface["dataWidth"]))
-        tclFile = tclFile.replace("#ADDRESS#", str(interface["addr_range"]))
-        tclFile = tclFile.replace("#ADDRESS_OFFSET#", str(interface["addr_offset"]))
+        tclFile = tclFile.replace("#DESIGN_NAME#", "vip_bd_" + str(interface.index))
+        tclFile = tclFile.replace("#ADDR_WIDTH#", str(interface.addrWidth))
+        tclFile = tclFile.replace("#DATA_WIDTH#", str(interface.dataWidth))
+        tclFile = tclFile.replace("#ADDRESS#", str(interface.addr_range))
+        tclFile = tclFile.replace("#ADDRESS_OFFSET#", str(interface.addr_offset))
         tclFile_gen = open(
-            path + "s_axilite_vip_" + str(interface["index"]) + ".tcl", "w+"
+            os.path.join(path, "s_axilite_vip_" + str(interface.index) + ".tcl"), "w+"
         )
         tclFile_gen.write(tclFile)
         tclFile_gen.close()
 
 
 def instantiate(ip_inst, interface, indent, tabSize):
-    index = str(interface["index"])
+    index = str(interface.index)
     oneTab = indent + tabSize
     if ip_inst != "":
         ip_inst += indent
     ip_inst += "vip_bd_" + index + " vip_bd_" + index + "_i(\n"
-    ip_inst += oneTab + ".aclk(" + interface["clock"] + "),\n"
-    ip_inst += oneTab + ".aresetn(" + interface["reset"] + "),\n"
+    ip_inst += oneTab + ".aclk(" + interface.clock + "),\n"
+    ip_inst += oneTab + ".aresetn(" + interface.reset + "),\n"
     for channels in (master_input_channels, master_output_channels):
         for channel in channels:
             ip_inst += (
@@ -169,7 +166,7 @@ def instantiate(ip_inst, interface, indent, tabSize):
                 + ".m_axi_"
                 + channel
                 + "("
-                + interface["name"]
+                + interface.name
                 + "_"
                 + channel
                 + "),\n"
@@ -181,7 +178,7 @@ def instantiate(ip_inst, interface, indent, tabSize):
 # this function defines operations (if any) that should be performed at any keys
 # in the top level of the JSON struct object. If none, just return json_struct
 def json_top(json_struct, interface):
-    json_struct["width"] = interface["dataWidth"]
+    json_struct["width"] = interface.dataWidth
     return json_struct
 
 
@@ -222,7 +219,7 @@ def count(packet):
 def write_sv(packet):
     line = ""
     for word in packet["payload"]:
-        line += packet["type"] + " " + packet["interface"] + " " + str(len(sv_args))
+        line += packet["type"] + " " + packet["name"] + " " + str(len(sv_args))
         for arg in sv_args:
             line += " " + str(word[arg])
         line += "\n"
@@ -233,9 +230,9 @@ def write_c(packet):
     line = ""
     for word in packet["payload"]:
         line += (
-            packet["interface"]
+            packet["name"]
             + " "
-            + str(word["id"])
+            + "NULL"
             + " "
             + "NULL"
             + " "
@@ -246,7 +243,7 @@ def write_c(packet):
         for arg in c_args:
             line += " " + str(word[arg])
         line += "\n"
-    return line
+    return line[:-1]
 
 
 # def c_interface_in(tb_str, prev_str, interface, indent, tabSize):

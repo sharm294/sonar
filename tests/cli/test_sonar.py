@@ -1,5 +1,5 @@
 from sonar.exceptions import ReturnValue
-from sonar.include import Constants
+from sonar.core.include import Constants
 
 
 def test_no_args(capsys, call_sonar):

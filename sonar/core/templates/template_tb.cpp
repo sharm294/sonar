@@ -27,9 +27,12 @@ SOFTWARE.
 #include <cstdlib>
 #include <iostream>
 #include <assert.h>
+#include <string>
+
 SONAR_HEADER_FILE
 
 #define DAT_FILE SONAR_DATA_FILE
+#define SONAR_MAX_STRING_SIZE 255
 
 int main(int argc, char* argv[]) {
   int i;
@@ -60,7 +63,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  std::cout << "\n*** Starting SONAR_FUNCTION_TB ***\n\n";
+  std::cout << "\n*** Starting testbench ***\n\n";
 
   char interfaceType[SONAR_MAX_STRING_SIZE];
   char cStreamType[SONAR_MAX_STRING_SIZE];
@@ -82,7 +85,7 @@ int main(int argc, char* argv[]) {
       fscanf(dataFile, "%lld", &(args[l]));  // C++ can only support 64bit args
     }
 
-    SONAR_ELSE_IF_SIGNAL
+    SONAR_IF_ELSE_SIGNAL
     SONAR_ELSE_IF_INTERFACE_IN
     SONAR_ELSE_IF_INTERFACE_OUT
     else if ((!strcmp(interfaceType, "timestamp")) ||
@@ -93,7 +96,7 @@ int main(int argc, char* argv[]) {
     }
     else if (!strcmp(interfaceType, "call_dut")) {
       for (int l = 0; l < args[0]; l++) {
-        SONAR_DUT_INST
+        CALL_TB
         // #if defined(DEBUG) && defined(FSM_EXISTS)
         // if (printState) {
         //   std::cout << "Current State is " + stateParse(dbg_currentState)
@@ -131,7 +134,7 @@ int main(int argc, char* argv[]) {
   //   READ_INTERFACES
   // }
 
-  std::cout << "\n*** Finishing SONAR_FUNCTION_TB ***\n";
+  std::cout << "\n*** Finishing testbench ***\n";
 
   fclose(dataFile);
 

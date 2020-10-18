@@ -8,7 +8,7 @@ from sonar.interfaces import AXIS, SAXILite
 # and set the Module_Name metadata tag to 'sample' as specified by the
 # default constructor.
 sample_TB = Testbench.default("sample_src")
-filepath = os.path.join(os.path.dirname(__file__), "build/sample_src/")
+# filepath = os.path.join(os.path.dirname(__file__), "build/sample_src/")
 sample_TB.set_metadata("Timeout_Value", "1us")
 sample_TB.set_metadata("Headers", ["sample_src.hpp"])
 
@@ -44,7 +44,7 @@ dut.add_interface(axis_in)
 ctrl_bus = SAXILite("s_axi_ctrl_bus", "ap_clk", "ap_rst_n")
 ctrl_bus.add_register("enable", 0x10)  # register 'enable' is at 0x10
 ctrl_bus.set_address("4K", 0)  # address range is 4K at an offset of 0
-ctrl_bus.port.init_channels(mode="default", dataWidth=32, addrWidth=5)
+ctrl_bus.port.init_channels(mode="default", data_width=32, addr_width=5)
 dut.add_interface(ctrl_bus)
 
 # test vectors -------------------------------------------------------------
@@ -91,4 +91,4 @@ sample_TB.add_test_vector(test_vector_0)
 
 # generate the output testbenches and data files for the specified languages
 # at the designated path
-sample_TB.generateTB(filepath, "all")
+sample_TB.generate_tb(__file__, "all")

@@ -1,18 +1,23 @@
-import os
-import sys
-import json
-import datetime
-import re
 import copy
+import datetime
+import json
+import logging
+import os
+import re
+import sys
 from shlex import split as quoteSplit
 
-from .include.utilities import getFilePath
-from .include.utilities import stripFileName
-from .include.utilities import printError
-from .include.utilities import getIndentation
-from .include.utilities import getInterface
-from .generate import generate
-from .writeJSON import writeJSON
+# from .generate import generate
+# from .include.utilities import (getFilePath, getIndentation, getInterface,
+#                                 printError, stripFileName)
+# from .writeJSON import writeJSON
+from sonar.exceptions import SonarInvalidArgError
+from sonar.core.backends.sv import create_testbench as create_sv_testbench
+from sonar.core.backends.cpp import create_testbench as create_cpp_testbench
+
+logger = logging.getLogger(__name__)
+
+TAB_SIZE = "    "
 
 ################################################################################
 ### _byteify ###
@@ -138,578 +143,274 @@ def commandVarReplace(elseif_interfaceIn, interface, actions, indent, args):
     return elseif_interfaceIn
 
 
-################################################################################
-### setFromConfig ###
-# This function performs all the direct substititions from the configuration file
-# to the testbench file
-def setFromConfig(templateTB_sv_str, configFileData):
-    tbMetadataTags = [
-        "Company",
-        "Engineer",
-        "Project_Name",
-        "Target_Devices",
-        "Tool_Versions",
-        "Description",
-        "Dependencies",
-        "Module_Name",
-        "Timescale",
-        "Flag_Count",
-        "Timeout_Value",
-    ]
-
-    for tbMetadataTag in tbMetadataTags:
-        if configFileData["metadata"][tbMetadataTag] is None:
-            replaceStr = ""
+def replace_in_testbenches(testbenches, search_str, replace, include_langs=None, exclude_langs=None):
+    for lang in [*testbenches]:
+        if include_langs:
+            if lang not in include_langs:
+                continue
+        if exclude_langs:
+            if lang in exclude_langs:
+                continue
+        
+        if isinstance(replace, dict):
+            if lang in replace:
+                replace_str = str(replace[lang]).replace("$$lang", lang)
+            else:
+                replace_str = ""
         else:
-            replaceStr = str(configFileData["metadata"][tbMetadataTag])
-        searchStr = "SONAR_" + tbMetadataTag.upper()
-        templateTB_sv_str = templateTB_sv_str.replace(searchStr, replaceStr)
+            replace_str = str(replace).replace("$$lang", lang)
+        testbenches[lang] = testbenches[lang].replace(search_str, replace_str)
 
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_CURR_DATE", str(datetime.datetime.now())
-    )
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_DATA_FILE", '"' + configFileData["metadata"]["Module_Name"] + '_sv.dat"'
-    )
+def set_metadata(testbench, testbenches):
+    """
+    Perform the direct substitutions from the sonar testbench metadata into the
+    the testbench
 
-    return templateTB_sv_str
+    Args:
+        testbench (Testbench): Sonar testbench description
+        testbenches (dict): The testbench templates indexed by language
+
+    Returns:
+        dict: Updated testbench templates
+    """
+    for key, value in testbench["metadata"].items():
+        if value is None:
+            replace_str = ""
+        else:
+            replace_str = str(value)
+        search_str = "SONAR_" + key.upper()
+        replace_in_testbenches(testbenches, search_str, replace_str)
+
+    return testbenches
 
 
 def modify_signal_names():
     pass
 
-
-# TODO error handling
-# TODO make seek size programmatic
-# TODO add comments
-# TODO clean up code and add functions
-# TODO allow loops for commands (repeat)
-# TODO allow delays by clock cycles
-# TODO support floating clock periods
-################################################################################
-### sonar ###
-# This function uses a configuration file to generate testbenches, data for the
-# the testbenches to use, and a number of JSON files (for legacy reasons).
-def sonar(mode, modeArg, filepath, languages):
-
-    # ------------------------------------------------------------------------------#
-    # Open all the relevant files and make the simple text substitutions
-
-    userFileName = getFilePath(mode, modeArg, filepath)
-    if userFileName is None:
-        exit(1)
-
-    pathTuple = os.path.split(userFileName)
-    configFile = open(userFileName, "r")
-    if userFileName.endswith(".yaml"):
-        try:
-            import yaml
-        except ImportError:
-            printError(1, "YAML module not installed in Python")
-            configFile.close()
-            exit(1)
-        configFileData = yaml.safe_load(configFile)
-        fileType = ".yaml"
-    elif userFileName.endswith(".json"):
-        configFileData = json_load_byteified(configFile)
-        fileType = ".json"
-    else:
-        printError(1, "Unsupported configuration file")
-        configFile.close()
-        exit(1)
-
-    if languages == "all":
-        enable_SV = True
-        enable_C = True
-    elif languages == "sv":
-        enable_SV = True
-        enable_C = False
-    else:
-        printError(1, "Unsupported language: " + languages)
-        configFile.close()
-        exit(1)
-
-    buildPath = pathTuple[0] + "/"
-    if not os.path.exists(buildPath):
-        os.makedirs(buildPath)
-    dataFileName = buildPath + pathTuple[1].replace(fileType, "_core.json")
-    tbFileName_sv = buildPath + pathTuple[1].replace(fileType, "_tb.sv")
-    if enable_C:
-        tbFileName_c = buildPath + pathTuple[1].replace(fileType, "_tb.cpp")
-
-    configFileTime = os.path.getmtime(userFileName)
-    if os.path.exists(tbFileName_sv):
-        tbTime = os.path.getmtime(tbFileName_sv)
-    elif enable_C and os.path.exists(tbFileName_c):
-        tbTime = os.path.getmtime(tbFileName_c)
-    else:
-        tbTime = 0
-    if tbTime > configFileTime:  # don't run sonar
-        configFile.close()
-        print(
-            "Sonar not run: testbench is newer than configuration file "
-            + stripFileName(mode, modeArg, userFileName)
-        )
-        exit(0)
-
-    dataFile = open(dataFileName, "w+")
-
-    templateTB_sv = os.path.join(os.path.dirname(__file__), "templates/template_tb.sv")
-    with open(templateTB_sv, "r") as templateFile:
-        templateTB_sv_str = templateFile.read()
-    tbFile_sv = open(tbFileName_sv, "w+")
-
-    if enable_C:
-        templateTB_c = os.path.join(
-            os.path.dirname(__file__), "templates/template_tb.cpp"
-        )
-        with open(templateTB_c, "r") as templateFile:
-            templateTB_c_str = templateFile.read()
-        tbFile_c = open(tbFileName_c, "w+")
-
+def hoopla(testbench, testbenches, directory):    
     # set the directly replaceable text into the testbench
-    templateTB_sv_str = setFromConfig(templateTB_sv_str, configFileData)
+    testbenches = set_metadata(testbench, testbenches)
 
-    if enable_C:
-        templateTB_c_str = templateTB_c_str.replace(
-            "SONAR_FUNCTION", configFileData["metadata"]["Module_Name"].upper()
-        )
-        dataFile_c = dataFileName.replace("_core.json", "_c.dat")
-        templateTB_c_str = templateTB_c_str.replace(
-            "SONAR_DATA_FILE", '"' + dataFile_c + '"'
-        )
+    replace_in_testbenches(testbenches, "SONAR_CURR_DATE", datetime.datetime.now())
+    replace_in_testbenches(testbenches, "SONAR_DATA_FILE", f'"{testbench["metadata"]["Module_Name"]}_$$lang.dat')
+    replace_in_testbenches(testbenches, "SONAR_FUNCTION", f'"{testbench["metadata"]["Module_Name"].upper()}')
+    replace_in_testbenches(testbenches, "SONAR_MAX_VECTORS", len(testbench["vectors"]))
 
-    if "Headers" in configFileData["metadata"]:
+    if "Headers" in testbench["metadata"]:
         sv_headers = ""
         c_headers = ""
-        for header_tuple in configFileData["metadata"]["Headers"]:
-            if isinstance(header_tuple, tuple):
+        headers = {
+            "cpp": "",
+            "sv": ""
+        }
+        for header_tuple in testbench["metadata"]["Headers"]:
+            if isinstance(header_tuple, (list, tuple)):
                 header_file = header_tuple[0]
                 header_mode = header_tuple[1]
             else:
                 header_file = header_tuple
                 header_mode = "auto"
-            if header_mode == "c":
-                c_headers += f'#include "{header_file}"\n'
+            if header_mode == "cpp":
+                headers["cpp"] += f'#include "{header_file}"\n'
             elif header_mode == "sv":
-                sv_headers += f'`include "{header_file}"\n'
+                headers["sv"] += f'`include "{header_file}"\n'
             else:
                 if header_file.endswith((".h", ".hpp")):
-                    c_headers += f'#include "{header_file}"\n'
+                    headers["cpp"] += f'#include "{header_file}"\n'
                 elif header_file.endswith((".v", ".sv")):
-                    sv_headers += f'`include "{header_file}"\n'
+                    headers["sv"] += f'`include "{header_file}"\n'
                 else:
                     print(f"Skipped adding unknown header file type: {header_file}")
-
-        if enable_C:
-            templateTB_c_str = templateTB_c_str.replace("SONAR_HEADER_FILE", c_headers)
-        templateTB_sv_str = templateTB_sv_str.replace("SONAR_HEADER_FILE", sv_headers)
-
-    vectorNum = len(configFileData["vectors"])
-    templateTB_sv_str = templateTB_sv_str.replace("SONAR_MAX_VECTORS", str(vectorNum))
+        replace_in_testbenches(testbenches, "SONAR_HEADER_FILE", headers)
 
     # ------------------------------------------------------------------------------#
     # Read configuration file into separate structures for easier access
 
     # Direction is relative to the DUT
-    clocks_in = []
-    signals_in = []
-    signals_out = []
-    interface_in = []
-    interface_out = []
-    parameters = []
+    resets_in = testbench["modules"]["DUT"]["resets_in"]
+    clocks_in = testbench["modules"]["DUT"]["clocks_in"]
+    signals_in = testbench["modules"]["DUT"]["signals_in"]
+    signals_out = testbench["modules"]["DUT"]["signals_out"]
+    interfaces = {
+        "slave": testbench["modules"]["DUT"]["interfaces_slave"],
+        "master": testbench["modules"]["DUT"]["interfaces_master"],
+        "mixed": testbench["modules"]["DUT"]["interfaces_mixed"]
+    }
+    parameters = testbench["modules"]["DUT"]["parameters"]
 
     interface_indices = {}
-    usedInterfaces = {}
+    used_interfaces = {}
 
-    tabSize = "    "
+    for direction in ["slave", "master", "mixed"]:
+        for index, interface in enumerate(interfaces[direction]):
+            try:
+                used_interfaces[interface["type"]] = getInterface(interface["type"])
+            except ImportError as ex:
+                logger.error("Interface %s not found in sonar", interface["type"])
+                raise SonarInvalidArgError from ex
+            if interface["type"] not in interface_indices:
+                interface_indices[interface["type"]] = 0
+            else:
+                interface_indices[interface["type"]] += 1
+            # portCopy = interface.copy()
+            # for channel in portCopy["channels"]:
+            #     if "size" not in channel:
+            #         channel["size"] = 1
+            # if "connection_mode" not in portCopy:
+            #     portCopy["connection_mode"] = "native"
+            interfaces[direction][index]["index"] = interface_indices[interface["type"]]
+            if hasattr(used_interfaces[interface["type"]], "yaml_top"):
+                interfaces[direction][index]["index"] = used_interfaces[interface["type"]].yaml_top(interface)
 
-    for module in configFileData["modules"]:
-        if module["name"] == "DUT":
-            for port in module["ports"]:
-                if "type" in port:
-                    if port["type"] == "clock" and port["direction"] == "input":
-                        portCopy = port.copy()
-                        if "size" not in portCopy:
-                            portCopy["size"] = 1
-                        # del portCopy["type"]
-                        clocks_in.append(portCopy)
-                    elif port["type"] == "reset":
-                        portCopy = port.copy()
-                        # del portCopy["type"]
-                        if "size" not in portCopy:
-                            portCopy["size"] = 1
-                        if portCopy["direction"] == "input":
-                            signals_in.append(portCopy)
-                        else:
-                            signals_out.append(portCopy)
-                    else:
-                        usedInterfaces[port["type"]] = getInterface(port["type"])
-                        if usedInterfaces[port["type"]] is None:
-                            exit(1)
-                        if port["type"] not in interface_indices:
-                            interface_indices[port["type"]] = 0
-                        else:
-                            interface_indices[port["type"]] += 1
-                        portCopy = port.copy()
-                        for channel in portCopy["channels"]:
-                            if "size" not in channel:
-                                channel["size"] = 1
-                        if "connection_mode" not in portCopy:
-                            portCopy["connection_mode"] = "native"
-                        portCopy["index"] = interface_indices[port["type"]]
-                        if hasattr(usedInterfaces[port["type"]], "yaml_top"):
-                            portCopy = usedInterfaces[port["type"]].yaml_top(portCopy)
-                        if portCopy["direction"] in ["slave", "mixed"]:
-                            interface_in.append(portCopy)
-                        elif portCopy["direction"] == "master":
-                            interface_out.append(portCopy)
-                        else:
-                            printError(
-                                1,
-                                "Unknown interface direction: " + portCopy["direction"],
-                            )
-                            exit(1)
-                else:
-                    portCopy = port.copy()
-                    if "size" not in portCopy:
-                        portCopy["size"] = 1
-                    if "type" not in portCopy:
-                        portCopy["type"] = "signal"
-                    if portCopy["direction"] == "input":
-                        signals_in.append(portCopy)
-                    else:
-                        signals_out.append(portCopy)
-            for parameter, parameter_value in module["parameters"].items():
-                parameters.append((parameter, parameter_value))
+    wait_conditions = testbench["wait_conditions"]
 
-    waitConditions = []
-    if "wait_conditions" in configFileData:
-        for condition in configFileData["wait_conditions"]:
-            waitConditions.append(condition.copy())
-
-    time_format = "$timeformat("
-    with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "SONAR_TIME_FORMAT" in line]
-    leading_spaces = getIndentation(l)
-    precision = str(configFileData["metadata"]["Time_Format"]["precision"])
-    timeFormat = configFileData["metadata"]["Time_Format"]["unit"]
-    if timeFormat.endswith("fs"):
-        time_format += "-15, " + precision + ', " fs", 0);'
-    elif timeFormat.endswith("ps"):
-        time_format += "-12, " + precision + ', " ps", 0);'
-    elif timeFormat.endswith("ns"):
-        time_format += "-9, " + precision + ', " ns", 0);'
-    elif timeFormat.endswith("us"):
-        time_format += "-6, " + precision + ', " us", 0);'
-    elif timeFormat.endswith("ms"):
-        time_format += "-3, " + precision + ', " ms", 0);'
-    elif timeFormat.endswith("s"):
-        time_format += "0, " + precision + ', " s", 0);'
+    time_format_str = "$timeformat("
+    precision = str(testbench["metadata"]["Time_Format"]["precision"])
+    time_format = testbench["metadata"]["Time_Format"]["unit"]
+    if time_format.endswith("fs"):
+        time_format_str += "-15, " + precision + ', " fs", 0);'
+    elif time_format.endswith("ps"):
+        time_format_str += "-12, " + precision + ', " ps", 0);'
+    elif time_format.endswith("ns"):
+        time_format_str += "-9, " + precision + ', " ns", 0);'
+    elif time_format.endswith("us"):
+        time_format_str += "-6, " + precision + ', " us", 0);'
+    elif time_format.endswith("ms"):
+        time_format_str += "-3, " + precision + ', " ms", 0);'
+    elif time_format.endswith("s"):
+        time_format_str += "0, " + precision + ', " s", 0);'
     else:
-        printError(
-            1, "Unknown time format: " + configFileData["metadata"]["Time_Format"]
-        )
-        exit(1)
-    templateTB_sv_str = templateTB_sv_str.replace("SONAR_TIME_FORMAT", time_format)
+        logger.error("Unknown time format: %s", testbench["metadata"]["Time_Format"])
+        raise SonarInvalidArgError
+    replace_in_testbenches(testbenches, "SONAR_TIME_FORMAT", time_format_str, include_langs=["sv"])
 
     # ------------------------------------------------------------------------------#
     # Import any packages that interfaces may use
     imports = ""
-    with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "SONAR_IMPORT_PACKAGES" in line]
-    leading_spaces = getIndentation(l)
-    for name, interface in usedInterfaces.items():
+    for name, interface in used_interfaces.items():
         if hasattr(interface, "import_packages_global"):
-            imports = interface.import_packages_global(imports)
-    for interfaces in (interface_in, interface_out):
-        for interface in interfaces:
-            currInterface = usedInterfaces[interface["type"]]
-            if hasattr(currInterface, "import_packages_local"):
-                imports = currInterface.import_packages_local(imports, interface)
-    templateTB_sv_str = templateTB_sv_str.replace("SONAR_IMPORT_PACKAGES", imports[:-1])
+            imports += interface.import_packages_global()
+    for direction in ["slave", "master", "mixed"]:
+        for interface in interfaces[direction]:
+            curr_interface = used_interfaces[interface["type"]]
+            if hasattr(curr_interface, "import_packages_local"):
+                imports += curr_interface.import_packages_local(interface)
+    replace_in_testbenches(testbenches, "SONAR_IMPORT_PACKAGES", imports[:-1], include_langs=["sv"])
 
     # ------------------------------------------------------------------------------#
     # Add any statements an interface might require within an initial block
     initial_prologue = ""
-    with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "SONAR_INITIAL_PROLOGUE" in line]
-    leading_spaces = getIndentation(l)
-    for interfaces in (interface_in, interface_out):
-        for interface in interfaces:
-            currInterface = usedInterfaces[interface["type"]]
-            if hasattr(currInterface, "initial_prologue"):
-                initial_prologue = currInterface.initial_prologue(
+    leading_spaces = getIndentation("SONAR_INITIAL_PROLOGUE", testbenches["sv"])
+    for direction in ["slave", "master", "mixed"]:
+        for interface in interfaces[direction]:
+            curr_interface = used_interfaces[interface["type"]]
+            if hasattr(curr_interface, "initial_prologue"):
+                initial_prologue = curr_interface.initial_prologue(
                     initial_prologue, interface, leading_spaces
                 )
                 initial_prologue = replaceVar(initial_prologue, interface)
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_INITIAL_PROLOGUE", initial_prologue[:-1]
-    )
+    replace_in_testbenches(testbenches, "SONAR_INITIAL_PROLOGUE", initial_prologue[:-1], include_langs=["sv"])
 
     # ------------------------------------------------------------------------------#
     # Add any statements an interface might require within outside an initial block
     exerciser_prologue = ""
-    with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "SONAR_EXERCISER_PROLOGUE" in line]
-    leading_spaces = getIndentation(l)
-    for interfaces in (interface_in, interface_out):
-        for interface in interfaces:
-            currInterface = usedInterfaces[interface["type"]]
-            if hasattr(currInterface, "exerciser_prologue"):
-                exerciser_prologue = currInterface.exerciser_prologue(
+    leading_spaces = getIndentation("SONAR_EXERCISER_PROLOGUE", testbenches["sv"])
+    for direction in ["slave", "master", "mixed"]:
+        for interface in interfaces[direction]:
+            curr_interface = used_interfaces[interface["type"]]
+            if hasattr(curr_interface, "exerciser_prologue"):
+                exerciser_prologue = curr_interface.exerciser_prologue(
                     exerciser_prologue, interface, leading_spaces
                 )
                 exerciser_prologue = replaceVar(exerciser_prologue, interface)
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_EXERCISER_PROLOGUE", exerciser_prologue[:-1]
-    )
+    replace_in_testbenches(testbenches, "SONAR_EXERCISER_PROLOGUE", exerciser_prologue[:-1], include_langs=["sv"])
 
     # ------------------------------------------------------------------------------#
     # Run any TCL scripts in Vivado as required by interfaces
-    for interfaces in (interface_in, interface_out):
-        for interface in interfaces:
-            currInterface = usedInterfaces[interface["type"]]
-            if hasattr(currInterface, "source_tcl"):
-                currInterface.source_tcl(interface, buildPath)
+    for direction in ["slave", "master", "mixed"]:
+        for interface in interfaces[direction]:
+            curr_interface = used_interfaces[interface["type"]]
+            if hasattr(curr_interface, "source_tcl"):
+                curr_interface.source_tcl(interface, directory)
     # ------------------------------------------------------------------------------#
     # Insert the ports into the exerciser declaration
 
-    exerciserPorts = ""
-    with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "SONAR_EXERCISER_PORTS" in line]
-    leading_spaces = getIndentation(l)
+    exerciser_ports = ""
+    leading_spaces = getIndentation("SONAR_EXERCISER_PORTS", testbenches["sv"])
     for clock in clocks_in:
-        if exerciserPorts != "":
-            exerciserPorts += leading_spaces
-        exerciserPorts += "output logic " + clock["name"] + ",\n"
-    for interface in interface_in:
-        if interface["connection_mode"] == "native":
-            currInterface = usedInterfaces[interface["type"]]
+        if exerciser_ports != "":
+            exerciser_ports += leading_spaces
+        exerciser_ports += "output logic " + clock["name"] + ",\n"
+    for direction in ["slave", "master", "mixed"]:
+        for interface in interfaces[direction]:
+            curr_interface = used_interfaces[interface["type"]]
             for channel in interface["channels"]:
-                exerciserPorts += leading_spaces
-                if channel["type"] in currInterface.master_input_channels:
-                    exerciserPorts += "input "
+                exerciser_ports += leading_spaces
+                if direction in ["slave", "mixed"]:
+                    if channel["type"] in curr_interface.master_input_channels:
+                        exerciser_ports += "input "
+                    else:
+                        exerciser_ports += "output "
                 else:
-                    exerciserPorts += "output "
-                exerciserPorts += "logic "
+                    if channel["type"] in curr_interface.master_output_channels:
+                        exerciser_ports += "input "
+                    else:
+                        exerciser_ports += "output "
+                exerciser_ports += "logic "
                 if int(channel["size"]) != 1:
-                    exerciserPorts += "[" + str(int(channel["size"]) - 1) + ":0] "
-                exerciserPorts += interface["name"] + "_" + channel["type"] + ",\n"
-
-    for interface in interface_out:
-        if interface["connection_mode"] == "native":
-            currInterface = usedInterfaces[interface["type"]]
-            for channel in interface["channels"]:
-                exerciserPorts += leading_spaces
-                if channel["type"] in currInterface.master_output_channels:
-                    exerciserPorts += "input "
-                else:
-                    exerciserPorts += "output "
-                exerciserPorts += "logic "
-                if int(channel["size"]) != 1:
-                    exerciserPorts += "[" + str(int(channel["size"]) - 1) + ":0] "
-                exerciserPorts += interface["name"] + "_" + channel["type"] + ",\n"
+                    exerciser_ports += "[" + str(int(channel["size"]) - 1) + ":0] "
+                exerciser_ports += interface["name"] + "_" + channel["type"] + ",\n"
     for signal in signals_in:
-        exerciserPorts += leading_spaces + "output logic "
+        exerciser_ports += leading_spaces + "output logic "
         if int(signal["size"]) != 1:
-            exerciserPorts += "[" + str(int(signal["size"]) - 1) + ":0] "
-        exerciserPorts += signal["name"] + ",\n"
+            exerciser_ports += "[" + str(int(signal["size"]) - 1) + ":0] "
+        exerciser_ports += signal["name"] + ",\n"
     for signal in signals_out:
-        exerciserPorts += leading_spaces + "input logic "
+        exerciser_ports += leading_spaces + "input logic "
         if int(signal["size"]) != 1:
-            exerciserPorts += "[" + str(int(signal["size"]) - 1) + ":0] "
-        exerciserPorts += signal["name"] + ",\n"
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_EXERCISER_PORTS", exerciserPorts[:-2]
-    )
+            exerciser_ports += "[" + str(int(signal["size"]) - 1) + ":0] "
+        exerciser_ports += signal["name"] + ",\n"
+    replace_in_testbenches(testbenches, "SONAR_EXERCISER_PORTS", exerciser_ports[:-2], include_langs=["sv"])
 
-    # ------------------------------------------------------------------------------#
-    # Instantiate the DUT
-
-    dut_inst = ""
-    with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "SONAR_DUT_INST" in line]
-    leading_spaces = getIndentation(lineStr)
-    if parameters:
-        dut_inst += configFileData["metadata"]["Module_Name"] + " #(\n"
-        for parameter in parameters[:-1]:
-            dut_inst += (
-                leading_spaces
-                + tabSize
-                + "."
-                + parameter[0]
-                + "("
-                + str(parameter[1])
-                + "),\n"
-            )
-        dut_inst += (
-            leading_spaces
-            + tabSize
-            + "."
-            + parameters[-1][0]
-            + "("
-            + str(parameters[-1][1])
-            + ")\n"
-        )
-        dut_inst += (
-            leading_spaces + ") " + configFileData["metadata"]["Module_Name"] + "_i (\n"
-        )
-    else:
-        dut_inst += (
-            configFileData["metadata"]["Module_Name"]
-            + " "
-            + configFileData["metadata"]["Module_Name"]
-            + "_i (\n"
-        )
-    for clock in clocks_in:
-        dut_inst += (
-            leading_spaces
-            + tabSize
-            + "."
-            + clock["name"]
-            + "("
-            + clock["name"]
-            + "),\n"
-        )
-    dut_type = configFileData["modules"][0]["type"]
-    for signal in signals_in:
-        port_name = signal["name"]
-        if dut_type["lang"] != "sv":  # TODO temporary workaround
-            if dut_type["hls"] == "vivado" and dut_type["hls_version"] == "2018.1":
-                if "type" not in signal or signal["type"] != "reset":
-                    port_name = port_name + "_V"
-        dut_inst += (
-            leading_spaces + tabSize + "." + port_name + "(" + signal["name"] + "),\n"
-        )
-    for signal in signals_out:
-        if dut_type["lang"] != "sv":
-            if dut_type["hls"] == "vivado" and dut_type["hls_version"] == "2018.1":
-                port_name = signal["name"] + "_V"
-        else:
-            port_name = signal["name"]
-        dut_inst += (
-            leading_spaces + tabSize + "." + port_name + "(" + signal["name"] + "),\n"
-        )
-    for interface in interface_in:
-        for channel in interface["channels"]:
-            dut_inst += (
-                leading_spaces
-                + tabSize
-                + "."
-                + interface["name"]
-                + "_"
-                + channel["name"]
-                + "("
-                + interface["name"]
-                + "_"
-                + channel["type"]
-                + "),\n"
-            )
-    for interface in interface_out:
-        for channel in interface["channels"]:
-            dut_inst += (
-                leading_spaces
-                + tabSize
-                + "."
-                + interface["name"]
-                + "_"
-                + channel["name"]
-                + "("
-                + interface["name"]
-                + "_"
-                + channel["type"]
-                + "),\n"
-            )
-    dut_inst = dut_inst[:-2] + "\n"
-    dut_inst += leading_spaces + ");"
-    templateTB_sv_str = templateTB_sv_str.replace("SONAR_DUT_INST", dut_inst)
-
-    if enable_C:
-        with open(templateTB_c, "r") as f:
-            lineStr = [line for line in f if "SONAR_DUT_INST" in line]
-        dut_inst = configFileData["metadata"]["Module_Name"] + "("
-
-        for port in configFileData["modules"][0]["ports"]:
-            if "type" in port and port["type"] in ["clock", "reset"]:
-                continue
-            if "type" in port and port["type"] == "s_axilite":
-                for regs in port["registers"]:
-                    dut_inst += f"{regs}, "
-                continue
-            if "type" in port and port["type"] == "axis":
-                dut_inst += "&"
-            if port["direction"] == "output":
-                dut_inst += "&"
-            dut_inst += port["name"] + ", "
-
-        dut_inst = dut_inst[:-2] + ");"
-        templateTB_c_str = templateTB_c_str.replace("SONAR_DUT_INST", dut_inst)
+    instantiate_dut()
 
     # ------------------------------------------------------------------------------#
     # Instantiate the exerciser
 
     exerciser_int = ""
-    with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "SONAR_EXERCISER_INT" in line]
-    leading_spaces = getIndentation(lineStr)
+    leading_spaces = getIndentation("SONAR_EXERCISER_INT", testbenches["sv"])
     exerciser_int += "exerciser exerciser_i(\n"
     for index, clock in enumerate(clocks_in):
         exerciser_int += (
             leading_spaces
-            + tabSize
+            + TAB_SIZE
             + "."
             + clock["name"]
             + "("
             + clock["name"]
             + "),\n"
         )
-    for interface in interface_in:
-        if interface["connection_mode"] == "native":
-            for channel in interface["channels"]:
-                exerciser_int += (
-                    leading_spaces
-                    + tabSize
-                    + "."
-                    + interface["name"]
-                    + "_"
-                    + channel["type"]
-                    + "("
-                    + interface["name"]
-                    + "_"
-                    + channel["type"]
-                    + "),\n"
-                )
-    for interface in interface_out:
-        if interface["connection_mode"] == "native":
-            for channel in interface["channels"]:
-                exerciser_int += (
-                    leading_spaces
-                    + tabSize
-                    + "."
-                    + interface["name"]
-                    + "_"
-                    + channel["type"]
-                    + "("
-                    + interface["name"]
-                    + "_"
-                    + channel["type"]
-                    + "),\n"
-                )
-    for signal in signals_in:
+    for direction in ["slave", "master", "mixed"]:
+        for interface in interfaces[direction]:
+            if interface["connection_mode"] == "native":
+                for channel in interface["channels"]:
+                    exerciser_int += (
+                        leading_spaces
+                        + TAB_SIZE
+                        + "."
+                        + interface["name"]
+                        + "_"
+                        + channel["type"]
+                        + "("
+                        + interface["name"]
+                        + "_"
+                        + channel["type"]
+                        + "),\n"
+                    )
+    for signal in (signals_in, signals_out):
         exerciser_int += (
             leading_spaces
-            + tabSize
-            + "."
-            + signal["name"]
-            + "("
-            + signal["name"]
-            + "),\n"
-        )
-    for signal in signals_out:
-        exerciser_int += (
-            leading_spaces
-            + tabSize
+            + TAB_SIZE
             + "."
             + signal["name"]
             + "("
@@ -718,477 +419,43 @@ def sonar(mode, modeArg, filepath, languages):
         )
     exerciser_int = exerciser_int[:-2] + "\n"
     exerciser_int += leading_spaces + ");\n"
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_EXERCISER_INT", exerciser_int[:-1]
-    )
+    replace_in_testbenches(testbenches, "SONAR_EXERCISER_INT", exerciser_int[:-1], include_langs=["sv"])
 
     # ------------------------------------------------------------------------------#
     # Instantiate any IPs required by interfaces
     ip_inst = ""
-    with open(templateTB_sv, "r") as f:
-        l = [line for line in f if "SONAR_IP_INST" in line]
-    leading_spaces = getIndentation(l)
-    for interfaces in (interface_in, interface_out):
-        for interface in interfaces:
-            currInterface = usedInterfaces[interface["type"]]
-            if hasattr(currInterface, "instantiate"):
-                ip_inst = currInterface.instantiate(
-                    ip_inst, interface, leading_spaces, tabSize
+    leading_spaces = getIndentation("SONAR_IP_INST", testbenches["sv"])
+    for direction in ["slave", "master", "mixed"]:
+        for interface in interfaces[direction]:
+            curr_interface = used_interfaces[interface["type"]]
+            if hasattr(curr_interface, "instantiate"):
+                ip_inst = curr_interface.instantiate(
+                    ip_inst, interface, leading_spaces, TAB_SIZE
                 )
-    templateTB_sv_str = templateTB_sv_str.replace("SONAR_IP_INST", ip_inst[:-1])
+    replace_in_testbenches(testbenches, "SONAR_IP_INST", ip_inst[:-1], include_langs=["sv"])
 
-    # ------------------------------------------------------------------------------#
-    # Declare all the signals connecting the exerciser and the DUT
-
-    tb_signal_list = ""
-    tb_signal_list_c = ""
-    maxSignalSize = 0
-    with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "SONAR_TB_SIGNAL_LIST" in line]
-    with open(templateTB_c, "r") as f:
-        lineStr_c = [line for line in f if "SONAR_TB_SIGNAL_LIST" in line]
-    leading_spaces = getIndentation(lineStr)
-    leading_spaces_c = getIndentation(lineStr_c)
-    for clock in clocks_in:
-        if tb_signal_list != "":
-            tb_signal_list += leading_spaces
-        tb_signal_list += "logic " + clock["name"] + ";\n"
-    for signal in signals_in:
-        if int(signal["size"]) == 1:
-            tb_signal_list += leading_spaces + "logic " + signal["name"] + ";\n"
-        else:
-            tb_signal_list += (
-                leading_spaces
-                + "logic ["
-                + str(int(signal["size"]) - 1)
-                + ":0] "
-                + signal["name"]
-                + ";\n"
-            )
-        if (
-            enable_C and signal["type"] != "reset"
-        ):  # TODO fix leading spaces on first entry
-            tb_signal_list_c += (
-                leading_spaces_c
-                + f"ap_uint<"
-                + str(signal["size"])
-                + "> "
-                + signal["name"]
-                + ";\n"
-            )
-        if int(signal["size"]) > maxSignalSize:
-            maxSignalSize = int(signal["size"])
-    for signal in signals_out:
-        if int(signal["size"]) == 1:
-            tb_signal_list += leading_spaces + "logic " + signal["name"] + ";\n"
-        else:
-            tb_signal_list += (
-                leading_spaces
-                + "logic ["
-                + str(int(signal["size"]) - 1)
-                + ":0] "
-                + signal["name"]
-                + ";\n"
-            )
-        if enable_C:
-            tb_signal_list_c += (
-                leading_spaces_c
-                + f"ap_uint<"
-                + str(signal["size"])
-                + "> "
-                + signal["name"]
-                + ";\n"
-            )
-        if int(signal["size"]) > maxSignalSize:
-            maxSignalSize = int(signal["size"])
-    for interface in interface_in:
-        for channel in interface["channels"]:
-            if int(channel["size"]) == 1:
-                tb_signal_list += (
-                    leading_spaces
-                    + "logic "
-                    + interface["name"]
-                    + "_"
-                    + channel["type"]
-                    + ";\n"
-                )
-            else:
-                tb_signal_list += (
-                    leading_spaces
-                    + "logic ["
-                    + str(int(channel["size"]) - 1)
-                    + ":0] "
-                    + interface["name"]
-                    + "_"
-                    + channel["type"]
-                    + ";\n"
-                )
-            if int(channel["size"]) > maxSignalSize:
-                maxSignalSize = int(channel["size"])
-            if channel["type"] == "wdata":
-                data_width_c = channel["size"]
-        if enable_C and interface["type"] == "s_axilite":
-            for regs in interface["registers"]:
-                tb_signal_list_c += (
-                    leading_spaces_c + f"ap_uint<{data_width_c}> {regs};\n"
-                )
-        elif enable_C and interface["type"] == "axis":
-            tb_signal_list_c += (
-                leading_spaces_c + interface["iClass"] + " " + interface["name"] + ";\n"
-            )
-            tb_signal_list_c += (
-                leading_spaces_c
-                + interface["flit"]
-                + " "
-                + interface["name"]
-                + "_flit;\n"
-            )
-    for interface in interface_out:
-        for channel in interface["channels"]:
-            if int(channel["size"]) == 1:
-                tb_signal_list += (
-                    leading_spaces
-                    + "logic "
-                    + interface["name"]
-                    + "_"
-                    + channel["type"]
-                    + ";\n"
-                )
-            else:
-                tb_signal_list += (
-                    leading_spaces
-                    + "logic ["
-                    + str(int(channel["size"]) - 1)
-                    + ":0] "
-                    + interface["name"]
-                    + "_"
-                    + channel["type"]
-                    + ";\n"
-                )
-            if int(channel["size"]) > maxSignalSize:
-                maxSignalSize = int(channel["size"])
-        if enable_C and interface["type"] == "axis":
-            tb_signal_list_c += (
-                leading_spaces_c + interface["iClass"] + " " + interface["name"] + ";\n"
-            )
-            tb_signal_list_c += (
-                leading_spaces_c
-                + interface["flit"]
-                + " "
-                + interface["name"]
-                + "_flit;\n"
-            )
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_TB_SIGNAL_LIST", tb_signal_list[:-1]
-    )
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_MAX_DATA_SIZE", str(maxSignalSize)
-    )
-    if enable_C:
-        templateTB_c_str = templateTB_c_str.replace(
-            "SONAR_TB_SIGNAL_LIST", tb_signal_list_c[:-1]
-        )
-        templateTB_c_str = templateTB_c_str.replace(
-            "SONAR_MAX_DATA_SIZE", str(maxSignalSize)
-        )
+    declare_signals()
 
     # ------------------------------------------------------------------------------#
     # Create the if-else tree to set individual signals in the exerciser
 
-    # for SV
-
-    ifelse_signal = ""
-    with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "SONAR_IF_ELSE_SIGNAL" in line]
-    leading_spaces = getIndentation(lineStr)
-    for signal in signals_in:
-        if ifelse_signal != "":
-            ifelse_signal += leading_spaces + "else "
-        ifelse_signal += (
-            'if(interfaceType_par == "'
-            + signal["name"]
-            + '") begin\n'
-            + leading_spaces
-            + tabSize
-            + signal["name"]
-            + " = args[0];\n"
-            + leading_spaces
-            + "end\n"
-        )
-    for interface in interface_in:
-        if interface["connection_mode"] == "native":
-            currInterface = usedInterfaces[interface["type"]]
-            for channel in interface["channels"]:
-                if channel["type"] in currInterface.master_output_channels:
-                    if ifelse_signal != "":
-                        ifelse_signal += leading_spaces + "else "
-                    ifelse_signal += (
-                        'if(interfaceType_par == "'
-                        + interface["name"]
-                        + "_"
-                        + channel["type"]
-                        + '") begin\n'
-                        + leading_spaces
-                        + tabSize
-                        + interface["name"]
-                        + "_"
-                        + channel["type"]
-                        + " = args[0];\n"
-                        + leading_spaces
-                        + "end\n"
-                    )
-    for interface in interface_out:
-        if interface["connection_mode"] == "native":
-            interfaceType = interface["type"]
-            for channel in interface["channels"]:
-                if channel["type"] in currInterface.master_input_channels:
-                    if ifelse_signal != "":
-                        ifelse_signal += leading_spaces + "else "
-                    ifelse_signal += (
-                        'if(interfaceType_par == "'
-                        + interface["name"]
-                        + "_"
-                        + channel["type"]
-                        + '") begin\n'
-                        + leading_spaces
-                        + tabSize
-                        + interface["name"]
-                        + "_"
-                        + channel["type"]
-                        + " = args[0];\n"
-                        + leading_spaces
-                        + "end\n"
-                    )
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_IF_ELSE_SIGNAL", ifelse_signal[:-1]
-    )
-
-    # for C++ - not currently used since it's not being written to C data file
-
-    if enable_C:
-        ifelse_signal = ""
-        with open(templateTB_c, "r") as f:
-            lineStr = [line for line in f if "SONAR_ELSE_IF_SIGNAL" in line]
-        leading_spaces = getIndentation(lineStr)
-        for signal in signals_in:
-            if "type" not in signal:
-                if ifelse_signal != "":
-                    ifelse_signal += leading_spaces + "else "
-                ifelse_signal += (
-                    'if(!strcmp(interfaceType,"' + signal["name"] + '")){\n'
-                )
-                ifelse_signal += (
-                    leading_spaces + tabSize + signal["name"] + " = args[0];\n"
-                )
-                ifelse_signal += leading_spaces + "}\n"
-
-        # TODO fix this
-        # ifelse_signal = ""  # clear this since it's not being used right now
-
-        templateTB_c_str = templateTB_c_str.replace(
-            "SONAR_ELSE_IF_SIGNAL", ifelse_signal[:-1]
-        )
+    set_signals()
 
     # ------------------------------------------------------------------------------#
     # Create the if-else tree for interfaces
 
-    # for SV
-
-    elseif_interfaceIn = ""
-    with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "SONAR_ELSE_IF_INTERFACE_IN" in line]
-    leading_spaces = getIndentation(lineStr)
-    for interface in interface_in:
-        currInterface = usedInterfaces[interface["type"]]
-        if elseif_interfaceIn != "":
-            elseif_interfaceIn += leading_spaces
-        elseif_interfaceIn += (
-            'else if(interfaceType_par == "' + interface["name"] + '") begin\n'
-        )
-        if interface["direction"] == "mixed":
-            for mode in currInterface.sv_interface_io:
-                elseif_interfaceIn += (
-                    leading_spaces
-                    + tabSize
-                    + "if(args["
-                    + str(mode["arg"])
-                    + "] == "
-                    + str(mode["mode"])
-                    + ") begin\n"
-                )
-                elseif_interfaceIn = commandVarReplace(
-                    elseif_interfaceIn,
-                    interface,
-                    getattr(currInterface, mode["func"]),
-                    leading_spaces + tabSize + tabSize,
-                    currInterface.sv_args,
-                )
-                elseif_interfaceIn += leading_spaces + tabSize + "end\n"
-        else:
-            elseif_interfaceIn = commandVarReplace(
-                elseif_interfaceIn,
-                interface,
-                currInterface.master_action,
-                leading_spaces + tabSize,
-                currInterface.sv_args,
-            )
-        elseif_interfaceIn += leading_spaces + "end\n"
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_ELSE_IF_INTERFACE_IN", elseif_interfaceIn[:-1]
-    )
-
-    elseif_interfaceOut = ""
-    with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "SONAR_ELSE_IF_INTERFACE_OUT" in line]
-    leading_spaces = getIndentation(lineStr)
-    for interface in interface_out:
-        currInterface = usedInterfaces[interface["type"]]
-        if elseif_interfaceOut != "":
-            elseif_interfaceOut += leading_spaces
-        elseif_interfaceOut += (
-            'else if(interfaceType_par == "' + interface["name"] + '") begin\n'
-        )
-        elseif_interfaceOut = commandVarReplace(
-            elseif_interfaceOut,
-            interface,
-            currInterface.slave_action,
-            leading_spaces + tabSize,
-            currInterface.sv_args,
-        )
-        elseif_interfaceOut += leading_spaces + "end\n"
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_ELSE_IF_INTERFACE_OUT", elseif_interfaceOut[:-1]
-    )
-
-    # for C++
-
-    if enable_C:
-        elseif_interfaceIn = ""
-        with open(templateTB_c, "r") as f:
-            lineStr = [line for line in f if "SONAR_ELSE_IF_INTERFACE_IN" in line]
-        leading_spaces = getIndentation(lineStr)
-        for interface in interface_in:
-            if elseif_interfaceIn != "":
-                elseif_interfaceIn += leading_spaces + "else "
-            elseif_interfaceIn += (
-                'if(!strcmp(interfaceType, "' + interface["name"] + '")){\n'
-            )
-            currInterface = usedInterfaces[interface["type"]]
-            elseif_interfaceIn = commandVarReplace(
-                elseif_interfaceIn,
-                interface,
-                currInterface.c_interface_in,
-                leading_spaces + tabSize,
-                currInterface.c_args,
-            )
-            # elseif_interfaceIn = currInterface.c_interface_in(
-            #     elseif_interfaceIn, ifelse_signal, interface, leading_spaces, tabSize
-            # )
-            elseif_interfaceIn += leading_spaces + "}\n"
-        templateTB_c_str = templateTB_c_str.replace(
-            "SONAR_ELSE_IF_INTERFACE_IN", elseif_interfaceIn[:-1]
-        )
-
-        elseif_interfaceOut = ""
-        with open(templateTB_c, "r") as f:
-            lineStr = [line for line in f if "SONAR_ELSE_IF_INTERFACE_OUT" in line]
-        leading_spaces = getIndentation(lineStr)
-        for interface in interface_out:
-            if elseif_interfaceOut != "" or elseif_interfaceIn != "":
-                elseif_interfaceOut += (
-                    leading_spaces + "else "
-                )  # TODO fix this on first one. too many spaces
-            elseif_interfaceOut += (
-                'if(!strcmp(interfaceType, "' + interface["name"] + '")){\n'
-            )
-            currInterface = usedInterfaces[interface["type"]]
-            elseif_interfaceOut = commandVarReplace(
-                elseif_interfaceOut,
-                interface,
-                currInterface.c_interface_out,
-                leading_spaces + tabSize,
-                currInterface.c_args,
-            )
-            # elseif_interfaceOut = currInterface.c_interface_out(
-            #     elseif_interfaceOut, ifelse_signal, interface, leading_spaces, tabSize
-            # )
-            elseif_interfaceOut += leading_spaces + "}\n"
-        templateTB_c_str = templateTB_c_str.replace(
-            "SONAR_ELSE_IF_INTERFACE_OUT", elseif_interfaceOut[:-1]
-        )
+    set_interfaces()
 
     # ------------------------------------------------------------------------------#
     # Create all testbench-generated clocks. Use the clock with the largest
     # period between test vectors (not sure if necessary to use the largest)
-    # TODO make the initial state of the clock configurable (i.e. for diff. clocks)
-    initial_clock = ""
-    largestClock = ""
-    largestPeriod = 0
-    # regex_int_str = re.compile("([0-9]+)([a-z]+)")
-    regex_int_str = re.compile(r"([0-9]+([\.][0-9]+)*)([a-z]+)")
-    with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "SONAR_INITIAL_CLOCK" in line]
-    leading_spaces = getIndentation(lineStr)
-    for clock in clocks_in:
-        if initial_clock != "":
-            initial_clock += leading_spaces
-        initial_clock += "initial begin\n"
-        initial_clock += leading_spaces + tabSize + clock["name"] + " = 0;\n"
-        initial_clock += leading_spaces + tabSize + "forever begin\n"
-        initial_clock += (
-            leading_spaces
-            + tabSize
-            + tabSize
-            + "#("
-            + clock["period"]
-            + "/2) "
-            + clock["name"]
-            + " <= ~"
-            + clock["name"]
-            + ";\n"
-        )
-        m = regex_int_str.match(clock["period"])
-        if m.group(3) == "s":
-            period = m.group(1) * 10 ** 15
-        elif m.group(3) == "ms":
-            period = m.group(1) * 10 ** 12
-        elif m.group(3) == "us":
-            period = m.group(1) * 10 ** 9
-        elif m.group(3) == "ns":
-            period = m.group(1) * 10 ** 6
-        elif m.group(3) == "ps":
-            period = m.group(1) * 10 ** 3
-        else:
-            period = m.group(1)
-        if int(period) > largestPeriod:
-            largestPeriod = period
-            largestClock = clock["name"]
-        initial_clock += leading_spaces + tabSize + "end\n"
-        initial_clock += leading_spaces + "end\n"
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_INITIAL_CLOCK", initial_clock[:-1]
-    )
-    templateTB_sv_str = templateTB_sv_str.replace("SONAR_VECTOR_CLOCK", largestClock)
+    
+    create_clocks()
 
     # ------------------------------------------------------------------------------#
     # Create the if-else tree for waits
-    # TODO need to handle this if waitConditions is empty (sv will error out)
-    if_else_wait = ""
-    with open(templateTB_sv, "r") as f:
-        lineStr = [line for line in f if "SONAR_IF_ELSE_WAIT" in line]
-    leading_spaces = getIndentation(lineStr)
-    for condition in waitConditions:
-        if if_else_wait != "":
-            if_else_wait += leading_spaces + "else "
-        if_else_wait += 'if(interfaceType_par == "' + condition["key"] + '") begin\n'
-        conditionStr = condition["condition"].replace("$value", "args[0]")
-        if not conditionStr.endswith(";"):
-            conditionStr += ";"
-        if_else_wait += leading_spaces + tabSize + conditionStr + "\n"
-        if_else_wait += leading_spaces + "end\n"
-    templateTB_sv_str = templateTB_sv_str.replace(
-        "SONAR_IF_ELSE_WAIT", if_else_wait[:-1]
-    )
+    
+    set_waits()
 
     # ------------------------------------------------------------------------------#
     # This was meant to handle the use of interfaces in the testbench. For now,
@@ -1198,17 +465,17 @@ def sonar(mode, modeArg, filepath, languages):
     # with open(templateTB_sv,'r') as f:
     #     lineStr = [line for line in f if "SONAR_TB_AXIS_LIST" in line]
     # leading_spaces = getIndentation(lineStr)
-    # for interface in interface_in:
-    #     currInterface = usedInterfaces[interface['type']]
+    # for interface in interfaces_slave:
+    #     curr_interface = used_interfaces[interface['type']]
     #     interfaceFilePath = getFilePath("env", "SONAR_PATH", "/include/" + \
     #         interface['type'] + ".sv")
     #     with open(interfaceFilePath) as f:
     #         interfaceFileStr = f.read()
     #     if tb_axis_list != "":
     #         tb_axis_list += leading_spaces
-    #     interfaceName = currInterface.interface['name']
+    #     interfaceName = curr_interface.interface['name']
     #     tb_axis_list += interfaceName
-    #     if currInterface.interface['parameters']:
+    #     if curr_interface.interface['parameters']:
     #         tb_axis_list += " #(\n"
     #         regex_interface_def = re.compile("interface " + interfaceName + \
     #             "(.|\n)+?(?=;)")
@@ -1227,17 +494,17 @@ def sonar(mode, modeArg, filepath, languages):
     #         if interface['type'] == "tdata":
     #             tdataSize = interface['size']
     #     tb_axis_list += "axi_stream " + axis_in['name'] + "(\n"
-    #     tb_axis_list += leading_spaces + tabSize + ".aclk(" + axis_in['clock'] + \
+    #     tb_axis_list += leading_spaces + TAB_SIZE + ".aclk(" + axis_in['clock'] + \
     #         ")\n"
     #     tb_axis_list += leading_spaces + ");\n"
     #     tb_axis_list += leading_spaces + "axis_m #(\n"
-    #     tb_axis_list += leading_spaces + tabSize + ".DATA_WIDTH(" + \
+    #     tb_axis_list += leading_spaces + TAB_SIZE + ".DATA_WIDTH(" + \
     #         str(tdataSize) + ")\n"
     #     tb_axis_list += leading_spaces + ") " + axis_in['name'] + "_m(\n"
-    #     tb_axis_list += leading_spaces + tabSize + ".AXIS_M(" + axis_in['name'] + \
+    #     tb_axis_list += leading_spaces + TAB_SIZE + ".AXIS_M(" + axis_in['name'] + \
     #         "),\n"
     #     for interface in axis_in['interface']:
-    #         tb_axis_list += leading_spaces + tabSize + "." + interface['type'] + \
+    #         tb_axis_list += leading_spaces + TAB_SIZE + "." + interface['type'] + \
     #             "(" + axis_in['name'] + "_" + interface['name'] + "),\n"
     #     tb_axis_list = tb_axis_list[:-2] + "\n"
     #     tb_axis_list += leading_spaces + ");\n"
@@ -1248,17 +515,17 @@ def sonar(mode, modeArg, filepath, languages):
     #         if interface['type'] == "tdata":
     #             tdataSize = interface['size']
     #     tb_axis_list += "axi_stream " + axis_out['name'] + "(\n"
-    #     tb_axis_list += leading_spaces + tabSize + ".aclk(" + axis_out['clock'] + \
+    #     tb_axis_list += leading_spaces + TAB_SIZE + ".aclk(" + axis_out['clock'] + \
     #         ")\n"
     #     tb_axis_list += leading_spaces + ");\n"
     #     tb_axis_list += leading_spaces + "axis_s #(\n"
-    #     tb_axis_list += leading_spaces + tabSize + ".DATA_WIDTH(" + \
+    #     tb_axis_list += leading_spaces + TAB_SIZE + ".DATA_WIDTH(" + \
     #         str(tdataSize) + ")\n"
     #     tb_axis_list += leading_spaces + ") " + axis_out['name'] + "_s(\n"
-    #     tb_axis_list += leading_spaces + tabSize + ".AXIS_S(" + axis_out['name'] + \
+    #     tb_axis_list += leading_spaces + TAB_SIZE + ".AXIS_S(" + axis_out['name'] + \
     #         "),\n"
     #     for interface in axis_out['interface']:
-    #         tb_axis_list += leading_spaces + tabSize + "." + interface['type'] + \
+    #         tb_axis_list += leading_spaces + TAB_SIZE + "." + interface['type'] + \
     #             "(" + axis_out['name'] + "_" + interface['name'] + "),\n"
     #     tb_axis_list = tb_axis_list[:-2] + "\n"
     #     tb_axis_list += leading_spaces + ");\n"
@@ -1283,13 +550,13 @@ def sonar(mode, modeArg, filepath, languages):
     # i.e. expand all the YAML macros, fill in missing interface signal keys etc
 
     parallelNum = writeJSON(
-        configFileData["vectors"],
+        testbench["vectors"],
         dataFile,
         signals_in,
         signals_out,
-        interface_in,
-        interface_out,
-        usedInterfaces,
+        interfaces_slave,
+        interfaces_master,
+        used_interfaces,
     )
 
     templateTB_sv_str = templateTB_sv_str.replace(
@@ -1302,7 +569,7 @@ def sonar(mode, modeArg, filepath, languages):
 
     generate("absolute", None, dataFileName, languages)  # parse the JSON and continue
 
-    with open(tbFileName_sv.replace("tb.sv", "sv.dat")) as f:
+    with open(tb_filename_sv.replace("tb.sv", "sv.dat")) as f:
         line = f.readline()
         maxArgs = 0
         while line:
@@ -1314,7 +581,7 @@ def sonar(mode, modeArg, filepath, languages):
             line = f.readline()
 
     if enable_C:
-        with open(tbFileName_c.replace("tb.cpp", "c.dat")) as f:
+        with open(tb_filename_cpp.replace("tb.cpp", "c.dat")) as f:
             line = f.readline()
             maxCharLength = 0
             while line:
@@ -1343,28 +610,68 @@ def sonar(mode, modeArg, filepath, languages):
             "SONAR_MAX_STRING_SIZE", str(maxCharLength + 1)
         )  # /0 char
 
-    tbFile_sv.write(templateTB_sv_str)
-    tbFile_sv.close()
 
-    if enable_C:
-        tbFile_c.write(templateTB_c_str)
-        tbFile_c.close()
-
-
+# TODO error handling
+# TODO make seek size programmatic
+# TODO add comments
+# TODO clean up code and add functions
+# TODO allow loops for commands (repeat)
+# TODO allow delays by clock cycles
+# TODO support floating clock periods
 ################################################################################
-
-if __name__ == "__main__":
-    for arg in sys.argv:
-        if arg == "-h" or arg == "--help":
-            print("Usage: python sonar.py mode modeArg filename languages")
-            print("  mode: env - use relative path from an environment variable")
-            print("        path - use relative path from a string")
-            print("        absolute - use absolute filepath")
-            print("  modeArg: environment variable or path string. None otherwise")
-            print("  filename: user file to read")
-            print("  languages: all (SV + C) or sv (just SV)")
-
-    if len(sys.argv) == 5:
-        sonar(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+### sonar ###
+# This function uses a configuration file to generate testbenches, data for the
+# the testbenches to use, and a number of JSON files (for legacy reasons).
+def sonar(testbench_config, sonar_tb_filepath, languages="sv"):
+    if isinstance(languages, str):
+        if languages == "all":
+            active_langs = ("sv", "cpp")
+        else:
+            active_langs = (languages,)
+    elif isinstance(languages, (list, tuple)):
+        active_langs = tuple(languages)
     else:
-        print("Incorrect number of arguments. Use -h or --help")
+        raise SonarInvalidArgError("Languages must be specified as a string or an iterable")
+    
+    dut_name = os.path.basename(sonar_tb_filepath)[:-3]
+    directory = os.path.join(os.path.dirname(sonar_tb_filepath), "build", dut_name)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    
+    def get_tb_filename(lang):
+        return os.path.join(directory, dut_name + f"_tb.{lang}")
+
+    def get_data_filename(lang):
+        return os.path.join(directory, dut_name + f"_{lang}.dat")
+
+    # if any of the generated testbenches are newer than the sonar testbench
+    # script, skip generating it. This probably implies the user has manually
+    # edited the generated testbench
+    # sonar_tb_file_time = os.path.getmtime(sonar_tb_filepath)
+    # active_langs_tmp = []
+    # for lang in active_langs:
+    #     if os.path.exists(get_tb_filename(lang)):
+    #         tb_time = os.path.getmtime(get_tb_filename(lang))
+    #         if tb_time <= sonar_tb_file_time:
+    #             active_langs_tmp.append(lang)
+    #     else:
+    #         active_langs_tmp.append(lang)
+    # active_langs = active_langs_tmp
+
+    testbenches = {}
+    data_files = {}
+    for lang in active_langs:
+        template = os.path.join(os.path.dirname(__file__), "templates", f"template_tb.{lang}")
+        with open(template, "r") as f:
+            testbenches[lang] = f.read()
+
+    testbenches["sv"], data_files["sv"] = create_sv_testbench(testbench_config, testbenches["sv"], directory)
+    testbenches["cpp"], data_files["cpp"] = create_cpp_testbench(testbench_config, testbenches["cpp"], directory)
+    
+    # testbenches = hoopla(testbench, testbenches, directory)
+
+    for lang in active_langs:
+        with open(get_tb_filename(lang), "w+") as f:
+            f.write(testbenches[lang])
+        with open(get_data_filename(lang), "w+") as f:
+            f.write(data_files[lang])

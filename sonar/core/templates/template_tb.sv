@@ -88,7 +88,7 @@ module exerciser (
             end
         end
         else if (packetType_par == "timestamp") begin
-            SONAR_TIME_FORMAT
+            SONAR_TIMEFORMAT
             if(interfaceType_par == "INIT") begin
                 timeRef = $time;
             end

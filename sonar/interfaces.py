@@ -1,10 +1,19 @@
+"""
+Defines the user interfaces for the available interfaces that can be used on 
+modules in testbenches.
+"""
+
 from math import ceil
+import math
 
 from .base_types import SonarObject
 from .base_types import InterfacePort
 
 
 class AXIS(SonarObject):
+    """
+    Defines the AXI-Stream interface for master and slave
+    """
     def __init__(self, name, direction, clock, flit=None, iClass=None):
         """
         Initializes an empty AXIS object
@@ -47,9 +56,9 @@ class AXIS(SonarObject):
         Returns:
             dict: Dictionary representing the data transaction
         """
-        payloadDict = self._payload(tdata=data, **kwargs)
-        payloadArg = [payloadDict]
-        self._write(thread, payloadArg)
+        payload_dict = self._payload(tdata=data, **kwargs)
+        payload_arg = [payload_dict]
+        self._write(thread, payload_arg)
 
     def writes(self, thread, data):
         """
@@ -62,12 +71,12 @@ class AXIS(SonarObject):
                 keywords are AXIS compliant.
         """
 
-        payloadArg = []
+        payload_arg = []
         for datum in data:
-            payloadDict = self._payload(**datum)
-            payloadArg.append(payloadDict)
+            payload_dict = self._payload(**datum)
+            payload_arg.append(payload_dict)
 
-        self._write(thread, payloadArg)
+        self._write(thread, payload_arg)
 
     def _write(self, thread, payload):
         """
@@ -82,7 +91,7 @@ class AXIS(SonarObject):
         """
 
         transaction = {
-            "interface": {"type": "axis", "name": self.name, "payload": payload}
+            "interface": {"type": "axis", "name": self.name, "iClass": self.port.iClass, "payload": payload}
         }
         thread._add_transaction(transaction)
 
@@ -101,12 +110,21 @@ class AXIS(SonarObject):
         """
 
         if existing_payload is None:
-            payloadDict = {}
+            payload_dict = {}
         else:
-            payloadDict = existing_payload
+            payload_dict = existing_payload
         for key, value in kwargs.items():
-            payloadDict[key] = value
-        return payloadDict
+            payload_dict[key] = value
+        has_tkeep = False
+        for channel in self.port.channels:
+            if channel["type"] == "tdata":
+                data_width = channel["size"]
+            if channel["type"] == "tkeep":
+                has_tkeep = True
+        if has_tkeep and "tkeep" not in payload_dict:
+            payload_dict["tkeep"] = 2**(int(data_width/8)) - 1
+
+        return payload_dict
 
     def read(self, thread, data, **kwargs):
         """
@@ -139,7 +157,7 @@ class AXIS(SonarObject):
             dict: The fields of this object as a dictionary
         """
 
-        return self._Port.asdict()
+        return self.port.asdict()
 
     def wait(self, thread, data, bit_range=None):
         """
@@ -162,14 +180,14 @@ class AXIS(SonarObject):
             wait_str += " && (" + self.name + "_tready == 1)"
         thread.wait_level(wait_str, data)
 
-    def file_to_stream(self, thread, filePath, parsingFunc=None, endian="little"):
+    def file_to_stream(self, thread, filepath, parsing_func=None, endian="little"):
         """
         Converts the provided file into a series of AXIS transactions.
 
         Args:
             thread (Thread): Thread to stream the file in
-            filePath (str): Path to the file to stream
-            parsingFunc (Func, optional): Defaults to None. Function that
+            filepath (str): Path to the file to stream
+            parsing_func (Func, optional): Defaults to None. Function that
                 determines how the file is parsed. Must return a list of dicts
                 representing valid AXIS transactions. The default function
                 assumes a binary file containing only tdata
@@ -183,25 +201,25 @@ class AXIS(SonarObject):
         """
 
         transactions = []
-        if parsingFunc is None:
-            parsingFunc = self._f2sBinData
-        if filePath.endswith(".bin"):
-            with open(filePath) as f:
-                transactions = parsingFunc(f, endian)
+        if parsing_func is None:
+            parsing_func = self._f2s_bin_data
+        if filepath.endswith(".bin"):
+            with open(filepath) as f:
+                transactions = parsing_func(f, endian)
         else:
             raise NotImplementedError()
 
         self._write(thread, transactions)
 
-    def _file_to_stream(self, thread, openFile, parsingFunc, endian):
+    def _file_to_stream(self, thread, open_file, parsing_func, endian):
         """
         Internal variant of file_to_stream where the file has already been
         opened, there are no optional arguments, and there is a return value
 
         Args:
             thread (Thread): Thread to stream the file in
-            openFile (File): An opened file object
-            parsingFunc (Function): A function object to interpret the file with
+            open_file (File): An opened file object
+            parsing_func (Function): A function object to interpret the file with
             endian (str): 'little' or 'big'
 
         Returns:
@@ -209,10 +227,10 @@ class AXIS(SonarObject):
         """
 
         transactions = []
-        transactions = parsingFunc(openFile, endian)
+        transactions = parsing_func(open_file, endian)
         return self._write(thread, transactions)
 
-    def _f2sBinData(self, data, endian):
+    def _f2s_bin_data(self, data, endian):
         """
         A file parsing function for file_to_stream. Assumes a binary file that
         contains only tdata
@@ -226,47 +244,47 @@ class AXIS(SonarObject):
         """
 
         transactions = []
-        fileSize = len(data)
-        beatCount = (ceil(fileSize / 8.0)) * 8
+        file_size = len(data)
+        beat_count = (ceil(file_size / 8.0)) * 8
         beat = 0
-        tdataBytes = self.port.get_channel("tdata")["size"] / 8
+        tdata_bytes = self.port.get_channel("tdata")["size"] / 8
 
-        while beat < beatCount:
+        while beat < beat_count:
             tdata = 0
-            for i in range(beat, beat + tdataBytes):
+            for i in range(beat, beat + tdata_bytes):
                 if endian == "little":
-                    if i < fileSize:
+                    if i < file_size:
                         tdata = (tdata >> 8) | (data[i] << 56)
-                    elif i < beat + tdataBytes:
+                    elif i < beat + tdata_bytes:
                         tdata = tdata >> 8
                 else:  # big endian
-                    if i < fileSize:
+                    if i < file_size:
                         tdata = (tdata << 8) | (data[i])
-                    elif i < beat + tdataBytes:
+                    elif i < beat + tdata_bytes:
                         tdata = tdata << 8
             payload = self._payload(tdata="0x" + format(tdata, "08x"))
 
             if self.port.has_channel("tkeep"):
-                tkeep = self._f2sTkeep(fileSize, tdataBytes, beat, endian)
+                tkeep = self._f2s_tkeep(file_size, tdata_bytes, beat, endian)
                 payload = self._payload(payload, tkeep=tkeep)
             if self.port.has_channel("tlast"):
-                tlast = self._f2sTlast(fileSize, beat)
+                tlast = self._f2s_tlast(file_size, beat)
                 payload = self._payload(payload, tlast=tlast)
 
             transactions.append(payload)
-            beat = beat + tdataBytes
+            beat = beat + tdata_bytes
 
         return transactions
 
     @staticmethod
-    def _f2sTkeep(fileSize, tdataBytes, beat, endian):
+    def _f2s_tkeep(file_size, tdata_bytes, beat, endian):
         """
         Calculates tkeep for a particular beat for file_to_stream since the last
         beat may be smaller than a word.
 
         Args:
-            fileSize (int): Size of data in bytes to send over tdata
-            tdataBytes (int): Width of tdata in bytes
+            file_size (int): Size of data in bytes to send over tdata
+            tdata_bytes (int): Width of tdata in bytes
             beat (int): Beat counter
             endian (str): little|big
 
@@ -274,16 +292,16 @@ class AXIS(SonarObject):
             str: Tkeep value for the current beat
         """
 
-        if beat < ((ceil(fileSize / 8.0) - 1) * 8.0):
+        if beat < ((ceil(file_size / 8.0) - 1) * 8.0):
             tkeep = "KEEP_ALL"
         else:
-            sizeofLastTransaction = fileSize % tdataBytes
-            if sizeofLastTransaction != 0:
+            size_last_transaction = file_size % tdata_bytes
+            if size_last_transaction != 0:
                 tkeep = ""
-                for i in range(sizeofLastTransaction):
+                for _ in range(size_last_transaction):
                     tkeep = tkeep + "1"
                 if endian != "little":
-                    for i in range(tdataBytes - sizeofLastTransaction):
+                    for _ in range(tdata_bytes - size_last_transaction):
                         tkeep = tkeep + "0"
                 tkeep = "0b" + tkeep
             else:
@@ -291,13 +309,13 @@ class AXIS(SonarObject):
         return tkeep
 
     @staticmethod
-    def _f2sTlast(fileSize, beat):
+    def _f2s_tlast(file_size, beat):
         """
         Calculates tlast for a particular beat for file_to_stream. The last beat
         must assert tlast
 
         Args:
-            fileSize (int): Size of data in bytes to send over tdata
+            file_size (int): Size of data in bytes to send over tdata
             beat (int): Beat counter
 
         Returns:
@@ -305,7 +323,7 @@ class AXIS(SonarObject):
         """
 
         tlast = 0
-        if beat >= ((ceil(fileSize / 8.0) - 1) * 8):
+        if beat >= ((ceil(file_size / 8.0) - 1) * 8):
             tlast = 1
         return tlast
 
@@ -328,9 +346,12 @@ class AXIS(SonarObject):
             self.type = "axis"
             self.clock = clock
             self.flit = flit
-            self.iClass = iClass
+            self.connection_mode = "native"
 
-        def init_channels(self, mode, dataWidth=None, nameToUpperCase=True):
+            # this variable needs to be camelCase (i.e. no underscores) for RegEx
+            self.iClass = iClass # pylint: disable=invalid-name
+
+        def init_channels(self, mode, data_width=None, upper_case=True):
             """
             Initialize the channels associated with this AXIS interface. Initialize
             means to specify the names, types and widths of all the channels.
@@ -340,8 +361,8 @@ class AXIS(SonarObject):
                     'default': tdata, tvalid, tready, tlast
                     'tkeep': tdata, tvalid, tready, tlast, tkeep
                     'min': tdata, tvalid
-                dataWidth (number): Width of the tdata field
-                nameToUpperCase (bool, optional): Defaults to True. Assume that
+                data_width (number): Width of the tdata field
+                upper_case (bool, optional): Defaults to True. Assume that
                     the channel names are the uppercase versions of their type,
                     which is the default for an HLS module. Setting it to False
                     sets the name identical to the type (i.e. lowercase)
@@ -352,32 +373,32 @@ class AXIS(SonarObject):
             """
 
             if mode == "default":
-                if dataWidth is None:
-                    print("dataWidth cannot be None")
+                if data_width is None:
+                    print("data_width cannot be None")
                     raise ValueError
                 channels = [
-                    {"name": "tdata", "type": "tdata", "size": dataWidth},
+                    {"name": "tdata", "type": "tdata", "size": data_width},
                     {"name": "tvalid", "type": "tvalid"},
                     {"name": "tready", "type": "tready"},
                     {"name": "tlast", "type": "tlast"},
                 ]
             elif mode == "tkeep":
-                if dataWidth is None:
-                    print("dataWidth cannot be None")
+                if data_width is None:
+                    print("data_width cannot be None")
                     raise ValueError
                 channels = [
-                    {"name": "tdata", "type": "tdata", "size": dataWidth},
+                    {"name": "tdata", "type": "tdata", "size": data_width},
                     {"name": "tvalid", "type": "tvalid"},
                     {"name": "tready", "type": "tready"},
                     {"name": "tlast", "type": "tlast"},
-                    {"name": "tkeep", "type": "tkeep", "size": dataWidth / 8},
+                    {"name": "tkeep", "type": "tkeep", "size": data_width / 8},
                 ]
             elif mode == "min":
-                if dataWidth is None:
-                    print("dataWidth cannot be None")
+                if data_width is None:
+                    print("data_width cannot be None")
                     raise ValueError
                 channels = [
-                    {"name": "tdata", "type": "tdata", "size": dataWidth},
+                    {"name": "tdata", "type": "tdata", "size": data_width},
                     {"name": "tvalid", "type": "tvalid"},
                 ]
             elif mode == "empty":
@@ -385,7 +406,7 @@ class AXIS(SonarObject):
             else:
                 raise NotImplementedError()
             for channel in channels:
-                if nameToUpperCase:
+                if upper_case:
                     channel["name"] = channel["name"].upper()
             self.add_channels(channels)
 
@@ -403,10 +424,14 @@ class AXIS(SonarObject):
                 port["flit"] = self.flit
             if self.iClass is not None:
                 port["iClass"] = self.iClass
+            port["connection_mode"] = self.connection_mode
             return port
 
 
 class SAXILite(SonarObject):
+    """
+    Defines the AXI-Lite slave interface
+    """
     def __init__(self, name, clock, reset):
         """
         Initialize an SAXILite interface with the default options
@@ -420,16 +445,16 @@ class SAXILite(SonarObject):
         self.name = name
         self.port = self._Port(name, clock, reset)
 
-    def set_address(self, addrRange, addrOffset):
+    def set_address(self, addr_range, addr_offset):
         """
         Sets the address range and offset for this AXI-Lite interface
 
         Args:
-            addrRange (str): Address size e.g. '4K'
-            addrOffset (number): Offset address
+            addr_range (str): Address size e.g. '4K'
+            addr_offset (number): Offset address
         """
 
-        self.port.set_address(addrRange, addrOffset)
+        self.port.set_address(addr_range, addr_offset)
 
     def add_register(self, name, address):
         """
@@ -476,14 +501,14 @@ class SAXILite(SonarObject):
         }
         thread._add_transaction(transaction)
 
-    def read(self, thread, register, expectedValue):
+    def read(self, thread, register, expected_value):
         """
         Read data from a register to verify its value
 
         Args:
             thread (Thread): Thread in which to read from
             register (str): Name of the register to read
-            expectedValue (number): Expected value that the register should have
+            expected_value (number): Expected value that the register should have
         """
 
         address = None
@@ -495,7 +520,7 @@ class SAXILite(SonarObject):
             "interface": {
                 "type": "s_axilite",
                 "name": self.name,
-                "payload": [{"mode": 0, "data": expectedValue, "addr": address}],
+                "payload": [{"mode": 0, "data": expected_value, "addr": address}],
             }
         }
         thread._add_transaction(transaction)
@@ -508,7 +533,7 @@ class SAXILite(SonarObject):
             dict: The fields of this object as a dictionary
         """
 
-        return self._Port.asdict()
+        return self.port.asdict()
 
     class _Port(InterfacePort):
         def __init__(self, name, clock, reset):
@@ -531,17 +556,21 @@ class SAXILite(SonarObject):
             self.addr_range = ""
             self.addr_offset = ""
 
-        def set_address(self, addrRange, addrOffset):
+            # these variables can't have underscores for RegEx
+            self.dataWidth = 0 # pylint: disable=invalid-name
+            self.addrWidth = 0 # pylint: disable=invalid-name
+
+        def set_address(self, addr_range, addr_offset):
             """
             Sets the address range and offset for this AXI-Lite interface
 
             Args:
-                addrRange (str): Address size e.g. '4K'
-                addrOffset (number): Offset address
+                addr_range (str): Address size e.g. '4K'
+                addr_offset (number): Offset address
             """
 
-            self.addr_range = addrRange
-            self.addr_offset = addrOffset
+            self.addr_range = addr_range
+            self.addr_offset = addr_offset
 
         def add_register(self, name, address):
             """
@@ -570,7 +599,7 @@ class SAXILite(SonarObject):
                     break
 
         def init_channels(
-            self, mode, dataWidth=None, addrWidth=None, nameToUpperCase=True
+            self, mode, data_width=None, addr_width=None, upper_case=True
         ):
             """
             Initialize the channels associated with this AXILite interface.
@@ -580,9 +609,9 @@ class SAXILite(SonarObject):
             Args:
                 mode (str): Name of a channel preset to use. Options are:
                     'default': standard AXI-Lite without cache or prot
-                dataWidth (number): Width of the data channel (r/w)
-                addrWidth (number): Width of the addr channel (r/w)
-                nameToUpperCase (bool, optional): Defaults to True. Assume that
+                data_width (number): Width of the data channel (r/w)
+                addr_width (number): Width of the addr channel (r/w)
+                upper_case (bool, optional): Defaults to True. Assume that
                     the channel names are the uppercase versions of their type,
                     which is the default for an HLS module. Setting it to False
                     sets the name identical to the type (i.e. lowercase)
@@ -592,34 +621,38 @@ class SAXILite(SonarObject):
                 ValueError: Error in mode/argument association
             """
             if mode == "default":
-                if dataWidth is None or addrWidth is None:
-                    print("dataWidth or addrWidth cannot be None")
+                if data_width is None or addr_width is None:
+                    print("data_width or addr_width cannot be None")
                     raise ValueError
+                if addr_width < 12:
+                    addr_width = 12 # Required by AXI standard for 4K memory
                 channels = [
                     {"name": "awvalid", "type": "awvalid"},
                     {"name": "awready", "type": "awready"},
-                    {"name": "awaddr", "type": "awaddr", "size": addrWidth},
+                    {"name": "awaddr", "type": "awaddr", "size": addr_width},
                     {"name": "wvalid", "type": "wvalid"},
                     {"name": "wready", "type": "wready"},
-                    {"name": "wdata", "type": "wdata", "size": dataWidth},
-                    {"name": "wstrb", "type": "wstrb", "size": dataWidth / 8},
+                    {"name": "wdata", "type": "wdata", "size": data_width},
+                    {"name": "wstrb", "type": "wstrb", "size": int(data_width / 8)},
                     {"name": "arvalid", "type": "arvalid"},
                     {"name": "arready", "type": "arready"},
-                    {"name": "araddr", "type": "araddr", "size": addrWidth},
+                    {"name": "araddr", "type": "araddr", "size": addr_width},
                     {"name": "rvalid", "type": "rvalid"},
                     {"name": "rready", "type": "rready"},
-                    {"name": "rdata", "type": "rdata", "size": dataWidth},
+                    {"name": "rdata", "type": "rdata", "size": data_width},
                     {"name": "rresp", "type": "rresp", "size": 2},
                     {"name": "bvalid", "type": "bvalid"},
                     {"name": "bready", "type": "bready"},
                     {"name": "bresp", "type": "bresp", "size": 2},
                 ]
+                self.dataWidth = data_width
+                self.addrWidth = addr_width
             elif mode == "empty":
                 channels = []
             else:
                 raise NotImplementedError
             for channel in channels:
-                if nameToUpperCase:
+                if upper_case:
                     channel["name"] = channel["name"].upper()
             self.add_channels(channels)
 
@@ -639,4 +672,10 @@ class SAXILite(SonarObject):
             port["addr_offset"] = self.addr_offset
             port["addr_range"] = self.addr_range
             port["connection_mode"] = self.connection_mode
+            port["data_width"] = self.dataWidth
+
+            port["readResp"] = "rresp_" + str(self.index)
+            port["writeResp"] = "wresp_" + str(self.index)
+            port["readData"] = "rdata_" + str(self.index)
+            port["agent"] = "master_agent_" + str(self.index)
             return port

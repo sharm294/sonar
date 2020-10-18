@@ -79,4 +79,4 @@ fdct_tb.add_test_vector(test_vector_0)
 
 # generate the output testbenches and data files for the specified languages
 # at the designated path
-fdct_tb.generateTB(filepath, "sv")
+fdct_tb.generate_tb(filepath, "sv")

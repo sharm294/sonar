@@ -58,7 +58,7 @@ void sample_src(
 //   uint_3_t state_out;     \
 //   axis_word_t axis_word;
 
-// #define CALL_TB sample(axis_input, axis_output, ack, enable, &state_out);
+#define CALL_TB sample_src(&state_out, &ack, &axis_output, &axis_input, enable);
 
 // #define COMPARE_simple_flit(x) x
 

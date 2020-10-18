@@ -4,7 +4,6 @@ the CLI tasks.
 """
 
 import logging
-import logging.config
 import os
 import pprint
 import shutil
@@ -16,8 +15,9 @@ from pathlib import Path
 import toml
 
 import sonar.database
+import sonar.include
+from sonar.core.include import configure_logging, Constants
 from sonar.exceptions import ReturnValue, SonarException
-from sonar.include import Constants
 from sonar.make import MakeFile
 
 logger = logging.getLogger(__name__)
@@ -300,6 +300,8 @@ class Init:
             path = os.path.join(os.path.dirname(__file__), "boards", board)
             sonar.database.Board.add(path)
 
+        configure_logging()
+
     @staticmethod
     def vivado(args):
         """
@@ -551,46 +553,6 @@ class Database:
             _args (object): unused
         """
         sonar.database.print_db()
-
-
-def configure_logging():
-    """
-    Defines a standard set of logging practices across sonar
-    """
-    config = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "fileFormatter": {
-                "format": "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s",
-                "datafmt": "%H:%M:%S",
-            },
-            "consoleFormatter": {
-                "format": "%(levelname)s - %(message)s",
-                "datafmt": "",
-            },
-        },
-        "handlers": {
-            "consoleHandler": {
-                "class": "logging.StreamHandler",
-                "level": "WARNING",
-                "formatter": "consoleFormatter",
-                "stream": "ext://sys.stdout",
-            },
-            "fileHandler": {
-                "class": "logging.FileHandler",
-                "level": "INFO",
-                "formatter": "fileFormatter",
-                "filename": Constants.SONAR_LOG_PATH,
-                "mode": "a",
-            },
-        },
-        "loggers": {
-            "": {"level": "DEBUG", "handlers": ["consoleHandler", "fileHandler"]}
-        },
-    }
-
-    logging.config.dictConfig(config)
 
 
 def check_database():

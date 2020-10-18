@@ -6,7 +6,7 @@ import toml
 import sonar.api
 import sonar.database
 import sonar.exceptions
-import sonar.include
+import sonar.core.include
 
 
 def test_find_fpga_family():
@@ -104,7 +104,7 @@ class TestTool:
         assert active["sim"] == tool
         assert active["hls"] == tool
 
-        file_str = open(sonar.include.Constants.SONAR_SHELL_TOOL_SOURCE, "r").read()
+        file_str = open(sonar.core.include.Constants.SONAR_SHELL_TOOL_SOURCE, "r").read()
         assert file_str == textwrap.dedent(
             """\
             source xzy
@@ -141,7 +141,7 @@ class TestBoard:
         active = sonar.database.Board.get_active()
         assert active == "ad_8k5"
 
-        file_str = open(sonar.include.Constants.SONAR_SHELL_BOARD_SOURCE, "r").read()
+        file_str = open(sonar.core.include.Constants.SONAR_SHELL_BOARD_SOURCE, "r").read()
         assert file_str == textwrap.dedent(
             """\
             export SONAR_BOARD_NAME=ad_8k5
@@ -184,7 +184,7 @@ class TestRepo:
         active = sonar.database.Repo.get_active()
         assert active == "valid"
 
-        file_str = open(sonar.include.Constants.SONAR_SHELL_REPO_SOURCE, "r").read()
+        file_str = open(sonar.core.include.Constants.SONAR_SHELL_REPO_SOURCE, "r").read()
         assert file_str == textwrap.dedent(
             f"""\
             export SONAR_REPO={test_dir.repos.valid}"""
@@ -256,13 +256,13 @@ class TestEnv:
         active = sonar.database.Env.get_active()
         assert active == "test_env"
 
-        file_str = open(sonar.include.Constants.SONAR_SHELL_REPO_SOURCE, "r").read()
+        file_str = open(sonar.core.include.Constants.SONAR_SHELL_REPO_SOURCE, "r").read()
         assert file_str == textwrap.dedent(
             f"""\
             export SONAR_REPO={test_dir.repos.valid}"""
         )
 
-        file_str = open(sonar.include.Constants.SONAR_SHELL_BOARD_SOURCE, "r").read()
+        file_str = open(sonar.core.include.Constants.SONAR_SHELL_BOARD_SOURCE, "r").read()
         assert file_str == textwrap.dedent(
             """\
             export SONAR_BOARD_NAME=ad_8k5
@@ -270,7 +270,7 @@ class TestEnv:
             export SONAR_PART_FAMILY=Kintex_Ultrascale"""
         )
 
-        file_str = open(sonar.include.Constants.SONAR_SHELL_TOOL_SOURCE, "r").read()
+        file_str = open(sonar.core.include.Constants.SONAR_SHELL_TOOL_SOURCE, "r").read()
         assert file_str == textwrap.dedent(
             """\
             source xzy

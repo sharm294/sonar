@@ -155,4 +155,4 @@ jpeg_tb.add_test_vector(test_vector_0)
 
 # generate the output testbenches and data files for the specified languages
 # at the designated path
-jpeg_tb.generateTB(filepath, "sv")
+jpeg_tb.generate_tb(filepath, "sv")

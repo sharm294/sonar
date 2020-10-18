@@ -3,7 +3,7 @@ import pytest
 import toml
 
 from sonar.exceptions import ReturnValue
-from sonar.include import Constants
+from sonar.core.include import Constants
 
 
 class TestCreate:
@@ -40,7 +40,7 @@ class TestCreate:
             ip_path = repo_path.joinpath("ip_0")
             missing_files, extra_files = helper.check_filesystem(
                 str(ip_path),
-                ["build", "build/bin", "cad", "hls", "src", "include", "testbench"],
+                ["build", "build/bin", "cad", "hls", "src", "include", "testbench", "testbench/build", "testbench/build/bin"],
             )
             assert not missing_files
             assert not extra_files

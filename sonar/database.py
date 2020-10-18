@@ -12,7 +12,7 @@ import shelve
 import toml
 
 from sonar.exceptions import SonarInvalidArgError, SonarInvalidOpError
-from sonar.include import Constants
+from sonar.core.include import Constants
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,13 @@ This module defines basic object types used throughout sonar.
 """
 
 import json
+import logging
 
+from collections import namedtuple
+
+from sonar.exceptions import SonarInvalidArgError
+
+logger = logging.getLogger(__name__)
 
 class SonarObject:
     """
@@ -51,6 +57,7 @@ class InterfacePort(SonarObject):
         self.name = name
         self.direction = direction
         self.channels = []
+        self.index = 0 # should be overwritten eventually
 
     def add_channel(self, name, channel_type, size=1):
         """
@@ -153,4 +160,82 @@ class InterfacePort(SonarObject):
         port["name"] = self.name
         port["direction"] = self.direction
         port["channels"] = self.channels
+        port["index"] = self.index
         return port
+
+InOutPorts = namedtuple("InOutPort", ["input", "output"])
+InterfacePorts = namedtuple("InterfacePorts", ["master", "slave", "mixed", "count"])
+
+Signal = namedtuple("Signal", ["name", "size", "direction"])
+Clock = namedtuple("Clock", ["name", "size", "direction", "period"])
+
+class ModulePorts:
+    def __init__(self):
+        self.clocks = InOutPorts([], [])
+        self.resets = InOutPorts([], [])
+        self.interfaces = InterfacePorts([], [], [], {})
+        self.signals = InOutPorts([], [])
+
+    def _get_ports(self, attribute, directions, collapse):
+        if isinstance(directions, str):
+            try:
+                ports = getattr(getattr(self, attribute), directions)
+            except KeyError as ex:
+                raise SonarInvalidArgError from ex
+            return ports
+        if collapse:
+            ports = []
+        else:
+            ports = {}
+        for direction in directions:
+            try:
+                ports_subset = getattr(getattr(self, attribute), direction)
+            except KeyError:
+                logger.warning("Direction %s not found in %s, skipping.", direction, attribute)
+            else:
+                if collapse:
+                    ports.extend(ports_subset)
+                else:
+                    ports[direction] = ports_subset
+        return ports
+
+    def _add_ports(self, attribute, signal):
+        getattr(getattr(self, attribute), signal.direction).append(signal)
+
+    def get_clocks(self, directions=("input", "output"), collapse=True):
+        return self._get_ports("clocks", directions, collapse)
+
+    def get_resets(self, directions=("input", "output"), collapse=True):
+        return self._get_ports("resets", directions, collapse)
+
+    def get_interfaces(self, directions=("master", "slave", "mixed"), collapse=True):
+        return self._get_ports("interfaces", directions, collapse)
+
+    def get_signals(self, directions=("input", "output"), collapse=True):
+        return self._get_ports("signals", directions, collapse)
+
+    def add_signal(self, signal):
+        self._add_ports("signals", signal)
+
+    def add_reset(self, signal):
+        self._add_ports("resets", signal)
+
+    def add_clock(self, signal):
+        self._add_ports("clocks", signal)
+
+    def add_interface(self, interface):
+        self._add_ports("interfaces", interface)
+
+    def __str__(self):
+        return str(self.clocks) + "\n" + str(self.resets) + "\n" + str(self.signals)
+
+    def asdict(self):
+        module_ports = {}
+        module_ports["clocks"] = self.clocks
+        module_ports["resets"] = self.resets
+        # module_ports["interfaces"] = self.interfaces
+        module_ports["signals"] = self.signals
+        return module_ports
+
+                
+            

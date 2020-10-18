@@ -50,4 +50,4 @@ adder_tb.add_test_vector(test_vector_1)
 
 # generate the output testbenches and data files for the specified languages
 # at the designated path
-adder_tb.generateTB(filepath, "sv")
+adder_tb.generate_tb(filepath, "sv")

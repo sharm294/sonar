@@ -90,7 +90,7 @@ def json_payload(payload):
         return payload
     else:
         if "tkeep" not in payload:
-            payload["tkeep"] = "KEEP_ALL"
+            payload["tkeep"] = 0
         # if "callTB" not in payload:
         #     payload["callTB"] = 0
         if "tlast" not in payload:
@@ -132,7 +132,7 @@ def count(packet):
 def write_sv(packet):
     line = ""
     for word in packet["payload"]:
-        line += packet["type"] + " " + packet["interface"] + " " + str(len(sv_args))
+        line += packet["type"] + " " + packet["name"] + " " + str(len(sv_args))
         for arg in sv_args:
             line += " " + str(word[arg])
         line += "\n"
@@ -143,9 +143,9 @@ def write_c(packet):
     line = ""
     for word in packet["payload"]:
         line += (
-            packet["interface"]
+            packet["name"]
             + " "
-            + str(word["id"])
+            + "NULL"
             + " "
             + str(packet["iClass"])
             + " "
@@ -156,7 +156,7 @@ def write_c(packet):
         for arg in c_args:
             line += " " + str(word[arg])
         line += "\n"
-    return line
+    return line[:-1]
 
 
 # def c_interface_in(tb_str, prev_str, interface, indent, tabSize):

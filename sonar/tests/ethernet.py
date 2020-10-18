@@ -1,7 +1,7 @@
 import os
 
 from sonar.testbench import Thread
-from sonar.generators import Ethernet
+from sonar.protocols import Ethernet
 from sonar.interfaces import AXIS
 
 

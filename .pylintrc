@@ -4,6 +4,7 @@ disable=no-name-in-module, # module detection doesn't always work correctly
         c-extension-no-member, # module detection doesn't always work correctly
         trailing-whitespace, # handled by black
         fixme, # allow fixme / TODO etc. in code
+        protected-access, # this is fine if done with intention
 
 
 [FORMAT]
@@ -21,7 +22,8 @@ good-names=i,
            _,
            f,
            ip,
-           db
+           db,
+           t
 
 [DESIGN]
 

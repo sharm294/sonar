@@ -62,7 +62,6 @@ def main():
     args = parse_args()
 
     api.check_database()
-    api.configure_logging()
 
     args.func(args)
     sys.exit(0)
