@@ -14,9 +14,14 @@ install:
 
 cache: pip
 
+addons:
+  sonarcloud:
+    organization: "sharm294"
+
 # run tests
 script:
   - coverage run -m pytest -k 'not shell'
-
+  - sonar-scanner
+  
 after_success:
   - bash <(curl -s https://codecov.io/bash)
