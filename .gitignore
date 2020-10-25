@@ -18,6 +18,7 @@ vivado*.jou
 *.pyc
 *.egg-info/
 .coverage
+coverage.xml
 
 # Prerequisites
 *.d

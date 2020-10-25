@@ -6,6 +6,9 @@ python:
   - '3.6'
   - '3.7'
 
+git:
+  depth: false
+
 before_install:
   - pip install pytest coverage
 
@@ -21,7 +24,8 @@ addons:
 # run tests
 script:
   - coverage run -m pytest -k 'not shell'
+  - coverage xml -i
   - sonar-scanner
-  
+
 after_success:
   - bash <(curl -s https://codecov.io/bash)
