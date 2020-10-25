@@ -9,7 +9,7 @@ sonar
 +---------------+-----------------------+-----------------------+
 | Coverage      | |codecov Master|      | |codecov Dev|         |
 +---------------+-----------------------+-----------------------+
-| Quality       |                       | |Quality Gate Status| |
+| Quality       | |Quality Gate Master| | |Quality Gate Dev|    |
 +---------------+-----------------------+-----------------------+
 | Documentation |                       | |Docs|                |
 +---------------+-----------------------+-----------------------+
@@ -155,7 +155,7 @@ environment are below:
 
    # install pre-commit if not installed for this repository
    $ pre-commit install
-
+   
 .. |Build Status Master| image:: https://travis-ci.org/sharm294/sonar.svg?branch=master
    :target: https://travis-ci.org/sharm294/sonar
 .. |Build Status Dev| image:: https://travis-ci.org/sharm294/sonar.svg?branch=dev
@@ -164,8 +164,10 @@ environment are below:
    :target: https://codecov.io/gh/sharm294/sonar
 .. |codecov Dev| image:: https://codecov.io/gh/sharm294/sonar/branch/dev/graph/badge.svg
    :target: https://codecov.io/gh/sharm294/sonar
-.. |Quality Gate Status| image:: https://sonarcloud.io/api/project_badges/measure?project=sharm294_sonar&metric=alert_status
+.. |Quality Gate Master| image:: https://sonarcloud.io/api/project_badges/measure?project=sharm294_sonar&metric=alert_status
    :target: https://sonarcloud.io/dashboard?id=sharm294_sonar
+.. |Quality Gate Dev| image:: https://sonarcloud.io/api/project_badges/measure?branch=dev&project=sharm294_sonar&metric=alert_status
+   :target: https://sonarcloud.io/dashboard?id=sharm294_sonar&branch=dev
 .. |Docs| image:: https://readthedocs.org/projects/sonar/badge/?version=latest
    :target: https://sonar.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
