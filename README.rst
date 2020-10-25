@@ -2,7 +2,17 @@
 sonar
 *****
 
-|Build Status| |codecov| |Quality Gate Status| |Docs|
++---------------+-----------------------+-----------------------+
+|    Service    |         Master        | Dev                   |
++===============+=======================+=======================+
+| Build         | |Build Status Master| | |Build Status Dev|    |
++---------------+-----------------------+-----------------------+
+| Coverage      | |codecov Master|      | |codecov Dev|         |
++---------------+-----------------------+-----------------------+
+| Quality       |                       | |Quality Gate Status| |
++---------------+-----------------------+-----------------------+
+| Documentation |                       | |Docs|                |
++---------------+-----------------------+-----------------------+
 
 *sonar* is a simulation/testbenching and project management
 infrastructure for Vivado projects.
@@ -146,9 +156,13 @@ environment are below:
    # install pre-commit if not installed for this repository
    $ pre-commit install
 
-.. |Build Status| image:: https://travis-ci.org/sharm294/sonar.svg?branch=master
+.. |Build Status Master| image:: https://travis-ci.org/sharm294/sonar.svg?branch=master
    :target: https://travis-ci.org/sharm294/sonar
-.. |codecov| image:: https://codecov.io/gh/sharm294/sonar/branch/dev/graph/badge.svg
+.. |Build Status Dev| image:: https://travis-ci.org/sharm294/sonar.svg?branch=dev
+   :target: https://travis-ci.org/sharm294/sonar
+.. |codecov Master| image:: https://codecov.io/gh/sharm294/sonar/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/sharm294/sonar
+.. |codecov Dev| image:: https://codecov.io/gh/sharm294/sonar/branch/dev/graph/badge.svg
    :target: https://codecov.io/gh/sharm294/sonar
 .. |Quality Gate Status| image:: https://sonarcloud.io/api/project_badges/measure?project=sharm294_sonar&metric=alert_status
    :target: https://sonarcloud.io/dashboard?id=sharm294_sonar
