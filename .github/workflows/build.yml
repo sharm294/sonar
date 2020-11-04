@@ -29,7 +29,6 @@ jobs:
         coverage run -m pytest -k 'not shell'
         coverage xml -i
     - name: fix code coverage paths
-      working-directory: ./coverage
       run: |
         sed -i 's/\/home\/runner\/work\/sonar\/sonar\//\/github\/workspace\//g' coverage.xml
     - name: SonarCloud Scan
