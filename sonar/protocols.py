@@ -4,13 +4,14 @@ This module defines protocols on top of base interfaces for convenience
 
 from math import ceil
 
-from .interfaces import AXIS
+from sonar.interfaces.axi4_stream import AXI4Stream
 
 
-class Ethernet(object):
+class Ethernet:
     """
     The Ethernet protocol over AXI-Stream
     """
+
     def __init__(self, mac_src, mac_dst, ether_type, prefix=None, suffix=None):
         """
         Initialize an Ethernet object
@@ -64,7 +65,9 @@ class Ethernet(object):
 
                 if self.suffix is not None:
                     bin_data.extend(bytearray.fromhex(self.suffix[2:]))
-                interface._file_to_stream(thread, bin_data, parsing_func, endian)
+                interface._file_to_stream(
+                    thread, bin_data, parsing_func, endian
+                )
         else:
             raise NotImplementedError()
 
@@ -144,7 +147,7 @@ class Ethernet(object):
         octet[12] = self.ether_type[2:4]
         octet[13] = self.ether_type[4:6]
 
-        if isinstance(interface, AXIS):
+        if isinstance(interface, AXI4Stream):
             data_channel = "tdata"
         else:
             raise NotImplementedError

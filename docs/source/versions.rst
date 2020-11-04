@@ -17,12 +17,13 @@ Features
 - Add global timeout for SV testbenches
 - Add user-specified header files for testbenches
 - Improve C++ testbenches
-    - Better SV-like testbench generation as opposed to relying on user macros
-    - New ``call_dut()`` command for Threads (ignored in SV testbenches)
-    - Remove ``callTB`` as an interface argument
-    - Replace ``c_stream`` and ``c_struct`` with ``iClass`` (interface class)
-      and ``flit``, respectively
+  - Better SV-like testbench generation as opposed to relying on user macros
+  - New ``call_dut()`` command for Threads (ignored in SV testbenches)
+  - Remove ``callTB`` as an interface argument
+  - Replace ``c_stream`` and ``c_struct`` with ``iClass`` (interface class)
+    and ``flit``, respectively
 - Add ``cpp_vivado`` constructor for Modules
+- Significant refactoring, documentation, and method/class renaming
 
 Bugfixes
 ^^^^^^^^
@@ -35,6 +36,7 @@ C++ testbench generation
 
 This update breaks old Sonar testbenches for C++ testbench generation. To
 correctly generate C++ testbenches:
+
 - use the ``cpp_vivado`` constructor for modules (used to mark the source file
   as a C++ source for Vivado HLS which is used for some assumptions about DUT
   signals)
@@ -53,6 +55,14 @@ correctly generate C++ testbenches:
 
 The data file format and testbench template for C++ has also changed and so
 testbenches need to be regenerated from Sonar.
+
+Refactoring
+"""""""""""
+
+There was significant baggage from legacy JSON/YAML usage in how the project
+was partioned and organized. Here, we rename methods and classes to follow
+a more consistent Python style and reorganize, cleanup and document code.
+The goal of this cleanup is to make future extensions more straightforward.
 
 3.0.0
 -----

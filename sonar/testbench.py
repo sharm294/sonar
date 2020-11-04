@@ -4,16 +4,16 @@ Main module to define a testbench in sonar
 
 import json
 
-from .base_types import SonarObject, InterfacePort
-import sonar.base_types
-from .core import sonar as SonarCore
+import sonar.base_types as base
+from sonar.core import generate
 
 
-class Testbench(SonarObject):
+class Testbench(base.SonarObject):
     """
-    Holds the complete testbench with global attributes, the modules, and the 
+    Holds the complete testbench with global attributes, the modules, and the
     test vectors
     """
+
     def __init__(self):
         """
         Initializes a Testbench object with empty attributes
@@ -113,6 +113,23 @@ class Testbench(SonarObject):
         called ONCE after all test vectors have been completed and added.
         """
 
+        def update_waits(index, temp_key):
+            if temp_key.isdigit():
+                if int(temp_key) >= index:
+                    raise Exception
+                return None
+            if temp_key not in conditions:
+                new_key = str(index)
+                waits.append({"condition": temp_key, "key": new_key})
+                conditions.append(temp_key)
+                index += 1
+                return new_key
+            for wait in waits:
+                if wait["condition"] == temp_key:
+                    key = wait["key"]
+                    break
+            return key
+
         waits = []
         conditions = []
         flag_present = False
@@ -121,28 +138,13 @@ class Testbench(SonarObject):
             for thread in vector.threads:
                 for command in thread.commands:
                     if "wait" in command:
-                        # print(command)
                         temp_key = command["wait"]["key"]
-                        # print(temp_key)
                         if temp_key == "flag":
                             flag_present = True
                             continue
-                        if temp_key.isdigit():
-                            if int(temp_key) >= index:
-                                raise Exception
-                            continue
-                        if temp_key not in conditions:
-                            new_key = str(index)
-                            waits.append({"condition": temp_key, "key": new_key})
-                            conditions.append(temp_key)
-                            index += 1
-                            command["wait"]["key"] = new_key
-                        else:
-                            for wait in waits:
-                                if wait["condition"] == temp_key:
-                                    key = wait["key"]
-                                    break
-                            command["wait"]["key"] = key
+                        updated_key = update_waits(index, temp_key)
+                        if updated_key:
+                            command["wait"]["key"] = updated_key
         if flag_present:
             waits.append({"condition": "wait(flags[$value]);", "key": "flag"})
         self.wait_conditions = waits
@@ -158,7 +160,7 @@ class Testbench(SonarObject):
         sonar_dict = {}
         sonar_dict["metadata"] = self.metadata
         modules = {}
-        for key, module in self.modules.items():
+        for _, module in self.modules.items():
             modules[module.name] = module.asdict()
         sonar_dict["modules"] = modules
         sonar_dict["wait_conditions"] = self.wait_conditions
@@ -179,7 +181,7 @@ class Testbench(SonarObject):
 
         return json.dumps(self.asdict(), indent=2)
 
-    def generate_tb(self, tb_filepath, languages):
+    def generate_tb(self, tb_filepath, languages, force=False):
         """
         After the Testbench object is complete, this will invoke the Sonar Core
         to generate the testbench(es) based on the information
@@ -190,13 +192,35 @@ class Testbench(SonarObject):
         """
 
         self._finalize_waits()
-        SonarCore.sonar(self, tb_filepath, languages)
+        generate.sonar(self, tb_filepath, languages, force)
+
+    def get_from_dut(self, key):
+        """
+        Get certain parts of the DUT from the testbench
+
+        Args:
+            key (str): Key used to access different parts
+
+        Returns:
+            various: Return type depends on the key
+        """
+        dut = self.modules["DUT"]
+        if key == "interfaces":
+            return dut.ports.get_interfaces()
+        if key == "interfaces_dict":
+            return dut.ports.get_interfaces(collapse=False)
+        if key == "signals":
+            return dut.ports.get_signals()
+        if key == "wait_conditions":
+            return self.wait_conditions
+        return getattr(dut, key)
 
 
-class Module(SonarObject):
+class Module(base.SonarObject):
     """
     Defines a module in a testbench
     """
+
     def __init__(self):
         """
         Initializes a module with empty attributes
@@ -206,12 +230,8 @@ class Module(SonarObject):
         # self.lang = "sv"
         # self.hls = None
         # self.hls_version = None
-        self.type = {
-            "lang": "sv",
-            "hls": None,
-            "hls_version": None
-        }
-        self.ports = sonar.base_types.ModulePorts()
+        self.type = {"lang": "sv", "hls": None, "hls_version": None}
+        self.ports = base.ModulePorts()
         self.parameters = []
         self.interfaces_count = {}
 
@@ -286,7 +306,7 @@ class Module(SonarObject):
             size (int, optional): Defaults to 1. Width of the port in bits
         """
 
-        signal = sonar.base_types.Signal(name, size, direction)
+        signal = base.SignalPort(name, size, direction)
         self.ports.add_signal(signal)
 
     def add_parameter(self, name, value):
@@ -308,7 +328,7 @@ class Module(SonarObject):
             period (str): Period of the clock (e.g. 20ns, 10ps etc.)
         """
 
-        signal = sonar.base_types.Clock(name, 1, "input", period)
+        signal = base.ClockPort(name, 1, period, "input")
         self.ports.add_clock(signal)
 
     def add_reset_port(self, name):
@@ -319,7 +339,7 @@ class Module(SonarObject):
             name (str): Name of the reset signal
         """
 
-        signal = sonar.base_types.Signal(name, 1, "input")
+        signal = base.SignalPort(name, 1, "input")
         self.ports.add_reset(signal)
 
     def add_interface(self, interface):
@@ -327,17 +347,16 @@ class Module(SonarObject):
         Adds an interface port to this module
 
         Args:
-            interface (InterfacePort->child): Represents the interface port and
-                must be a child class of InterfacePort. An interface class will
-                define its port at Interface.port
+            interface (BaseInterface): Represents the interface port and
+                must be a child class of BaseInterface.
         """
 
-        port = interface.port
-        if port.type not in self.ports.interfaces.count:
-            self.ports.interfaces.count[port.type] = 0
+        port = interface
+        if port.interface_type not in self.ports.interfaces.count:
+            self.ports.interfaces.count[port.interface_type] = 0
         else:
-            self.ports.interfaces.count[port.type] += 1
-        port.index = self.ports.interfaces.count[port.type]
+            self.ports.interfaces.count[port.interface_type] += 1
+        port.index = self.ports.interfaces.count[port.interface_type]
         port.readResp = "rresp_" + str(port.index)
         port.writeResp = "wresp_" + str(port.index)
         port.readData = "rdata_" + str(port.index)
@@ -359,10 +378,11 @@ class Module(SonarObject):
         return module
 
 
-class TestVector(SonarObject):
+class TestVector(base.SonarObject):
     """
     Defines a test vector in a testbench
     """
+
     def __init__(self, thread=None, threads=None):
         """
         Initializes a TestVector object
@@ -413,10 +433,11 @@ class TestVector(SonarObject):
         return threads
 
 
-class Thread(SonarObject):
+class Thread(base.SonarObject):
     """
     Defines a one serial thread of execution in a parallel test vector
     """
+
     def __init__(self):
         """
         Initializes a default empty thread
@@ -496,7 +517,10 @@ class Thread(SonarObject):
 
         if self._enable_timestamps:
             self.commands.append(
-                {"timestamp": self.timestamp_prefix + str(self.timestamp_index)}
+                {
+                    "timestamp": self.timestamp_prefix
+                    + str(self.timestamp_index)
+                }
             )
             self.timestamp_index += 1
 
@@ -609,7 +633,9 @@ class Thread(SonarObject):
         if value is None:
             self.commands.append({"wait": {"key": condition_tmp}})
         else:
-            self.commands.append({"wait": {"key": condition_tmp, "value": value}})
+            self.commands.append(
+                {"wait": {"key": condition_tmp, "value": value}}
+            )
         self._print_timestamp()
 
     def wait_posedge(self, signal):
@@ -644,7 +670,7 @@ class Thread(SonarObject):
             ValueError: Raised if edge is not posedge or negedge
         """
 
-        if edge != "posedge" and edge != "negedge":
+        if edge not in ("posedge", "negedge"):
             raise ValueError()
         condition_tmp = "@(" + edge + " " + signal + ");"
         self.commands.append({"wait": {"key": condition_tmp}})

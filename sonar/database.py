@@ -11,8 +11,8 @@ import shelve
 
 import toml
 
-from sonar.exceptions import SonarInvalidArgError, SonarInvalidOpError
 from sonar.core.include import Constants
+from sonar.exceptions import SonarInvalidArgError, SonarInvalidOpError
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,8 @@ class Tool:
                 _dict = {"versions": [], "executable": {}, "script": {}}
             if version in _dict["versions"]:
                 logger.error(
-                    "%s already exists. Use 'edit' to modify existing tools", version
+                    "%s already exists. Use 'edit' to modify existing tools",
+                    version,
                 )
                 raise SonarInvalidOpError
             _dict["versions"].append(version)
@@ -374,12 +375,15 @@ class Board:
                 board = db["board"][name]
             except KeyError as exc:
                 logger.error(
-                    "Could not find board: %s. See boards with `sonar board info`", name
+                    "Could not find board: %s. See boards with `sonar board info`",
+                    name,
                 )
                 raise SonarInvalidArgError from exc
             with open(Constants.SONAR_SHELL_BOARD_SOURCE, "w") as f:
                 script = []
-                board_settings = runpy.run_path(os.path.join(board, "__init__.py"))
+                board_settings = runpy.run_path(
+                    os.path.join(board, "__init__.py")
+                )
                 part = board_settings["PART"]
                 if "BOARD" in board_settings:
                     board = board_settings["BOARD"]
@@ -527,7 +531,8 @@ class Repo:
                 repo = db["repo"][name]
             except KeyError as exc:
                 logger.error(
-                    "Could not find repo: %s. See repos with `sonar repo show`", name
+                    "Could not find repo: %s. See repos with `sonar repo show`",
+                    name,
                 )
                 raise SonarInvalidArgError from exc
             with open(Constants.SONAR_SHELL_REPO_SOURCE, "w") as f:
@@ -585,7 +590,9 @@ class IP:
         init_dict["project"]["ips"] = [name]
         if "ips" not in init_dict:
             init_dict["ips"] = {}
-        init_dict["ips"][name] = {"path": str(path).replace(str(repo_path), "")}
+        init_dict["ips"][name] = {
+            "path": str(path).replace(str(repo_path), "")
+        }
         with open(init_toml, "w") as f:
             toml.dump(init_dict, f)
 

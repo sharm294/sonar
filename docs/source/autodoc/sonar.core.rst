@@ -7,7 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   sonar.core.include
+   sonar.core.backends
 
 Submodules
 ----------
@@ -20,30 +20,13 @@ sonar.core.generate module
    :undoc-members:
    :show-inheritance:
 
-sonar.core.parse module
------------------------
+sonar.core.include module
+-------------------------
 
-.. automodule:: sonar.core.parse
+.. automodule:: sonar.core.include
    :members:
    :undoc-members:
    :show-inheritance:
-
-sonar.core.sonar module
------------------------
-
-.. automodule:: sonar.core.sonar
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-sonar.core.writeJSON module
----------------------------
-
-.. automodule:: sonar.core.writeJSON
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 
 Module contents
 ---------------

@@ -3,7 +3,7 @@ sonar uses custom exceptions to pass more useful error messages back. This
 module defines the exceptions.
 """
 
-from enum import IntEnum, unique, auto
+from enum import IntEnum, auto, unique
 
 
 @unique

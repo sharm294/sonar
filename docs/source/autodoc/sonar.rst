@@ -9,6 +9,7 @@ Subpackages
 
    sonar.boards
    sonar.core
+   sonar.interfaces
 
 Submodules
 ----------
@@ -53,26 +54,10 @@ sonar.exceptions module
    :undoc-members:
    :show-inheritance:
 
-sonar.generators module
------------------------
-
-.. automodule:: sonar.generators
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 sonar.include module
 --------------------
 
 .. automodule:: sonar.include
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-sonar.interfaces module
------------------------
-
-.. automodule:: sonar.interfaces
    :members:
    :undoc-members:
    :show-inheritance:
@@ -93,6 +78,14 @@ sonar.make module
    :undoc-members:
    :show-inheritance:
 
+sonar.protocols module
+----------------------
+
+.. automodule:: sonar.protocols
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 sonar.testbench module
 ----------------------
 
@@ -100,15 +93,6 @@ sonar.testbench module
    :members:
    :undoc-members:
    :show-inheritance:
-
-sonar.utils module
-------------------
-
-.. automodule:: sonar.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 
 Module contents
 ---------------

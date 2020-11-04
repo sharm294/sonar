@@ -58,57 +58,30 @@ To install, clone this repository, go to the cloned directory and run:
 
 .. code:: bash
 
-   $ pip install .
+  $ pip install .
 
-   # start a new shell or login again
+  # start a new shell or login again
 
-   # initialize with local Xilinx path
-   $ sonar init vivado /path/to/Xilinx/directory
-   # then use "sonar activate vivado_{version}" to change versions
-   $ sonar activate vivado_2017.2
-   # for now, this should print "sourced file" if successful
+  # initialize with local Xilinx path
+  $ sonar init vivado /path/to/Xilinx/directory
+  # then use "sonar activate vivado_{version}" to change versions
+  $ sonar activate vivado_2017.2
+  # for now, this should print "sourced file" if successful
 
-The best example for usage can be found in ``tests/shell/sample``. This
+The best example for usage can be found in ``docs/projects/hello_world``. This
 example shows a sample C++ source code and an associated testbench
-(``sample_src.py``). This testbench file shows the syntax and some of
+(``hello_world.py``). This testbench file shows the syntax and some of
 the features that the *sonar* testbenches can have.
 
 .. code:: python
 
-   # to use the testbench, import sonar in python e.g.
-   from sonar.testbench import Testbench, Module, TestVector, Thread
-   from sonar.interfaces import AXIS, SAXILite
+  # to use the testbench, import sonar in python e.g.
+  from sonar.testbench import Testbench, Module, TestVector, Thread
 
-The ``test.sh`` script in the same directory is part of the *sonar*'s
+The ``test_hello_world.sh`` script in ``tests/shell`` is part of the *sonar*'s
 internal testing. It shows an example of *sonar*'s command line
 interface and the commands used to create a new repository, add an IP to
 it and simulate it.
-
-.. code:: bash
-
-   # create a repo named 'sample_repo' in the current directory
-   $ sonar create repo sample_repo
-   $ cd sample_repo || return
-
-   # activate vivado 2017.2, use this repo,
-   # set the board to an Alpha Data 8k5
-   $ sonar activate vivado_2017.2
-   $ sonar repo activate sample_repo
-   $ sonar board activate ad_8k5
-
-   # create an IP in this directory named 'sample_ip'
-   $ sonar create ip sample_ip
-
-   # add source files and add the name of the file to the Makefile
-
-   # generate the HLS IP
-   $ make hw-sample_src
-
-   # generate the sonar TB
-   $ make config-sample_src
-
-   # create a vivado project for sample_src and simulate it in terminal
-   $ ./run.sh cad sample_src batch behav 1 0 0 0 0
 
 Dependencies
 ============
@@ -135,42 +108,42 @@ environment are below:
 
 .. code:: bash
 
-   # install sonar as editable
-   $ pip install -e .
+  # install sonar as editable
+  $ pip install -e .
 
-   # install optional but RECOMMENDED packages
-   conda install argcomplete
+  # install optional but RECOMMENDED packages
+  conda install argcomplete
 
-   # install testing dependencies
-   $ conda install pytest coverage
+  # install testing dependencies
+  $ conda install pytest coverage
 
-   # install pre-commit and pre-commit hooks
-   $ conda install pylint
-   $ conda install -c conda-forge pre-commit cpplint cppcheck shellcheck
-   $ conda install -c sarcasm clang-format
+  # install pre-commit and pre-commit hooks
+  $ conda install pylint
+  $ conda install -c conda-forge pre-commit cpplint cppcheck shellcheck
+  $ conda install -c sarcasm clang-format
 
-   # activate argcomplete globally for your user if it's not otherwise activated
-   # note: make sure user bash completion scripts are picked up by .bashrc!
-   $ activate-global-python-argcomplete --user
+  # activate argcomplete globally for your user if it's not otherwise activated
+  # note: make sure user bash completion scripts are picked up by .bashrc!
+  $ activate-global-python-argcomplete --user
 
-   # install pre-commit if not installed for this repository
-   $ pre-commit install
-   
+  # install pre-commit if not installed for this repository
+  $ pre-commit install
+
 .. |Build Status Master| image:: https://travis-ci.org/sharm294/sonar.svg?branch=master
-   :target: https://travis-ci.org/sharm294/sonar
+  :target: https://travis-ci.org/sharm294/sonar
 .. |Build Status Dev| image:: https://travis-ci.org/sharm294/sonar.svg?branch=dev
-   :target: https://travis-ci.org/sharm294/sonar
+  :target: https://travis-ci.org/sharm294/sonar
 .. |codecov Master| image:: https://codecov.io/gh/sharm294/sonar/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/sharm294/sonar
+  :target: https://codecov.io/gh/sharm294/sonar
 .. |codecov Dev| image:: https://codecov.io/gh/sharm294/sonar/branch/dev/graph/badge.svg
-   :target: https://codecov.io/gh/sharm294/sonar
+  :target: https://codecov.io/gh/sharm294/sonar
 .. |Quality Gate Master| image:: https://sonarcloud.io/api/project_badges/measure?project=sharm294_sonar&metric=alert_status
-   :target: https://sonarcloud.io/dashboard?id=sharm294_sonar
+  :target: https://sonarcloud.io/dashboard?id=sharm294_sonar
 .. |Quality Gate Dev| image:: https://sonarcloud.io/api/project_badges/measure?branch=dev&project=sharm294_sonar&metric=alert_status
-   :target: https://sonarcloud.io/dashboard?id=sharm294_sonar&branch=dev
+  :target: https://sonarcloud.io/dashboard?id=sharm294_sonar&branch=dev
 .. |Docs| image:: https://readthedocs.org/projects/sonar/badge/?version=latest
-   :target: https://sonar.readthedocs.io/en/latest/?badge=latest
-   :alt: Documentation Status
+  :target: https://sonar.readthedocs.io/en/latest/?badge=latest
+  :alt: Documentation Status
 .. _argcomplete: https://github.com/kislyuk/argcomplete#global-completion
 .. _pytest: https://docs.pytest.org/en/stable/
 .. _conda: https://docs.conda.io/en/latest/miniconda.html

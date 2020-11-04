@@ -1,14 +1,19 @@
-from gitlint.rules import LineRule, RuleViolation, CommitMessageTitle
-from gitlint.options import ListOption
+"""
+These rules govern gitlint, a pre-commit tool to validate each git commit
+message
+"""
+
 import nltk
+from gitlint.options import ListOption
+from gitlint.rules import CommitMessageTitle, LineRule, RuleViolation
 
 DEFAULT_BANNED_CHARS = "$^%@!*()"
 
 
 class SpecialChars(LineRule):
-    f"""
-    This rule will enforce that the commit message title does not contain any of\
-    the following characters: {DEFAULT_BANNED_CHARS}
+    """
+    This rule will enforce that the commit message title does not contain any
+    banned characters.
     """
 
     # A rule MUST have a human friendly name
@@ -30,6 +35,16 @@ class SpecialChars(LineRule):
     ]
 
     def validate(self, line, _commit):
+        """
+        Validate each line
+
+        Args:
+            line (str): line
+            _commit (???): ???
+
+        Returns:
+            list: List of violations
+        """
         violations = []
         # options can be accessed by looking them up by their name in self.options
         for char in self.options["special-chars"].value:
@@ -68,10 +83,9 @@ def check_imperative(sentence: str) -> str:
             or tag.startswith("VBN")
         ):
             return word
-        elif tag.startswith("VBP") or tag.startswith("VB"):
+        if tag.startswith("VBP") or tag.startswith("VB"):
             return ""  # this word is okay
-        else:
-            return word  # perhaps not a verb?
+        return word  # perhaps not a verb?
     except LookupError:
         print(
             "NLTK data missing, install by running following commands "
@@ -82,7 +96,7 @@ def check_imperative(sentence: str) -> str:
 
 
 class ImperativeTenseTitle(LineRule):
-    f"""
+    """
     This rule will enforce that the commit message title starts in imperative tense.
     """
 
@@ -96,6 +110,16 @@ class ImperativeTenseTitle(LineRule):
     target = CommitMessageTitle
 
     def validate(self, line, _commit):
+        """
+        Validate each line
+
+        Args:
+            line (str): line
+            _commit (???): ???
+
+        Returns:
+            list: List of violations
+        """
         violations = []
         word = check_imperative(line)
         if word:

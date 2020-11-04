@@ -67,7 +67,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Topic :: Software Development :: Testing",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     # this doesn't work to enable argcomplete
     # entry_points={"console_scripts": ["sonar=sonar.main:main"]},
     scripts=["tools/sonar"],

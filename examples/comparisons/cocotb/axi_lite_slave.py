@@ -1,11 +1,10 @@
 import os
 
-from sonar.testbench import Testbench, Module, TestVector, Thread
-from sonar.interfaces import SAXILite
-
+from sonar.interfaces.axi4_lite_slave import AXI4LiteSlave
+from sonar.testbench import Module, Testbench, TestVector, Thread
 
 # create top-level entity for the testbench using the default constructor
-# and set the Module_Name metadata tag to 'sample' as specified by the
+# and set the Module_Name metadata tag to 'fdct' as specified by the
 # default constructor.
 axi_lite_tb = Testbench.default("fdct")
 filepath = os.path.join(os.path.dirname(__file__), "build/")
@@ -17,11 +16,11 @@ dut = Module.default("DUT")
 dut.add_clock_port("clk", "5ns")
 dut.add_reset_port("rst")
 
-ctrl_bus = SAXILite("s_axi_ctrl_bus", "clk", "rst")
+ctrl_bus = AXI4LiteSlave("s_axi_ctrl_bus", "clk", "rst")
 ctrl_bus.add_register("reg_0", 0x0)  # register 'reg_0' is at 0x0
 ctrl_bus.add_register("reg_1", 0x1)  # register 'reg_1' is at 0x1
 ctrl_bus.set_address("4K", 0)  # address range is 4K at an offset of 0
-ctrl_bus.port.init_channels(mode="default", dataWidth=32, addrWidth=32)
+ctrl_bus.init_signals(mode="default", data_width=32, addr_width=32)
 dut.add_interface(ctrl_bus)
 
 axi_lite_tb.add_module(dut)

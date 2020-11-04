@@ -32,7 +32,7 @@ def test_home_path(tmpdir_factory):
 @pytest.fixture(scope="session", autouse=True)
 def test_dir(tmpdir_factory):
     """
-    Creates the directory structure in the temporary test directory for the 
+    Creates the directory structure in the temporary test directory for the
     various tests
 
     Args:
@@ -48,10 +48,12 @@ def test_dir(tmpdir_factory):
         """
         Holds the paths created as attributes
         """
+
         class VivadoPaths:
             """
             Vivado paths are used to test the vivado initialization function
             """
+
             non_existent = base_path.joinpath("DOES_NOT_EXIST")
             no_vivado = base_path.joinpath("Xilinx")
             one_vivado = base_path.joinpath("Xilinx/Xilinx_1")
@@ -61,11 +63,30 @@ def test_dir(tmpdir_factory):
             """
             Used to test creating repositories
             """
+
             repo_base_path = base_path.joinpath("repos")
             valid = repo_base_path.joinpath("valid")
 
+        class Testbench:
+            """
+            Testbench tests
+            """
+
+            testbench = base_path.joinpath("testbench")
+            hello_world = testbench.joinpath("hello_world")
+
+        class Shell:
+            """
+            Shell tests
+            """
+
+            shell = base_path.joinpath("shell")
+            hello_world = shell.joinpath("hello_world")
+
         vivado = VivadoPaths()
         repos = RepoPaths()
+        testbench = Testbench()
+        shell = Shell()
         base = base_path
 
     one_vivado = TestPaths.vivado.one_vivado.joinpath("Vivado/2017.2")
@@ -78,11 +99,17 @@ def test_dir(tmpdir_factory):
 
     TestPaths.repos.valid.mkdir(parents=True)
 
+    TestPaths.testbench.hello_world.mkdir(parents=True)
+
+    TestPaths.shell.hello_world.mkdir(parents=True)
+
     return TestPaths
 
 
 @pytest.fixture(autouse=True)
-def patch_constants(monkeypatch, test_home_path):
+def patch_constants(
+    monkeypatch, test_home_path
+):  # pylint: disable=redefined-outer-name
     """
     For pytest, override the default constants used in sonar
 
@@ -90,12 +117,14 @@ def patch_constants(monkeypatch, test_home_path):
         monkeypatch (monkeypatch): Defined in pytest for monkeypatching code
         test_home_path (str): Path to the new home directory for sonar
     """
+
     @init_constants
     class MockConstants(Constants):
         """
         New mock Constants class that inherits all the constants from the base
         class but overrides the base path to our temporary home path
         """
+
         SONAR_BASE_PATH = Path(test_home_path)
 
     # each of these files imports their own version of the Constants so we need
@@ -110,6 +139,7 @@ class CallSonar:
     """
     Allows pytest tests to call sonar
     """
+
     @staticmethod
     def cli(args=""):
         """
@@ -154,8 +184,11 @@ class Helper:
     """
     Helpful functions for pytest tests
     """
+
     @staticmethod
-    def check_filesystem(base_path, directories=None, files=None, check_all=True):
+    def check_filesystem(
+        base_path, directories=None, files=None, check_all=True
+    ):
         """
         Check the filesystem at a given path to make sure that the listed files
         and/or directories all exist
@@ -171,6 +204,7 @@ class Helper:
         Returns:
             Tuple: (list of missing files/dirs, list of extra files/dirs)
         """
+        # pylint: disable=too-many-branches
         assert (
             directories is not None or files is not None
         ), "One of directories or files must be specified"

@@ -5,6 +5,7 @@ disable=no-name-in-module, # module detection doesn't always work correctly
         trailing-whitespace, # handled by black
         fixme, # allow fixme / TODO etc. in code
         protected-access, # this is fine if done with intention
+        import-error, # can be tricky with different environments
 
 
 [FORMAT]

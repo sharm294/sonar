@@ -45,7 +45,10 @@ def parse_args():
         "-h", "--help", action="help", help="show this help message and exit"
     )
     command_group.add_argument(
-        "-v", "--version", action="version", version="%(prog)s " + sonar.__version__
+        "-v",
+        "--version",
+        action="version",
+        version="%(prog)s " + sonar.__version__,
     )
     try:
         argcomplete.autocomplete(parser)

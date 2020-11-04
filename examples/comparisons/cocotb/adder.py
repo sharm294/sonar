@@ -1,13 +1,13 @@
 import os
 import random
 
-from sonar.testbench import Testbench, Module, TestVector
+from sonar.testbench import Module, Testbench, TestVector
 
 # from sonar.interfaces import AXIS, SAXILite
 
 
 # create top-level entity for the testbench using the default constructor
-# and set the Module_Name metadata tag to 'sample' as specified by the
+# and set the Module_Name metadata tag to 'adder' as specified by the
 # default constructor.
 adder_tb = Testbench.default("adder")
 filepath = os.path.join(os.path.dirname(__file__), "build/")

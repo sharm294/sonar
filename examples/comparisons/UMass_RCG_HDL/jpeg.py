@@ -1,7 +1,6 @@
 import os
 
-from sonar.testbench import Testbench, Module, TestVector
-
+from sonar.testbench import Module, Testbench, TestVector
 
 # create top-level entity for the testbench using the default constructor
 # and set the Module_Name metadata tag to 'jpeg' as specified by the
@@ -142,7 +141,9 @@ for n in range(output_lists_start, output_lists_end):
 
     for y in range(8):
         for x in range(8):
-            thread_2.wait("assert(dout == $value)", output_array[output_list_cnt] - 128)
+            thread_2.wait(
+                "assert(dout == $value)", output_array[output_list_cnt] - 128
+            )
             output_list_cnt += 1
             thread_2.wait_posedge("clk")
 

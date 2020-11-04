@@ -42,8 +42,12 @@ def env(parser):
     Args:
         parser (argparse._SubParserAction): The parser object
     """
-    subparser = parser.add_parser("env", help="Manage sonar envs", add_help=False)
-    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+    subparser = parser.add_parser(
+        "env", help="Manage sonar envs", add_help=False
+    )
+    subsubparser = subparser.add_subparsers(
+        title="Commands", metavar="command"
+    )
 
     def add():
         command = subsubparser.add_parser(
@@ -81,7 +85,9 @@ def env(parser):
             description="Removes an env",
         )
         command_group = command.add_argument_group("Arguments")
-        command_group.add_argument("name", type=str, help="Name of env to remove")
+        command_group.add_argument(
+            "name", type=str, help="Name of env to remove"
+        )
         command.set_defaults(func=api.Env.remove)
         add_help(command)
 
@@ -155,8 +161,12 @@ def tool(parser):
     Args:
         parser (argparse._SubParserAction): The parser object
     """
-    subparser = parser.add_parser("tool", help="Manage hw tools", add_help=False)
-    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+    subparser = parser.add_parser(
+        "tool", help="Manage hw tools", add_help=False
+    )
+    subsubparser = subparser.add_subparsers(
+        title="Commands", metavar="command"
+    )
 
     # def add():
     #     command = subsubparser.add_parser(
@@ -259,7 +269,9 @@ def board(parser):
     subparser = parser.add_parser(
         "board", help="Manage board definitions", add_help=False
     )
-    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+    subsubparser = subparser.add_subparsers(
+        title="Commands", metavar="command"
+    )
 
     def add():
         command = subsubparser.add_parser(
@@ -274,7 +286,9 @@ def board(parser):
         )
         command_group = command.add_argument_group("Arguments")
         command_group.add_argument(
-            "path", type=str, help="Path to directory containing board definition"
+            "path",
+            type=str,
+            help="Path to directory containing board definition",
         )
         command.set_defaults(func=api.Board.add)
         add_help(command)
@@ -287,7 +301,9 @@ def board(parser):
             description="Removes a board from the database",
         )
         command_group = command.add_argument_group("Arguments")
-        command_group.add_argument("name", type=str, help="Name of board to remove")
+        command_group.add_argument(
+            "name", type=str, help="Name of board to remove"
+        )
         command.set_defaults(func=api.Board.remove)
         add_help(command)
 
@@ -299,7 +315,9 @@ def board(parser):
             description="Shows information about a board",
         )
         command_group = command.add_argument_group("Arguments")
-        command_group.add_argument("name", type=str, help="Name of board to show")
+        command_group.add_argument(
+            "name", type=str, help="Name of board to show"
+        )
         command.set_defaults(func=api.Board.show)
         add_help(command)
 
@@ -368,8 +386,12 @@ def repo(parser):
     Args:
         parser (argparse._SubParserAction): The parser object
     """
-    subparser = parser.add_parser("repo", help="Manage sonar repos", add_help=False)
-    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+    subparser = parser.add_parser(
+        "repo", help="Manage sonar repos", add_help=False
+    )
+    subsubparser = subparser.add_subparsers(
+        title="Commands", metavar="command"
+    )
 
     def add():
         command = subsubparser.add_parser(
@@ -468,7 +490,9 @@ def create(parser):
     subparser = parser.add_parser(
         "create", help="Manipulate the active repo", add_help=False
     )
-    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+    subsubparser = subparser.add_subparsers(
+        title="Commands", metavar="command"
+    )
 
     def ip():
         command = subsubparser.add_parser(
@@ -540,7 +564,9 @@ def init(parser):
     subparser = parser.add_parser("init", help="Initialize sonar")
 
     subparser.set_defaults(func=api.Init.one_time_setup)
-    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+    subsubparser = subparser.add_subparsers(
+        title="Commands", metavar="command"
+    )
 
     def vivado():
         command = subsubparser.add_parser(
@@ -632,7 +658,9 @@ def database(parser):
     subparser = parser.add_parser(
         "database", help="Manipulate the sonar database", add_help=False
     )
-    subsubparser = subparser.add_subparsers(title="Commands", metavar="command")
+    subsubparser = subparser.add_subparsers(
+        title="Commands", metavar="command"
+    )
 
     def f_list():
         command = subsubparser.add_parser(

@@ -23,9 +23,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "sample_src.hpp"
+#include "hello_world.hpp"
 
-void sample_src(
+void hello_world(
   volatile uint_3_t *state_out,
   uint_1_t* ack,
   axis_t* axis_output,

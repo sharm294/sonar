@@ -1,15 +1,23 @@
+"""
+Unit tests for the sonar database
+"""
+
 import os
-import pytest
 import textwrap
+
+import pytest
 import toml
 
 import sonar.api
+import sonar.core.include
 import sonar.database
 import sonar.exceptions
-import sonar.core.include
 
 
 def test_find_fpga_family():
+    """
+    Test the Xilinx FPGA part -> family mappings
+    """
     fpgas = [
         ("xcku3p-ffva676-1L-i", "Kintex_Ultrascale_Plus"),
         ("xcku115-flva1517-2-e", "Kintex_Ultrascale"),
@@ -26,12 +34,36 @@ def test_find_fpga_family():
         assert family == fpga[1]
 
 
+def mock_config(_path):
+    """
+    Load a mock config to override toml.load()
+
+    Args:
+        path (str): Normally, the path to the TOML is provided
+
+    Returns:
+        dict: The interpreted TOML file
+    """
+    return {"project": {"name": "valid"}}
+
+
 class TestTool:
+    """
+    Test the tool-related parts of the database
+    """
+
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def setup(self):  # pylint: disable=no-self-use
+        """
+        Verify that the database exists
+        """
         sonar.api.check_database()
 
-    def test_get(self):
+    @staticmethod
+    def test_get():
+        """
+        Test 'get' for tools
+        """
         sonar.database.init()
         with pytest.raises(sonar.exceptions.SonarInvalidArgError):
             tool = sonar.database.Tool.get("quartus")
@@ -52,7 +84,11 @@ class TestTool:
         tool = sonar.database.Tool.get("vivado")
         assert tool == {
             "versions": ["2017.2"],
-            "executable": {"cad": "vivado", "hls": "vivado_hls", "sim": "vivado"},
+            "executable": {
+                "cad": "vivado",
+                "hls": "vivado_hls",
+                "sim": "vivado",
+            },
             "script": {"2017.2": "source xzy\nexport this=foo\n"},
         }
 
@@ -73,14 +109,22 @@ class TestTool:
         tool = tools["vivado"]
         assert tool == {
             "versions": ["2017.2", "2017.3"],
-            "executable": {"cad": "vivado", "hls": "vivado_hls", "sim": "vivado"},
+            "executable": {
+                "cad": "vivado",
+                "hls": "vivado_hls",
+                "sim": "vivado",
+            },
             "script": {
                 "2017.2": "source xzy\nexport this=foo\n",
                 "2017.3": "source zyx\nexport this=bar\n",
             },
         }
 
-    def test_activate(self):
+    @staticmethod
+    def test_activate():
+        """
+        Test activating a tool
+        """
         sonar.database.init()
         sonar.database.Tool.add(
             "vivado",
@@ -104,7 +148,9 @@ class TestTool:
         assert active["sim"] == tool
         assert active["hls"] == tool
 
-        file_str = open(sonar.core.include.Constants.SONAR_SHELL_TOOL_SOURCE, "r").read()
+        file_str = open(
+            sonar.core.include.Constants.SONAR_SHELL_TOOL_SOURCE, "r"
+        ).read()
         assert file_str == textwrap.dedent(
             """\
             source xzy
@@ -114,16 +160,31 @@ class TestTool:
 
 
 class TestBoard:
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        sonar.api.check_database()
+    """
+    Test the board-related parts of the database
+    """
 
-    def test_get(self, call_sonar):
+    @pytest.fixture(autouse=True)
+    def setup(self, call_sonar):
+        """
+        Verify that the database exists
+        """
+        # pylint: disable=attribute-defined-outside-init
+        sonar.api.check_database()
+        self.sonar = call_sonar
+
+    def test_get(self):
+        """
+        Test 'get' for a board
+
+        Args:
+            call_sonar (CallSonar): Used to call sonar from Python
+        """
         sonar.database.init()
         with pytest.raises(sonar.exceptions.SonarInvalidArgError):
             board = sonar.database.Board.get("fake_board")
 
-        board_path = os.path.join(call_sonar.abs_path(), "sonar/boards/ad_8k5")
+        board_path = os.path.join(self.sonar.abs_path(), "sonar/boards/ad_8k5")
         sonar.database.Board.add(board_path)
 
         boards = sonar.database.Board.get()
@@ -131,17 +192,26 @@ class TestBoard:
         board = sonar.database.Board.get("ad_8k5")
         assert board == board_path
 
-    def test_activate(self, call_sonar):
+    def test_activate(self):
+        """
+        Test activating a board
+
+        Args:
+            call_sonar (CallSonar): Used to call sonar from Python
+        """
+
         sonar.database.init()
 
-        board_path = os.path.join(call_sonar.abs_path(), "sonar/boards/ad_8k5")
+        board_path = os.path.join(self.sonar.abs_path(), "sonar/boards/ad_8k5")
         sonar.database.Board.add(board_path)
 
         sonar.database.Board.activate("ad_8k5")
         active = sonar.database.Board.get_active()
         assert active == "ad_8k5"
 
-        file_str = open(sonar.core.include.Constants.SONAR_SHELL_BOARD_SOURCE, "r").read()
+        file_str = open(
+            sonar.core.include.Constants.SONAR_SHELL_BOARD_SOURCE, "r"
+        ).read()
         assert file_str == textwrap.dedent(
             """\
             export SONAR_BOARD_NAME=ad_8k5
@@ -151,52 +221,83 @@ class TestBoard:
 
 
 class TestRepo:
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        sonar.api.check_database()
+    """
+    Test the repository-related parts of the database
+    """
 
-    def test_get(self, test_dir, monkeypatch):
+    @pytest.fixture(autouse=True)
+    def setup(self, test_dir):
+        """
+        Verify that the database exists
+        """
+        # pylint: disable=attribute-defined-outside-init
+        sonar.api.check_database()
+        self.paths = test_dir.repos
+
+    def test_get(self, monkeypatch):
+        """
+        Test 'get' for a repository
+
+        Args:
+            monkeypatch (MonkeyPatch): Defined in pytest for monkeypatching code
+        """
         sonar.database.init()
         with pytest.raises(sonar.exceptions.SonarInvalidArgError):
             sonar.database.Repo.get("fake_repo")
 
-        def mock_config(path):
-            return {"project": {"name": "valid"}}
-
         monkeypatch.setattr(toml, "load", mock_config)
-        sonar.database.Repo.add(test_dir.repos.valid)
+        sonar.database.Repo.add(self.paths.valid)
 
         repos = sonar.database.Repo.get()
-        assert repos == {"valid": {"path": test_dir.repos.valid}}
+        assert repos == {"valid": {"path": self.paths.valid}}
         repo = sonar.database.Repo.get("valid")
-        assert repo == {"path": test_dir.repos.valid}
+        assert repo == {"path": self.paths.valid}
 
-    def test_activate(self, test_dir, monkeypatch):
+    def test_activate(self, monkeypatch):
+        """
+        Test 'get' for a repository
+
+        Args:
+            monkeypatch (MonkeyPatch): Defined in pytest for monkeypatching code
+        """
         sonar.database.init()
 
-        def mock_config(path):
-            return {"project": {"name": "valid"}}
-
         monkeypatch.setattr(toml, "load", mock_config)
-        sonar.database.Repo.add(test_dir.repos.valid)
+        sonar.database.Repo.add(self.paths.valid)
 
         sonar.database.Repo.activate("valid")
         active = sonar.database.Repo.get_active()
         assert active == "valid"
 
-        file_str = open(sonar.core.include.Constants.SONAR_SHELL_REPO_SOURCE, "r").read()
+        file_str = open(
+            sonar.core.include.Constants.SONAR_SHELL_REPO_SOURCE, "r"
+        ).read()
         assert file_str == textwrap.dedent(
             f"""\
-            export SONAR_REPO={test_dir.repos.valid}"""
+            export SONAR_REPO={self.paths.valid}"""
         )
 
 
 class TestEnv:
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        sonar.api.check_database()
+    """
+    Test the environment-related parts of the database
+    """
 
-    def test_get(self, test_dir, monkeypatch):
+    @pytest.fixture(autouse=True)
+    def setup(self, test_dir, call_sonar):
+        """
+        Verify that the database exists
+        """
+        # pylint: disable=attribute-defined-outside-init
+        sonar.api.check_database()
+        self.paths = test_dir.repos
+        self.sonar = call_sonar
+
+    @staticmethod
+    def test_get():
+        """
+        Test 'get' for an environment
+        """
         sonar.database.init()
         with pytest.raises(sonar.exceptions.SonarInvalidArgError):
             sonar.database.Env.get("fake_env")
@@ -223,16 +324,19 @@ class TestEnv:
             "repo": "valid",
         }
 
-    def test_activate(self, call_sonar, test_dir, monkeypatch):
+    def test_activate(self, monkeypatch):
+        """
+        Test activating an environment
+
+        Args:
+            monkeypatch (MonkeyPatch): Defined in pytest for monkeypatching code
+        """
         sonar.database.init()
 
-        def mock_config(path):
-            return {"project": {"name": "valid"}}
-
         monkeypatch.setattr(toml, "load", mock_config)
-        sonar.database.Repo.add(test_dir.repos.valid)
+        sonar.database.Repo.add(self.paths.valid)
 
-        board_path = os.path.join(call_sonar.abs_path(), "sonar/boards/ad_8k5")
+        board_path = os.path.join(self.sonar.abs_path(), "sonar/boards/ad_8k5")
         sonar.database.Board.add(board_path)
 
         sonar.database.Tool.add(
@@ -256,13 +360,17 @@ class TestEnv:
         active = sonar.database.Env.get_active()
         assert active == "test_env"
 
-        file_str = open(sonar.core.include.Constants.SONAR_SHELL_REPO_SOURCE, "r").read()
+        file_str = open(
+            sonar.core.include.Constants.SONAR_SHELL_REPO_SOURCE, "r"
+        ).read()
         assert file_str == textwrap.dedent(
             f"""\
-            export SONAR_REPO={test_dir.repos.valid}"""
+            export SONAR_REPO={self.paths.valid}"""
         )
 
-        file_str = open(sonar.core.include.Constants.SONAR_SHELL_BOARD_SOURCE, "r").read()
+        file_str = open(
+            sonar.core.include.Constants.SONAR_SHELL_BOARD_SOURCE, "r"
+        ).read()
         assert file_str == textwrap.dedent(
             """\
             export SONAR_BOARD_NAME=ad_8k5
@@ -270,7 +378,9 @@ class TestEnv:
             export SONAR_PART_FAMILY=Kintex_Ultrascale"""
         )
 
-        file_str = open(sonar.core.include.Constants.SONAR_SHELL_TOOL_SOURCE, "r").read()
+        file_str = open(
+            sonar.core.include.Constants.SONAR_SHELL_TOOL_SOURCE, "r"
+        ).read()
         assert file_str == textwrap.dedent(
             """\
             source xzy

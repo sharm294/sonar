@@ -1,10 +1,9 @@
 import os
 
-from sonar.testbench import Testbench, Module, TestVector
-
+from sonar.testbench import Module, Testbench, TestVector
 
 # create top-level entity for the testbench using the default constructor
-# and set the Module_Name metadata tag to 'sample' as specified by the
+# and set the Module_Name metadata tag to 'fir_filter' as specified by the
 # default constructor.
 fir_tb = Testbench.default("fir_filter")
 filepath = os.path.join(os.path.dirname(__file__), "build/")
@@ -299,7 +298,7 @@ thread_12.wait("assert(data_out_11 == $value)", 1)
 delayed_assert(thread_12, 40, "data_out_11", 0)
 toggle_assert(thread_12, 40, 60, "data_out_11")
 
-outputT.end_vector()  # terminates the test vector
+thread_12.end_vector()  # terminates the test vector
 
 # epilogue -----------------------------------------------------------------
 

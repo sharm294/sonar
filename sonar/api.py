@@ -16,7 +16,7 @@ import toml
 
 import sonar.database
 import sonar.include
-from sonar.core.include import configure_logging, Constants
+from sonar.core.include import Constants, configure_logging
 from sonar.exceptions import ReturnValue, SonarException
 from sonar.make import MakeFile
 
@@ -135,10 +135,17 @@ class Tool:
         """
         try:
             sonar.database.Tool.add(
-                args.name, args.version, args.cad, args.hls, args.sim, args.script
+                args.name,
+                args.version,
+                args.cad,
+                args.hls,
+                args.sim,
+                args.script,
             )
         except SonarException as exc:
-            logger.exception("Adding a tool to the database failed: %s", exc.exit_str)
+            logger.exception(
+                "Adding a tool to the database failed: %s", exc.exit_str
+            )
             sys.exit(exc.exit_code)
 
     # def remove(args):
@@ -293,7 +300,9 @@ class Init:
                 if "# added by sonar" in line:
                     break
             else:  # not found, we are at the eof
-                f.write(f"source {Constants.SONAR_SHELL_MAIN_SOURCE} # added by sonar")
+                f.write(
+                    f"source {Constants.SONAR_SHELL_MAIN_SOURCE} # added by sonar"
+                )
         files = os.listdir(os.path.join(os.path.dirname(__file__), "boards"))
         boards = [x for x in files if x not in ("__init__.py", "__pycache__")]
         for board in boards:
@@ -326,9 +335,13 @@ class Init:
         vivado_script = Constants.SONAR_SHELL_PATH.joinpath("setup_vivado.sh")
         for version in vivado_versions:
             if float(version) <= 2017.2:
-                include_dir = os.path.join(xilinx_path, f"Vivado_HLS/{version}/include")
+                include_dir = os.path.join(
+                    xilinx_path, f"Vivado_HLS/{version}/include"
+                )
             else:
-                include_dir = os.path.join(xilinx_path, f"Vivado/{version}/include")
+                include_dir = os.path.join(
+                    xilinx_path, f"Vivado/{version}/include"
+                )
             args = sonar.include.DotDict(
                 {
                     "type": "vivado",
@@ -445,14 +458,26 @@ class Create:
         with open(ip_dir.joinpath("Makefile"), "w") as f:
             f.write("include sonar.mk")
 
-        src_dir = os.path.join(os.path.dirname(__file__), "files_to_copy/repo/ip")
-        shutil.copy(os.path.join(src_dir, "generate_cad.tcl"), ip_dir.joinpath("cad"))
-        shutil.copy(os.path.join(src_dir, "generate_cad.sh"), ip_dir.joinpath("cad"))
-        shutil.copy(os.path.join(src_dir, "generate_hls.tcl"), ip_dir.joinpath("hls"))
-        shutil.copy(os.path.join(src_dir, "generate_hls.sh"), ip_dir.joinpath("hls"))
+        src_dir = os.path.join(
+            os.path.dirname(__file__), "files_to_copy/repo/ip"
+        )
+        shutil.copy(
+            os.path.join(src_dir, "generate_cad.tcl"), ip_dir.joinpath("cad")
+        )
+        shutil.copy(
+            os.path.join(src_dir, "generate_cad.sh"), ip_dir.joinpath("cad")
+        )
+        shutil.copy(
+            os.path.join(src_dir, "generate_hls.tcl"), ip_dir.joinpath("hls")
+        )
+        shutil.copy(
+            os.path.join(src_dir, "generate_hls.sh"), ip_dir.joinpath("hls")
+        )
         shutil.copy(os.path.join(src_dir, "run.sh"), ip_dir)
 
-        base_ip_path_sh = str(ip_dir).replace(os.getenv("SONAR_REPO"), "$SONAR_REPO")
+        base_ip_path_sh = str(ip_dir).replace(
+            os.getenv("SONAR_REPO"), "$SONAR_REPO"
+        )
         base_ip_path_tcl = str(ip_dir).replace(
             os.getenv("SONAR_REPO"), "${::env(SONAR_REPO)}"
         )
@@ -507,7 +532,9 @@ class Create:
         repo_dir = curr_dir.joinpath(args.name)
         repo_dir.mkdir()
 
-        src_dir = os.path.join(os.path.dirname(__file__), "files_to_copy/repo/.sonar")
+        src_dir = os.path.join(
+            os.path.dirname(__file__), "files_to_copy/repo/.sonar"
+        )
         sonar_dir = repo_dir.joinpath(".sonar")
         shutil.copytree(
             src_dir, sonar_dir, ignore=shutil.ignore_patterns("__pycache__*")

@@ -1,5 +1,5 @@
-Modules
-=======
+sonar
+=====
 
 .. toctree::
    :maxdepth: 4

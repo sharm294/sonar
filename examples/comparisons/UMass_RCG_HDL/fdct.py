@@ -1,10 +1,9 @@
 import os
 
-from sonar.testbench import Testbench, Module, TestVector
-
+from sonar.testbench import Module, Testbench, TestVector
 
 # create top-level entity for the testbench using the default constructor
-# and set the Module_Name metadata tag to 'sample' as specified by the
+# and set the Module_Name metadata tag to 'fdct' as specified by the
 # default constructor.
 fdct_tb = Testbench.default("fdct")
 filepath = os.path.join(os.path.dirname(__file__), "build/")

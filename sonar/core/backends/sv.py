@@ -1,9 +1,13 @@
-import datetime
-import logging
-import re
-import itertools
-import os
+"""
+The SystemVerilog backend for generating testbenches
+"""
+# pylint: disable=too-many-lines
 
+import datetime
+import itertools
+import logging
+import os
+import re
 from shlex import split as quoteSplit
 
 import sonar.core.backends.include as include
@@ -13,25 +17,21 @@ TAB_SIZE = "    "
 
 logger = logging.getLogger(__name__)
 
-def add_headers(testbench_config, testbench):
-    headers = ""
-    if "Headers" in testbench_config.metadata:
-        for header_tuple in testbench_config.metadata["Headers"]:
-            if isinstance(header_tuple, (list, tuple)):
-                header_file = header_tuple[0]
-                header_mode = header_tuple[1]
-            else:
-                header_file = header_tuple
-                header_mode = "auto"
-            if header_mode == "sv":
-                headers += f'`include "{header_file}"\n'
-            elif header_mode == "auto":
-                if header_file.endswith((".v", ".sv")):
-                    headers += f'`include "{header_file}"\n'
-    testbench = include.replace_in_testbenches(testbench, "SONAR_HEADER_FILE", headers)
-    return testbench
 
 def add_timeformat(testbench_config, testbench):
+    """
+    Configure the time format for the testbench
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+
+    Raises:
+        SonarInvalidArgError: Invalid time format
+
+    Returns:
+        str: Updated testbench
+    """
     time_format_str = "$timeformat("
     precision = str(testbench_config.metadata["Time_Format"]["precision"])
     time_format = testbench_config.metadata["Time_Format"]["unit"]
@@ -48,111 +48,210 @@ def add_timeformat(testbench_config, testbench):
     elif time_format.endswith("s"):
         time_format_str += "0, " + precision + ', " s", 0);'
     else:
-        logger.error("Unknown time format: %s", testbench_config.metadata["Time_Format"])
+        logger.error(
+            "Unknown time format: %s", testbench_config.metadata["Time_Format"]
+        )
         raise SonarInvalidArgError
-    testbench = include.replace_in_testbenches(testbench, "SONAR_TIMEFORMAT", time_format_str)
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_TIMEFORMAT", time_format_str
+    )
     return testbench
 
+
 def add_imports(testbench_config, testbench, used_interfaces):
-    # ------------------------------------------------------------------------------#
-    # Import any packages that interfaces may use
-    interfaces = include.get_from_dut(testbench_config, "interfaces")
+    """
+    Import any packages that may be needed
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+        used_interfaces (dict): Each used interface appears once
+
+    Returns:
+        str: Updated testbench
+    """
+    interfaces = testbench_config.get_from_dut("interfaces")
 
     imports = ""
     for _name, interface in used_interfaces.items():
         if hasattr(interface, "import_packages_global"):
             imports += interface.import_packages_global()
     for interface in interfaces:
-        curr_interface = used_interfaces[interface.type]
+        curr_interface = used_interfaces[interface.interface_type]
         if hasattr(curr_interface, "import_packages_local"):
             imports += curr_interface.import_packages_local(interface)
-    testbench = include.replace_in_testbenches(testbench, "SONAR_IMPORT_PACKAGES", imports[:-1])
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_IMPORT_PACKAGES", imports[:-1]
+    )
     return testbench
 
+
 def add_initial_prologue(testbench_config, testbench, used_interfaces):
-    # ------------------------------------------------------------------------------#
-    # Add any statements an interface might require within an initial block
-    interfaces = include.get_from_dut(testbench_config, "interfaces")
+    """
+    Add any statements an interface might require within an initial block
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+        used_interfaces (dict): Each used interface appears once
+
+    Returns:
+        str: Updated testbench
+    """
+    interfaces = testbench_config.get_from_dut("interfaces")
 
     initial_prologue = ""
-    leading_spaces = include.get_indentation("SONAR_INITIAL_PROLOGUE", testbench)
+    leading_spaces = include.get_indentation(
+        "SONAR_INITIAL_PROLOGUE", testbench
+    )
     for interface in interfaces:
-        curr_interface = used_interfaces[interface.type]
+        curr_interface = used_interfaces[interface.interface_type]
         if hasattr(curr_interface, "initial_prologue"):
             initial_prologue = curr_interface.initial_prologue(
                 initial_prologue, interface, leading_spaces
             )
-            initial_prologue = include.replaceVar(initial_prologue, interface)
-    testbench = include.replace_in_testbenches(testbench, "SONAR_INITIAL_PROLOGUE", initial_prologue[:-1])
+            initial_prologue = include.replace_variables(
+                initial_prologue, interface
+            )
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_INITIAL_PROLOGUE", initial_prologue[:-1]
+    )
     return testbench
 
+
 def add_exerciser_prologue(testbench_config, testbench, used_interfaces):
-    # ------------------------------------------------------------------------------#
-    # Add any statements an interface might require within outside an initial block
-    interfaces = include.get_from_dut(testbench_config, "interfaces")
+    """
+    Add any statements an interface might require outside an initial block
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+        used_interfaces (dict): Each used interface appears once
+
+    Returns:
+        str: Updated testbench
+    """
+    interfaces = testbench_config.get_from_dut("interfaces")
 
     exerciser_prologue = ""
-    leading_spaces = include.get_indentation("SONAR_EXERCISER_PROLOGUE", testbench)
+    leading_spaces = include.get_indentation(
+        "SONAR_EXERCISER_PROLOGUE", testbench
+    )
     for interface in interfaces:
-        curr_interface = used_interfaces[interface.type]
+        curr_interface = used_interfaces[interface.interface_type]
         if hasattr(curr_interface, "exerciser_prologue"):
             exerciser_prologue = curr_interface.exerciser_prologue(
                 exerciser_prologue, interface, leading_spaces
             )
-            exerciser_prologue = include.replaceVar(exerciser_prologue, interface)
-    testbench = include.replace_in_testbenches(testbench, "SONAR_EXERCISER_PROLOGUE", exerciser_prologue[:-1])
+            exerciser_prologue = include.replace_variables(
+                exerciser_prologue, interface
+            )
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_EXERCISER_PROLOGUE", exerciser_prologue[:-1]
+    )
     return testbench
 
+
 def add_tcl(testbench_config, used_interfaces, directory):
-    # ------------------------------------------------------------------------------#
-    # Run any TCL scripts in Vivado as required by interfaces
-    interfaces = include.get_from_dut(testbench_config, "interfaces")
+    """
+    Generates any TCL scripts as required by interfaces
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+        directory (str): Path to directory to place generated files
+    """
+    interfaces = testbench_config.get_from_dut("interfaces")
 
     for interface in interfaces:
-        curr_interface = used_interfaces[interface.type]
+        curr_interface = used_interfaces[interface.interface_type]
         if hasattr(curr_interface, "source_tcl"):
             curr_interface.source_tcl(interface, directory)
-    # return testbench
+
 
 def add_exerciser_ports(testbench_config, testbench, used_interfaces):
+    """
+    Add the ports of the Exerciser
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+        used_interfaces (dict): Each used interface appears once
+
+    Returns:
+        str: Updated testbench
+    """
+
+    def add_interfaces(exerciser_ports):
+        interfaces = testbench_config.get_from_dut("interfaces_dict")
+        for direction in ["slave", "master", "mixed"]:
+            for interface in interfaces[direction]:
+                if interface.connection_mode != "native":
+                    continue
+                curr_interface = used_interfaces[interface.interface_type]
+                for signal_type, signal in interface.signals.items():
+                    exerciser_ports += leading_spaces
+                    if direction in ["slave", "mixed"]:
+                        if signal_type in curr_interface.signals["input"]:
+                            exerciser_ports += "input "
+                        else:
+                            exerciser_ports += "output "
+                            init_signals.append(
+                                interface.name + "_" + signal_type
+                            )
+                    else:
+                        if signal_type in curr_interface.signals["output"]:
+                            exerciser_ports += "input "
+                        else:
+                            exerciser_ports += "output "
+                            init_signals.append(
+                                interface.name + "_" + signal_type
+                            )
+                    exerciser_ports += "logic "
+                    if int(signal.size) != 1:
+                        exerciser_ports += (
+                            "[" + str(int(signal.size) - 1) + ":0] "
+                        )
+                    exerciser_ports += (
+                        interface.name + "_" + signal_type + ",\n"
+                    )
+        return exerciser_ports
+
+    def resolve_init_signals():
+        init_commands = []
+        for init_signal in init_signals:
+            init_commands.append({"signal": {"name": init_signal, "value": 0}})
+
+        for i, vector in enumerate(testbench_config.vectors):
+            for j, thread in enumerate(vector.threads):
+                for k, command in enumerate(thread.commands):
+                    if (
+                        "macro" in command
+                        and command["macro"] == "INIT_SIGNALS"
+                    ):
+                        testbench_config.vectors[i].threads[j].commands[k][
+                            "commands"
+                        ] = init_commands
+
     dut = testbench_config.modules["DUT"]
     clocks_in = dut.ports.get_clocks("input")
     signals_in = dut.ports.get_signals("input")
     resets_in = dut.ports.get_resets("input")
     signals_out = dut.ports.get_signals("output")
-    interfaces = include.get_from_dut(testbench_config, "interfaces_dict")
-    
+
     init_signals = []
 
     exerciser_ports = ""
-    leading_spaces = include.get_indentation("SONAR_EXERCISER_PORTS", testbench)
+    leading_spaces = include.get_indentation(
+        "SONAR_EXERCISER_PORTS", testbench
+    )
     for clock in clocks_in:
         if exerciser_ports != "":
             exerciser_ports += leading_spaces
         exerciser_ports += "output logic " + clock.name + ",\n"
-    for direction in ["slave", "master", "mixed"]:
-        for interface in interfaces[direction]:
-            if interface.connection_mode != "native":
-                continue
-            curr_interface = used_interfaces[interface.type]
-            for channel in interface.channels:
-                exerciser_ports += leading_spaces
-                if direction in ["slave", "mixed"]:
-                    if channel["type"] in curr_interface.master_input_channels:
-                        exerciser_ports += "input "
-                    else:
-                        exerciser_ports += "output "
-                        init_signals.append(interface.name + "_" + channel["type"])
-                else:
-                    if channel["type"] in curr_interface.master_output_channels:
-                        exerciser_ports += "input "
-                    else:
-                        exerciser_ports += "output "
-                        init_signals.append(interface.name + "_" + channel["type"])
-                exerciser_ports += "logic "
-                if int(channel["size"]) != 1:
-                    exerciser_ports += "[" + str(int(channel["size"]) - 1) + ":0] "
-                exerciser_ports += interface.name + "_" + channel["type"] + ",\n"
+
+    exerciser_ports = add_interfaces(exerciser_ports)
+
     for signal in itertools.chain(signals_in, resets_in):
         exerciser_ports += leading_spaces + "output logic "
         if int(signal.size) != 1:
@@ -164,33 +263,31 @@ def add_exerciser_ports(testbench_config, testbench, used_interfaces):
         if int(signal.size) != 1:
             exerciser_ports += "[" + str(int(signal.size) - 1) + ":0] "
         exerciser_ports += signal.name + ",\n"
-    testbench = include.replace_in_testbenches(testbench, "SONAR_EXERCISER_PORTS", exerciser_ports[:-2])
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_EXERCISER_PORTS", exerciser_ports[:-2]
+    )
 
-    init_commands = []
-    for init_signal in init_signals:
-        init_commands.append({"signal": {"name": init_signal, "value": 0}})
-
-    for i, vector in enumerate(testbench_config.vectors):
-        for j, thread in enumerate(vector.threads):
-            for k, command in enumerate(thread.commands):
-                if "macro" in command and command["macro"] == "INIT_SIGNALS":
-                    testbench_config.vectors[i].threads[j].commands[k]["commands"] = init_commands
-                elif "interface" in command:
-                    curr_interface = include.get_interface(command["interface"]["type"])
-                    
-                    new_packets = []
-                    for packet in command["interface"]["payload"]:
-                        new_packets.append(curr_interface.json_payload(packet))
-                    testbench_config.vectors[i].threads[j].commands[k]["payload"] = new_packets
+    resolve_init_signals()
 
     return testbench, testbench_config
 
+
 def instantiate_exerciser(testbench_config, testbench):
+    """
+    Instantiate the Exerciser module
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+
+    Returns:
+        str: Updated testbench
+    """
     dut = testbench_config.modules["DUT"]
     clocks_in = dut.ports.get_clocks("input")
     signals = dut.ports.get_signals()
     resets = dut.ports.get_resets()
-    interfaces = include.get_from_dut(testbench_config, "interfaces")
+    interfaces = testbench_config.get_from_dut("interfaces")
 
     exerciser_int = ""
     leading_spaces = include.get_indentation("SONAR_EXERCISER_INT", testbench)
@@ -207,18 +304,18 @@ def instantiate_exerciser(testbench_config, testbench):
         )
     for interface in interfaces:
         if interface.connection_mode == "native":
-            for channel in interface.channels:
+            for signal_type, signal in interface.signals.items():
                 exerciser_int += (
                     leading_spaces
                     + TAB_SIZE
                     + "."
                     + interface.name
                     + "_"
-                    + channel["type"]
+                    + signal_type
                     + "("
                     + interface.name
                     + "_"
-                    + channel["type"]
+                    + signal_type
                     + "),\n"
                 )
     for signal in itertools.chain(signals, resets):
@@ -233,128 +330,139 @@ def instantiate_exerciser(testbench_config, testbench):
         )
     exerciser_int = exerciser_int[:-2] + "\n"
     exerciser_int += leading_spaces + ");\n"
-    testbench = include.replace_in_testbenches(testbench, "SONAR_EXERCISER_INT", exerciser_int[:-1])
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_EXERCISER_INT", exerciser_int[:-1]
+    )
     return testbench
 
+
 def instantiate_interface_ips(testbench_config, testbench, used_interfaces):
-    # ------------------------------------------------------------------------------#
-    # Instantiate any IPs required by interfaces
-    interfaces = include.get_from_dut(testbench_config, "interfaces")
+    """
+    Instantiate any IPs required by the interfaces
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+        used_interfaces (dict): Each used interface appears once
+
+    Returns:
+        str: Updated testbench
+    """
+    interfaces = testbench_config.get_from_dut("interfaces")
 
     ip_inst = ""
     leading_spaces = include.get_indentation("SONAR_IP_INST", testbench)
     for interface in interfaces:
-        curr_interface = used_interfaces[interface.type]
+        curr_interface = used_interfaces[interface.interface_type]
         if hasattr(curr_interface, "instantiate"):
             ip_inst = curr_interface.instantiate(
                 ip_inst, interface, leading_spaces, TAB_SIZE
             )
-    testbench = include.replace_in_testbenches(testbench, "SONAR_IP_INST", ip_inst[:-1])
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_IP_INST", ip_inst[:-1]
+    )
     return testbench
 
+
+def modify_signal_name(original_name, dut_type):
+    """
+    For Vivado HLS, some signal names are changed from the source file in the
+    generated Verilog. Here, we address that change
+
+    Args:
+        original_name (str): The original name of the port from the src file
+        dut_type (dict): Information from the testbench config describing the
+        type of DUT that is being used.
+
+    Returns:
+        str: The modified name of the signal, if changed
+    """
+    port_name = original_name
+    if dut_type["lang"] != "sv":  # TODO temporary workaround
+        if dut_type["hls"] == "vivado" and dut_type["hls_version"] == "2018.1":
+            port_name = original_name + "_V"
+    return port_name
+
+
 def instantiate_dut(testbench_config, testbench):
+    """
+    Instantiate the device-under-test
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+
+    Returns:
+        str: Updated testbench
+    """
+    # pylint: disable=too-many-locals
     dut = testbench_config.modules["DUT"]
     clocks_in = dut.ports.get_clocks("input")
     signals_in = dut.ports.get_signals("input")
     resets_in = dut.ports.get_resets("input")
     signals_out = dut.ports.get_signals("output")
-    parameters = include.get_from_dut(testbench_config, "parameters")
-    interfaces = include.get_from_dut(testbench_config, "interfaces")
+    parameters = testbench_config.get_from_dut("parameters")
+    interfaces = testbench_config.get_from_dut("interfaces")
 
     dut_inst = ""
     leading_spaces = include.get_indentation("SONAR_DUT_INST", testbench)
+    module_name = testbench_config.metadata["Module_Name"]
     if parameters:
         dut_inst += testbench_config.metadata["Module_Name"] + " #(\n"
         for parameter in parameters[:-1]:
-            dut_inst += (
-                leading_spaces
-                + TAB_SIZE
-                + "."
-                + parameter[0]
-                + "("
-                + str(parameter[1])
-                + "),\n"
-            )
-        dut_inst += (
-            leading_spaces
-            + TAB_SIZE
-            + "."
-            + parameters[-1][0]
-            + "("
-            + str(parameters[-1][1])
-            + ")\n"
-        )
-        dut_inst += (
-            leading_spaces + ") " + testbench_config.metadata["Module_Name"] + "_i (\n"
-        )
+            dut_inst += f"{leading_spaces}{TAB_SIZE}.{parameter[0]}({str(parameter[1])}),\n"
+        dut_inst += f"{leading_spaces}{TAB_SIZE}.{parameters[-1][0]}({str(parameters[-1][1])})\n"
+        dut_inst += f"{leading_spaces}) {module_name}_i (\n"
     else:
+        dut_inst += f"{module_name} {module_name}_i (\n"
+    for signal in itertools.chain(clocks_in, resets_in):
         dut_inst += (
-            testbench_config.metadata["Module_Name"]
-            + " "
-            + testbench_config.metadata["Module_Name"]
-            + "_i (\n"
-        )
-    for clock in clocks_in:
-        dut_inst += (
-            leading_spaces
-            + TAB_SIZE
-            + "."
-            + clock.name
-            + "("
-            + clock.name
-            + "),\n"
+            f"{leading_spaces}{TAB_SIZE}.{signal.name}({signal.name}),\n"
         )
     dut_type = testbench_config.modules["DUT"].type
-    for signal in signals_in:
-        port_name = signal.name
-        if dut_type["lang"] != "sv":  # TODO temporary workaround
-            if dut_type["hls"] == "vivado" and dut_type["hls_version"] == "2018.1":
-                if "type" not in signal or signal["type"] != "reset":
-                    port_name = port_name + "_V"
-        dut_inst += (
-            leading_spaces + TAB_SIZE + "." + port_name + "(" + signal.name + "),\n"
-        )
-    for reset in resets_in:
-        port_name = reset.name
-        dut_inst += (
-            leading_spaces + TAB_SIZE + "." + port_name + "(" + reset.name + "),\n"
-        )
-    for signal in signals_out:
-        if dut_type["lang"] != "sv":
-            if dut_type["hls"] == "vivado" and dut_type["hls_version"] == "2018.1":
-                port_name = signal.name + "_V"
-        else:
-            port_name = signal.name
-        dut_inst += (
-            leading_spaces + TAB_SIZE + "." + port_name + "(" + signal.name + "),\n"
-        )
+    for signal in itertools.chain(signals_in, signals_out):
+        port_name = modify_signal_name(signal.name, dut_type)
+        dut_inst += f"{leading_spaces}{TAB_SIZE}.{port_name}({signal.name}),\n"
     for interface in interfaces:
-        for channel in interface.channels:
+        for signal_type, signal in interface.signals.items():
             dut_inst += (
                 leading_spaces
                 + TAB_SIZE
                 + "."
                 + interface.name
                 + "_"
-                + channel["name"]
+                + signal.name
                 + "("
                 + interface.name
                 + "_"
-                + channel["type"]
+                + signal_type
                 + "),\n"
             )
     dut_inst = dut_inst[:-2] + "\n"
     dut_inst += leading_spaces + ");"
-    testbench = include.replace_in_testbenches(testbench, "SONAR_DUT_INST", dut_inst)
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_DUT_INST", dut_inst
+    )
 
     return testbench
 
+
 def declare_signals(testbench_config, testbench):
+    """
+    Declare all signals used to connect to the DUT
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+
+    Returns:
+        str: Updated testbench
+    """
     dut = testbench_config.modules["DUT"]
     clocks_in = dut.ports.get_clocks("input")
     signals = dut.ports.get_signals()
     resets = dut.ports.get_resets()
-    interfaces = include.get_from_dut(testbench_config, "interfaces")
+    interfaces = testbench_config.get_from_dut("interfaces")
 
     tb_signal_list = ""
     max_signal_size = 0
@@ -378,38 +486,54 @@ def declare_signals(testbench_config, testbench):
         if int(signal.size) > max_signal_size:
             max_signal_size = int(signal.size)
     for interface in interfaces:
-        for channel in interface.channels:
-            if int(channel["size"]) == 1:
+        for signal_type, signal in interface.signals.items():
+            if int(signal.size) == 1:
                 tb_signal_list += (
                     leading_spaces
                     + "logic "
                     + interface.name
                     + "_"
-                    + channel["type"]
+                    + signal_type
                     + ";\n"
                 )
             else:
                 tb_signal_list += (
                     leading_spaces
                     + "logic ["
-                    + str(int(channel["size"]) - 1)
+                    + str(int(signal.size) - 1)
                     + ":0] "
                     + interface.name
                     + "_"
-                    + channel["type"]
+                    + signal_type
                     + ";\n"
                 )
-            if int(channel["size"]) > max_signal_size:
-                max_signal_size = int(channel["size"])
-    testbench = include.replace_in_testbenches(testbench, "SONAR_TB_SIGNAL_LIST", tb_signal_list[:-1])
-    testbench = include.replace_in_testbenches(testbench, "SONAR_MAX_DATA_SIZE", max_signal_size)
+            if int(signal.size) > max_signal_size:
+                max_signal_size = int(signal.size)
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_TB_SIGNAL_LIST", tb_signal_list[:-1]
+    )
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_MAX_DATA_SIZE", max_signal_size
+    )
     return testbench
 
+
 def set_signals(testbench_config, testbench, used_interfaces):
+    """
+    When reading commands, add the logic to assign values to individual signals
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+        used_interfaces (dict): Each used interface appears once
+
+    Returns:
+        str: Updated testbench
+    """
     dut = testbench_config.modules["DUT"]
     signals_in = dut.ports.get_signals("input")
     resets_in = dut.ports.get_resets("input")
-    interfaces = include.get_from_dut(testbench_config, "interfaces")
+    interfaces = testbench_config.get_from_dut("interfaces")
 
     ifelse_signal = ""
     leading_spaces = include.get_indentation("SONAR_IF_ELSE_SIGNAL", testbench)
@@ -429,62 +553,75 @@ def set_signals(testbench_config, testbench, used_interfaces):
         )
     for interface in interfaces:
         if interface.connection_mode == "native":
-            curr_interface = used_interfaces[interface.type]
-            for channel in interface.channels:
-                if (interface.direction in ("slave", "mixed") and 
-                    channel["type"] in curr_interface.master_output_channels) or (interface.direction in ("master") and 
-                    channel["type"] in curr_interface.master_input_channels):
+            curr_interface = used_interfaces[interface.interface_type]
+            for signal_type, signal in interface.signals.items():
+                if (
+                    interface.direction in ("slave", "mixed")
+                    and signal_type in curr_interface.signals["output"]
+                ) or (
+                    interface.direction in ("master")
+                    and signal_type in curr_interface.signals["input"]
+                ):
                     if ifelse_signal != "":
                         ifelse_signal += leading_spaces + "else "
                     ifelse_signal += (
                         'if(interfaceType_par == "'
                         + interface.name
                         + "_"
-                        + channel["type"]
+                        + signal_type
                         + '") begin\n'
                         + leading_spaces
                         + TAB_SIZE
                         + interface.name
                         + "_"
-                        + channel["type"]
+                        + signal_type
                         + " = args[0];\n"
                         + leading_spaces
                         + "end\n"
                     )
-    testbench = include.replace_in_testbenches(testbench, "SONAR_IF_ELSE_SIGNAL", ifelse_signal[:-1])
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_IF_ELSE_SIGNAL", ifelse_signal[:-1]
+    )
     return testbench
 
-def set_interfaces(testbench_config, testbench, used_interfaces):
+
+def set_interfaces(testbench_config, testbench):
+    """
+    When reading commands, add the logic to assign interact with interfaces
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+
+    Returns:
+        str: Updated testbench
+    """
     dut = testbench_config.modules["DUT"]
     interfaces_slave = dut.ports.get_interfaces("slave")
     interfaces_master = dut.ports.get_interfaces("master")
     interfaces_mixed = dut.ports.get_interfaces("mixed")
 
     replace_str = ""
-    leading_spaces = include.get_indentation("SONAR_ELSE_IF_INTERFACE_IN", testbench)
+    leading_spaces = include.get_indentation(
+        "SONAR_ELSE_IF_INTERFACE_IN", testbench
+    )
     for interface in interfaces_slave:
-        curr_interface = used_interfaces[interface.type]
         if replace_str != "":
             replace_str += leading_spaces
         replace_str += (
             'else if(interfaceType_par == "' + interface.name + '") begin\n'
         )
         replace_str = include.command_var_replace(
-            replace_str,
-            interface,
-            curr_interface.master_action,
-            leading_spaces + TAB_SIZE,
-            curr_interface.sv_args,
+            replace_str, interface, leading_spaces + TAB_SIZE, "sv", "master"
         )
         replace_str += leading_spaces + "end\n"
     for interface in interfaces_mixed:
-        curr_interface = used_interfaces[interface.type]
         if replace_str != "":
             replace_str += leading_spaces
         replace_str += (
             'else if(interfaceType_par == "' + interface.name + '") begin\n'
         )
-        for mode in curr_interface.sv_interface_io:
+        for mode in interface.core.actions["sv"]["modes"]:
             replace_str += (
                 leading_spaces
                 + TAB_SIZE
@@ -497,35 +634,47 @@ def set_interfaces(testbench_config, testbench, used_interfaces):
             replace_str = include.command_var_replace(
                 replace_str,
                 interface,
-                getattr(curr_interface, mode["func"]),
                 leading_spaces + TAB_SIZE + TAB_SIZE,
-                curr_interface.sv_args,
+                "sv",
+                mode["func"],
             )
             replace_str += leading_spaces + TAB_SIZE + "end\n"
         replace_str += leading_spaces + "end\n"
-    testbench = include.replace_in_testbenches(testbench, "SONAR_ELSE_IF_INTERFACE_IN", replace_str[:-1])
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_ELSE_IF_INTERFACE_IN", replace_str[:-1]
+    )
 
     replace_str = ""
-    leading_spaces = include.get_indentation("SONAR_ELSE_IF_INTERFACE_OUT", testbench)
+    leading_spaces = include.get_indentation(
+        "SONAR_ELSE_IF_INTERFACE_OUT", testbench
+    )
     for interface in interfaces_master:
-        curr_interface = used_interfaces[interface.type]
         if replace_str != "":
             replace_str += leading_spaces
         replace_str += (
             'else if(interfaceType_par == "' + interface.name + '") begin\n'
         )
         replace_str = include.command_var_replace(
-            replace_str,
-            interface,
-            curr_interface.slave_action,
-            leading_spaces + TAB_SIZE,
-            curr_interface.sv_args,
+            replace_str, interface, leading_spaces + TAB_SIZE, "sv", "slave"
         )
         replace_str += leading_spaces + "end\n"
-    testbench = include.replace_in_testbenches(testbench, "SONAR_ELSE_IF_INTERFACE_OUT", replace_str[:-1])
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_ELSE_IF_INTERFACE_OUT", replace_str[:-1]
+    )
     return testbench
 
+
 def create_clocks(testbench_config, testbench):
+    """
+    Create clocks used in the testbench
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+
+    Returns:
+        str: Updated testbench
+    """
     # TODO make the initial state of the clock configurable (i.e. for diff. clocks)
     dut = testbench_config.modules["DUT"]
     clocks_in = dut.ports.get_clocks("input")
@@ -571,31 +720,61 @@ def create_clocks(testbench_config, testbench):
             largest_clock = clock.name
         replace_str += leading_spaces + TAB_SIZE + "end\n"
         replace_str += leading_spaces + "end\n"
-    testbench = include.replace_in_testbenches(testbench, "SONAR_INITIAL_CLOCK", replace_str[:-1])
-    testbench = include.replace_in_testbenches(testbench, "SONAR_VECTOR_CLOCK", largest_clock)
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_INITIAL_CLOCK", replace_str[:-1]
+    )
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_VECTOR_CLOCK", largest_clock
+    )
 
     return testbench
 
+
 def set_waits(testbench_config, testbench):
+    """
+    Add the logic to handle wait conditions
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+
+    Returns:
+        str: Updated testbench
+    """
     # TODO need to handle this if wait_conditions is empty (sv will error out)
-    wait_conditions = include.get_from_dut(testbench_config, "wait_conditions")
+    wait_conditions = testbench_config.get_from_dut("wait_conditions")
 
     replace_str = ""
     leading_spaces = include.get_indentation("SONAR_IF_ELSE_WAIT", testbench)
     for condition in wait_conditions:
         if replace_str != "":
             replace_str += leading_spaces + "else "
-        replace_str += 'if(interfaceType_par == "' + condition["key"] + '") begin\n'
+        replace_str += (
+            'if(interfaceType_par == "' + condition["key"] + '") begin\n'
+        )
         condition_str = condition["condition"].replace("$value", "args[0]")
         if not condition_str.endswith(";"):
             condition_str += ";"
         replace_str += leading_spaces + TAB_SIZE + condition_str + "\n"
         replace_str += leading_spaces + "end\n"
-    testbench = include.replace_in_testbenches(testbench, "SONAR_IF_ELSE_WAIT", replace_str[:-1])
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_IF_ELSE_WAIT", replace_str[:-1]
+    )
 
     return testbench
 
+
 def count_commands(commands):
+    """
+    Count the number of actual commands from a list of commands that may contain
+    "macro" commands
+
+    Args:
+        commands (list): List of commands
+
+    Returns:
+        int: The true number of commands
+    """
     sv_commands = [
         "delay",
         "wait",
@@ -604,7 +783,7 @@ def count_commands(commands):
         "timestamp",
         "display",
         "flag",
-        "interface"
+        "interface",
     ]
 
     count = 0
@@ -621,7 +800,20 @@ def count_commands(commands):
                 break
     return count
 
+
 def write_line(data_file, command, vector_id):
+    """
+    Write one command to the data file
+
+    Args:
+        data_file (list): List of commands to write
+        command (dict): Current command being written
+        vector_id (int): Index of the test vector this command belongs to
+
+    Returns:
+        list: Updated data_file
+    """
+    # pylint: disable=too-many-branches
     if "interface" in command:
         curr_interface = include.get_interface(command["interface"]["type"])
         line = curr_interface.write_sv(command["interface"])
@@ -656,16 +848,11 @@ def write_line(data_file, command, vector_id):
             + " "
             + str(1)
             + " "
-            + str(command["delay"][:-2]) # TODO fix. Assumes ns
+            + str(command["delay"][:-2])  # TODO fix. Assumes ns
         )
     elif "display" in command:
         data_file.append(
-            "display \""
-            + str(command["display"])
-            + "\" "
-            + str(1)
-            + " "
-            + "0"
+            'display "' + str(command["display"]) + '" ' + str(1) + " " + "0"
         )
     elif "call_dut" in command:
         pass
@@ -701,7 +888,8 @@ def write_line(data_file, command, vector_id):
         if command["macro"] == "END":
             data_file.append(
                 "end "
-                + "Vector_" + str(vector_id)
+                + "Vector_"
+                + str(vector_id)
                 + " "
                 + str(1)
                 + " "
@@ -715,68 +903,97 @@ def write_line(data_file, command, vector_id):
 
     return data_file
 
-################################################################################
-### calculateSeeks ###
-# This function repeats over the generated data file for systemverilog and
-# calculates the character counts for the different packets/parallel sections so
-# the fseek function can work properly during readback. It's repeated until all
-# the values converge to a static value.
-def calculateSeeks(testData_sv, repeatCount, updateStr, seekStr, countStr, converged):
+
+# TODO this is a fairly magic function, should probably make more understandable
+def calculate_seeks(
+    data_file, max_repeat, update_str, seek_str, count_str, converged
+):
+    """
+    This function repeats over the generated data file for systemverilog and
+    calculates the character counts for the different packets/parallel sections
+    so the fseek function can work properly during readback. It's repeated
+    until all the values converge to a static value.
+
+    Args:
+        data_file (list): List of commands
+        max_repeat (int): Maximum number of times to repeat without convergence
+        update_str (str): ???
+        seek_str (str): ???
+        count_str (str): ???
+        converged (bool): True if the sizes converge
+
+    Returns:
+        tuple(list, bool): The data file and converged state
+    """
+    # pylint: disable=too-many-locals
     i = 0
-    while i < repeatCount:
-        charCount = 0
-        continueCount = 0
-        sectionFound = False
-        continueCount2 = 0
-        indexToEdit = 0
-        oldSize = 0
+    while i < max_repeat:
+        char_count = 0
+        continue_count = 0
+        section_found = False
+        continue_count_2 = 0
+        index_to_edit = 0
+        old_size = 0
         updated = False
-        currentSectionCount = 0
-        cumulativeSectionCount = 0
-        for index, line in enumerate(testData_sv, 0):
-            charCount += len(line)
-            if updateStr is not None and line.startswith(updateStr):
-                currentSectionCount = int(line.split()[2])  # store the # of sections
-                cumulativeSectionCount += currentSectionCount
-            elif line.startswith(seekStr) and not sectionFound:
-                if continueCount2 < i:
-                    continueCount2 += 1
+        curr_section_count = 0
+        cumulative_section_count = 0
+        for index, line in enumerate(data_file, 0):
+            char_count += len(line)
+            if update_str is not None and line.startswith(update_str):
+                curr_section_count = int(
+                    line.split()[2]
+                )  # store the # of sections
+                cumulative_section_count += curr_section_count
+            elif line.startswith(seek_str) and not section_found:
+                if continue_count_2 < i:
+                    continue_count_2 += 1
                 else:
-                    oldSize = int(line.split()[2])
-                    sectionFound = True
+                    old_size = int(line.split()[2])
+                    section_found = True
                     updated = True
-                    indexToEdit = index
-            elif line.startswith(countStr) and sectionFound and updated:
+                    index_to_edit = index
+            elif line.startswith(count_str) and section_found and updated:
                 # This is needed to handle that there will be multiple parallel
                 # sections for each test vector and to ignore the first set(s)
                 # when looking at the next set
-                # if cumulativeSectionCount - currentSectionCount > 0:
-                #     modulo = cumulativeSectionCount - currentSectionCount
+                # if cumulative_section_count - curr_section_count > 0:
+                #     modulo = cumulative_section_count - curr_section_count
                 # else:
-                #     modulo = repeatCount
+                #     modulo = max_repeat
 
-                # if continueCount < i % (modulo):
-                #     continueCount += 1
-                if cumulativeSectionCount - currentSectionCount > 0:
-                    modulo = i - cumulativeSectionCount + currentSectionCount
+                # if continue_count < i % (modulo):
+                #     continue_count += 1
+                if cumulative_section_count - curr_section_count > 0:
+                    modulo = i - cumulative_section_count + curr_section_count
                 else:
                     modulo = i
 
-                if continueCount < modulo:
-                    continueCount += 1
+                if continue_count < modulo:
+                    continue_count += 1
                 else:
                     # account for new line characters and remove current line
-                    sizeDiff = index - len(line) + charCount
-                    if oldSize != sizeDiff:
+                    size_diff = index - len(line) + char_count
+                    if old_size != size_diff:
                         converged = False
-                    testData_sv[indexToEdit] = seekStr + " " + str(sizeDiff)
+                    data_file[index_to_edit] = seek_str + " " + str(size_diff)
                     i += 1
-                    continueCount = 0
+                    continue_count = 0
                     updated = False
                     # break
-    return testData_sv, converged
+    return data_file, converged
+
 
 def write_data_file(testbench_config):
+    """
+    Write the data file
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+
+    Returns:
+        tuple(list, int): The data file commands as a list and max number of
+            threads in any one test vector
+    """
     data_file = []
     vector_num = len(testbench_config.vectors)
     data_file.append("TestVector count " + str(vector_num))
@@ -804,7 +1021,7 @@ def write_data_file(testbench_config):
     while not (converged1 and converged2):
         converged1 = True
         converged2 = True
-        testData_sv, converged1 = calculateSeeks(
+        data_file, converged1 = calculate_seeks(
             data_file,
             vector_num,
             None,
@@ -812,7 +1029,7 @@ def write_data_file(testbench_config):
             "ParallelSection count",
             converged1,
         )
-        data_file, converged2 = calculateSeeks(
+        data_file, converged2 = calculate_seeks(
             data_file,
             abs_thread_num,
             "ParallelSection count",
@@ -823,49 +1040,64 @@ def write_data_file(testbench_config):
 
     return data_file, max_threads
 
+
 def create_testbench(testbench_config, testbench, directory):
+    """
+    Create the testbench for this language backend
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+        directory (str): Path to the directory to place generated files
+
+    Returns:
+        Tuple(str, str): The testbench and the data file
+    """
     testbench = include.set_metadata(testbench_config, testbench)
-    testbench = add_headers(testbench_config, testbench)
     testbench = add_timeformat(testbench_config, testbench)
 
-    testbench = include.replace_in_testbenches(testbench, "SONAR_CURR_DATE", datetime.datetime.now())
-    testbench = include.replace_in_testbenches(testbench, "SONAR_DATA_FILE", '"' + os.path.join(directory, f'{testbench_config.metadata["Module_Name"]}_sv.dat"'))
-    testbench = include.replace_in_testbenches(testbench, "SONAR_MAX_VECTORS", len(testbench_config.vectors))
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_CURR_DATE", datetime.datetime.now()
+    )
+    testbench = include.replace_in_testbenches(
+        testbench,
+        "SONAR_DATA_FILE",
+        '"'
+        + os.path.join(
+            directory, f'{testbench_config.metadata["Module_Name"]}_sv.dat"'
+        ),
+    )
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_MAX_VECTORS", len(testbench_config.vectors)
+    )
 
     used_interfaces = {}
-    interfaces = include.get_from_dut(testbench_config, "interfaces")
+    interfaces = testbench_config.get_from_dut("interfaces")
     for interface in interfaces:
-        try:
-            used_interfaces[interface.type] = include.get_interface(interface.type)
-        except ImportError as ex:
-            logger.error("Interface %s not found in sonar", interface.type)
-            raise SonarInvalidArgError from ex
-        # if interface.type not in interface_indices:
-        #     interface_indices[interface.type] = 0
-        # else:
-        #     interface_indices[interface.type] += 1
-        # # portCopy = interface.copy()
-        # # for channel in portCopy["channels"]:
-        # #     if "size" not in channel:
-        # #         channel["size"] = 1
-        # # if "connection_mode" not in portCopy:
-        # #     portCopy["connection_mode"] = "native"
-        # interfaces[direction][index]["index"] = interface_indices[interface.type]
-        # if hasattr(used_interfaces[interface.type], "yaml_top"):
-        #     interfaces[direction][index]["index"] = used_interfaces[interface.type].yaml_top(interface)
+        used_interfaces[interface.interface_type] = include.get_interface(
+            interface.interface_type
+        )
 
     testbench = add_imports(testbench_config, testbench, used_interfaces)
-    testbench = add_initial_prologue(testbench_config, testbench, used_interfaces)
-    testbench = add_exerciser_prologue(testbench_config, testbench, used_interfaces)
+    testbench = add_initial_prologue(
+        testbench_config, testbench, used_interfaces
+    )
+    testbench = add_exerciser_prologue(
+        testbench_config, testbench, used_interfaces
+    )
     add_tcl(testbench_config, used_interfaces, directory)
 
-    testbench, testbench_config = add_exerciser_ports(testbench_config, testbench, used_interfaces)
+    testbench, testbench_config = add_exerciser_ports(
+        testbench_config, testbench, used_interfaces
+    )
     testbench = instantiate_dut(testbench_config, testbench)
     testbench = instantiate_exerciser(testbench_config, testbench)
-    testbench = instantiate_interface_ips(testbench_config, testbench, used_interfaces)
+    testbench = instantiate_interface_ips(
+        testbench_config, testbench, used_interfaces
+    )
     testbench = declare_signals(testbench_config, testbench)
     testbench = set_signals(testbench_config, testbench, used_interfaces)
-    testbench = set_interfaces(testbench_config, testbench, used_interfaces)
+    testbench = set_interfaces(testbench_config, testbench)
     testbench = create_clocks(testbench_config, testbench)
     testbench = set_waits(testbench_config, testbench)
 
@@ -879,7 +1111,11 @@ def create_testbench(testbench_config, testbench, directory):
             if arg_count > max_args:
                 max_args = arg_count
 
-    testbench = include.replace_in_testbenches(testbench, "SONAR_MAX_ARG_NUM", max_args)
-    testbench = include.replace_in_testbenches(testbench, "SONAR_MAX_PARALLEL", max_threads)
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_MAX_ARG_NUM", max_args
+    )
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_MAX_PARALLEL", max_threads
+    )
 
     return testbench, "\n".join(data_file)

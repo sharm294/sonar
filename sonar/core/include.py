@@ -3,7 +3,6 @@ Broadly used functions and classes across sonar core
 """
 
 import logging.config
-
 from pathlib import Path
 
 
@@ -63,7 +62,9 @@ class Constants:
         cls.SONAR_SHELL_REPO_SOURCE = cls.SONAR_SHELL_PATH.joinpath(
             cls.SONAR_REPO_SOURCE
         )
-        cls.SONAR_CONFIG_FILE_PATH = cls.SONAR_DIRECTORY.joinpath(cls.SONAR_CONFIG_FILE)
+        cls.SONAR_CONFIG_FILE_PATH = cls.SONAR_DIRECTORY.joinpath(
+            cls.SONAR_CONFIG_FILE
+        )
 
 
 def configure_logging():
@@ -99,7 +100,10 @@ def configure_logging():
             },
         },
         "loggers": {
-            "": {"level": "DEBUG", "handlers": ["consoleHandler", "fileHandler"]}
+            "": {
+                "level": "DEBUG",
+                "handlers": ["consoleHandler", "fileHandler"],
+            }
         },
     }
 
