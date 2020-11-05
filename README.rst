@@ -131,8 +131,8 @@ environment are below:
 
 .. |Build Status Master| image:: https://travis-ci.org/sharm294/sonar.svg?branch=master
   :target: https://travis-ci.org/sharm294/sonar
-.. |Build Status Dev| image:: https://travis-ci.org/sharm294/sonar.svg?branch=dev
-  :target: https://travis-ci.org/sharm294/sonar
+.. |Build Status Dev| image:: https://github.com/sharm294/sonar/workflows/build/badge.svg?branch=dev
+  :target: https://github.com/sharm294/sonar/actions?query=workflow%3A%22build%22
 .. |codecov Master| image:: https://codecov.io/gh/sharm294/sonar/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/sharm294/sonar
 .. |codecov Dev| image:: https://codecov.io/gh/sharm294/sonar/branch/dev/graph/badge.svg
@@ -148,3 +148,5 @@ environment are below:
 .. _pytest: https://docs.pytest.org/en/stable/
 .. _conda: https://docs.conda.io/en/latest/miniconda.html
 .. _pre-commit: https://pre-commit.com/
+
+![Build sonar](https://github.com/sharm294/sonar/workflows/Build%20sonar/badge.svg?branch=dev)

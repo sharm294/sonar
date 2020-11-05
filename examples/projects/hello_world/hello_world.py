@@ -29,7 +29,7 @@ def test_testbench_hello_world(test_dir, monkeypatch):
     # the DUT -----------------------------------------------------------------
 
     # create a DUT module named 'DUT' and specify its signal ports
-    dut = Module.cpp_vivado("DUT")
+    dut = Module.cpp_vivado("DUT", "20.5ns")
     # dut.add_clock_port("ap_clk", "20ns")
     # dut.add_reset_port("ap_rst_n")
     dut.add_port("state_out", size=3, direction="output")
@@ -115,7 +115,7 @@ def test_testbench_hello_world(test_dir, monkeypatch):
             "all",
         )
     else:
-        hello_world_tb.generate_tb(__file__, "all")
+        hello_world_tb.generate_tb(__file__, "all", True)
 
 
 if __name__ == "__main__":

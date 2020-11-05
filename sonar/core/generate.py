@@ -2,12 +2,15 @@
 Generate the testbenches based on the configuration defined by the user.
 """
 
+import logging
 import os
 
 from sonar.core.backends.common import prologue
 from sonar.core.backends.cpp import create_testbench as create_cpp_testbench
 from sonar.core.backends.sv import create_testbench as create_sv_testbench
 from sonar.exceptions import SonarInvalidArgError
+
+logger = logging.getLogger(__file__)
 
 
 def filter_langs(active_langs, sonar_tb_filepath):
@@ -27,7 +30,10 @@ def filter_langs(active_langs, sonar_tb_filepath):
     except FileNotFoundError:
         # in this case, the testbench is being generated not relative to the
         # source sonar testbench file or there's a typo. Log it and move on
-        # TODO add logging here
+        logger.warning(
+            "File %s not found, so not filtering languages by creation time",
+            sonar_tb_filepath,
+        )
         return active_langs
     active_langs_tmp = []
     for lang in active_langs:
@@ -96,7 +102,6 @@ def get_data_filepath(sonar_tb_filepath, lang):
 # TODO error handling
 # TODO make seek size programmatic
 # TODO allow delays by clock cycles
-# TODO support floating clock periods
 def sonar(testbench_config, sonar_tb_filepath, languages="sv", force=False):
     """
     Call the appropriate backends to generate testbenches in the chosen

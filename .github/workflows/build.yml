@@ -1,4 +1,4 @@
-name: Build sonar
+name: build
 
 on: push
 

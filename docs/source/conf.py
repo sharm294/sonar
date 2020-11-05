@@ -22,7 +22,7 @@ from sonar import __version__
 
 # sys.path.insert(0, os.path.abspath("../../"))
 
-
+# For style, these variables should be UPPER_CASE but they can't be here
 # pylint: disable=invalid-name
 
 # -- Project information -----------------------------------------------------

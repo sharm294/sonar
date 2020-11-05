@@ -28,6 +28,8 @@ Features
 Bugfixes
 ^^^^^^^^
 
+- Fix long run time bug (due to calling int() on a unintentionally large num)
+
 Changes
 ^^^^^^^
 

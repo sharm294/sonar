@@ -704,18 +704,18 @@ def create_clocks(testbench_config, testbench):
         )
         regex_match = regex_int_str.match(clock.period)
         if regex_match.group(3) == "s":
-            period = regex_match.group(1) * 10 ** 15
+            period = float(regex_match.group(1)) * 10 ** 15
         elif regex_match.group(3) == "ms":
-            period = regex_match.group(1) * 10 ** 12
+            period = float(regex_match.group(1)) * 10 ** 12
         elif regex_match.group(3) == "us":
-            period = regex_match.group(1) * 10 ** 9
+            period = float(regex_match.group(1)) * 10 ** 9
         elif regex_match.group(3) == "ns":
-            period = regex_match.group(1) * 10 ** 6
+            period = float(regex_match.group(1)) * 10 ** 6
         elif regex_match.group(3) == "ps":
-            period = regex_match.group(1) * 10 ** 3
+            period = float(regex_match.group(1)) * 10 ** 3
         else:
-            period = regex_match.group(1)
-        if int(period) > largest_period:
+            period = float(regex_match.group(1))
+        if period > largest_period:
             largest_period = period
             largest_clock = clock.name
         replace_str += leading_spaces + TAB_SIZE + "end\n"

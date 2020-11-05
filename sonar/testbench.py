@@ -117,18 +117,18 @@ class Testbench(base.SonarObject):
             if temp_key.isdigit():
                 if int(temp_key) >= index:
                     raise Exception
-                return None
+                return None, index
             if temp_key not in conditions:
                 new_key = str(index)
                 waits.append({"condition": temp_key, "key": new_key})
                 conditions.append(temp_key)
                 index += 1
-                return new_key
+                return new_key, index
             for wait in waits:
                 if wait["condition"] == temp_key:
                     key = wait["key"]
                     break
-            return key
+            return key, index
 
         waits = []
         conditions = []
@@ -142,7 +142,7 @@ class Testbench(base.SonarObject):
                         if temp_key == "flag":
                             flag_present = True
                             continue
-                        updated_key = update_waits(index, temp_key)
+                        updated_key, index = update_waits(index, temp_key)
                         if updated_key:
                             command["wait"]["key"] = updated_key
         if flag_present:

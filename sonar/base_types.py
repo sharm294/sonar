@@ -422,7 +422,6 @@ class ModulePorts:
         module_ports = {}
         module_ports["clocks"] = self.clocks
         module_ports["resets"] = self.resets
-        # TODO interfaces can't be printed
-        # module_ports["interfaces"] = self.interfaces
+        module_ports["interfaces"] = self.interfaces
         module_ports["signals"] = self.signals
         return module_ports
