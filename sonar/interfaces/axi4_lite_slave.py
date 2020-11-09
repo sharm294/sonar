@@ -24,7 +24,7 @@ class AXI4LiteSlave(base.BaseInterface):
             reset (str): Name of associated reset
         """
 
-        super().__init__(name, "mixed", AXI4LiteSlaveCore, "ip")
+        super().__init__(name, "mixed", AXI4LiteSlaveCore)
         self.clock = clock
         self.reset = reset
         self.registers = []
@@ -74,10 +74,14 @@ class AXI4LiteSlave(base.BaseInterface):
             "interface": {
                 "type": "axi4_lite_slave",
                 "name": self.name,
-                "payload": [{"mode": 1, "data": data, "addr": address}],
+                "payload": [
+                    {"endpoint_mode": 0, "data": data, "addr": address}
+                ],
             }
         }
         thread._add_transaction(transaction)
+        if "write" not in self.endpoint_modes:
+            self.endpoint_modes.append("write")
 
     def read(self, thread, register, expected_value):
         """
@@ -99,11 +103,17 @@ class AXI4LiteSlave(base.BaseInterface):
                 "type": "axi4_lite_slave",
                 "name": self.name,
                 "payload": [
-                    {"mode": 0, "data": expected_value, "addr": address}
+                    {
+                        "endpoint_mode": 1,
+                        "data": expected_value,
+                        "addr": address,
+                    }
                 ],
             }
         }
         thread._add_transaction(transaction)
+        if "read" not in self.endpoint_modes:
+            self.endpoint_modes.append("read")
 
     def set_address(self, addr_range, addr_offset):
         """
@@ -247,20 +257,15 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
 
     actions = {
         "sv": {
-            "modes": [
-                {"mode": 0, "func": "slave", "arg": 2},
-                {"mode": 1, "func": "master", "arg": 2},
+            "write": [
+                "$$agent.AXI4LITE_WRITE_BURST(args[1],0,args[2],$$writeResp);"
             ],
-            "master": [
-                "$$agent.AXI4LITE_WRITE_BURST(args[0],0,args[1],$$writeResp);"
-            ],
-            "slave": [
-                "$$agent.AXI4LITE_READ_BURST(args[0],0,$$readData,$$readResp); //addr, prot, read_data, resp",
-                "assert($$readData == args[1]) begin",
+            "read": [
+                "$$agent.AXI4LITE_READ_BURST(args[1],0,$$readData,$$readResp); //addr, prot, read_data, resp",
+                "assert($$readData == args[2]) begin",
                 "end else begin",
-                '    $error("S-AXILITE Assert failed at %t on $$readData. Expected: %h, Received: %h", $time, args[1], $$readData);',
-                "    error = 1'b1;",
-                "    $stop;",
+                '    $error("S-AXILITE Assert failed at %t on $$readData. Expected: %h, Received: %h", $time, args[2], $$readData);',
+                "    retval = 1;",
                 "end",
             ],
         },
@@ -281,9 +286,9 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
 
     args = {
         "sv": {
-            "addr": 0,
-            "data": 1,
-            "mode": 2,
+            "endpoint_mode": 0,
+            "addr": 1,
+            "data": 2,
         },
         "cpp": {
             "addr": 0,
@@ -327,43 +332,38 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
         )
 
     @staticmethod
-    def initial_prologue(prologue, _interface, indent):
+    def initial_blocks(indent):
         """
-        Any text that should be part of the testbench as a prologue in the
-        initial block in the Exerciser in the SV testbench.
+        Any text that should be inside an initial block
 
         Args:
-            prologue (str): The preceding text to append to
-            _interface (AXI4LiteSlave): AXI4LiteSlave object
             indent (str): Indentation to add to each line
 
         Returns:
-            str: Updated prologue
+            list[str]: List of strings that go into separate initial blocks
         """
-        if prologue != "":
-            prologue += indent
-        prologue += '$$agent = new("master vip agent", vip_bd_$$index_i.axi_vip_0.inst.IF);\n'
+        prologue = (
+            indent
+            + '$$agent = new("master vip agent", vip_bd_$$index_i.axi_vip_0.inst.IF);\n'
+        )
         prologue += indent + '$$agent.set_agent_tag("$$agent");\n'
         prologue += indent + "$$agent.start_master();\n"
-        return prologue
+        return [prologue]
 
     @staticmethod
-    def exerciser_prologue(prologue, _interface, indent):
+    def prologue(indent):
         """
-        Any text that should be part of the testbench as a prologue in the
-        Exerciser prior to the initial block in the SV testbench.
+        Any text that should be part of the testbench as a prologue outside any
+        blocks such as variable declarations.
 
         Args:
             prologue (str): The preceding text to append to
-            _interface (AXI4LiteSlave): AXI4LiteSlave object
             indent (str): Indentation to add to each line
 
         Returns:
             str: Updated prologue
         """
-        if prologue != "":
-            prologue += indent
-        prologue += "logic [$$dataWidth-1:0] rdata_$$index;\n"
+        prologue = indent + "logic [$$dataWidth-1:0] rdata_$$index;\n"
         prologue += indent + "xil_axi_resp_t rresp_$$index;\n"
         prologue += indent + "xil_axi_resp_t wresp_$$index;\n"
         prologue += (
@@ -411,7 +411,7 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
             tcl_file_gen.close()
 
     @staticmethod
-    def instantiate(ip_inst, interface, indent, tab_size):
+    def instantiate(interface, indent, tab_size):
         """
         Any modules that this interface instantiates in SV.
 
@@ -426,8 +426,7 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
         """
         index = str(interface.index)
         one_tab = indent + tab_size
-        if ip_inst != "":
-            ip_inst += indent
+        ip_inst = indent
         ip_inst += "vip_bd_" + index + " vip_bd_" + index + "_i(\n"
         ip_inst += one_tab + ".aclk(" + interface.clock + "),\n"
         ip_inst += one_tab + ".aresetn(" + interface.reset + "),\n"

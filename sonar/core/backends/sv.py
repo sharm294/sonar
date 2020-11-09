@@ -1,7 +1,6 @@
 """
 The SystemVerilog backend for generating testbenches
 """
-# pylint: disable=too-many-lines
 
 import datetime
 import itertools
@@ -11,9 +10,8 @@ import re
 from shlex import split as quoteSplit
 
 import sonar.core.backends.include as include
+import sonar.core.backends.sv_interfaces as sv_interfaces
 from sonar.exceptions import SonarInvalidArgError
-
-TAB_SIZE = "    "
 
 logger = logging.getLogger(__name__)
 
@@ -58,117 +56,6 @@ def add_timeformat(testbench_config, testbench):
     return testbench
 
 
-def add_imports(testbench_config, testbench, used_interfaces):
-    """
-    Import any packages that may be needed
-
-    Args:
-        testbench_config (Testbench): The testbench configuration
-        testbench (str): The testbench being generated
-        used_interfaces (dict): Each used interface appears once
-
-    Returns:
-        str: Updated testbench
-    """
-    interfaces = testbench_config.get_from_dut("interfaces")
-
-    imports = ""
-    for _name, interface in used_interfaces.items():
-        if hasattr(interface, "import_packages_global"):
-            imports += interface.import_packages_global()
-    for interface in interfaces:
-        curr_interface = used_interfaces[interface.interface_type]
-        if hasattr(curr_interface, "import_packages_local"):
-            imports += curr_interface.import_packages_local(interface)
-    testbench = include.replace_in_testbenches(
-        testbench, "SONAR_IMPORT_PACKAGES", imports[:-1]
-    )
-    return testbench
-
-
-def add_initial_prologue(testbench_config, testbench, used_interfaces):
-    """
-    Add any statements an interface might require within an initial block
-
-    Args:
-        testbench_config (Testbench): The testbench configuration
-        testbench (str): The testbench being generated
-        used_interfaces (dict): Each used interface appears once
-
-    Returns:
-        str: Updated testbench
-    """
-    interfaces = testbench_config.get_from_dut("interfaces")
-
-    initial_prologue = ""
-    leading_spaces = include.get_indentation(
-        "SONAR_INITIAL_PROLOGUE", testbench
-    )
-    for interface in interfaces:
-        curr_interface = used_interfaces[interface.interface_type]
-        if hasattr(curr_interface, "initial_prologue"):
-            initial_prologue = curr_interface.initial_prologue(
-                initial_prologue, interface, leading_spaces
-            )
-            initial_prologue = include.replace_variables(
-                initial_prologue, interface
-            )
-    testbench = include.replace_in_testbenches(
-        testbench, "SONAR_INITIAL_PROLOGUE", initial_prologue[:-1]
-    )
-    return testbench
-
-
-def add_exerciser_prologue(testbench_config, testbench, used_interfaces):
-    """
-    Add any statements an interface might require outside an initial block
-
-    Args:
-        testbench_config (Testbench): The testbench configuration
-        testbench (str): The testbench being generated
-        used_interfaces (dict): Each used interface appears once
-
-    Returns:
-        str: Updated testbench
-    """
-    interfaces = testbench_config.get_from_dut("interfaces")
-
-    exerciser_prologue = ""
-    leading_spaces = include.get_indentation(
-        "SONAR_EXERCISER_PROLOGUE", testbench
-    )
-    for interface in interfaces:
-        curr_interface = used_interfaces[interface.interface_type]
-        if hasattr(curr_interface, "exerciser_prologue"):
-            exerciser_prologue = curr_interface.exerciser_prologue(
-                exerciser_prologue, interface, leading_spaces
-            )
-            exerciser_prologue = include.replace_variables(
-                exerciser_prologue, interface
-            )
-    testbench = include.replace_in_testbenches(
-        testbench, "SONAR_EXERCISER_PROLOGUE", exerciser_prologue[:-1]
-    )
-    return testbench
-
-
-def add_tcl(testbench_config, used_interfaces, directory):
-    """
-    Generates any TCL scripts as required by interfaces
-
-    Args:
-        testbench_config (Testbench): The testbench configuration
-        testbench (str): The testbench being generated
-        directory (str): Path to directory to place generated files
-    """
-    interfaces = testbench_config.get_from_dut("interfaces")
-
-    for interface in interfaces:
-        curr_interface = used_interfaces[interface.interface_type]
-        if hasattr(curr_interface, "source_tcl"):
-            curr_interface.source_tcl(interface, directory)
-
-
 def add_exerciser_ports(testbench_config, testbench, used_interfaces):
     """
     Add the ports of the Exerciser
@@ -186,8 +73,6 @@ def add_exerciser_ports(testbench_config, testbench, used_interfaces):
         interfaces = testbench_config.get_from_dut("interfaces_dict")
         for direction in ["slave", "master", "mixed"]:
             for interface in interfaces[direction]:
-                if interface.connection_mode != "native":
-                    continue
                 curr_interface = used_interfaces[interface.interface_type]
                 for signal_type, signal in interface.signals.items():
                     exerciser_ports += leading_spaces
@@ -295,7 +180,7 @@ def instantiate_exerciser(testbench_config, testbench):
     for clock in clocks_in:
         exerciser_int += (
             leading_spaces
-            + TAB_SIZE
+            + include.TAB_SIZE
             + "."
             + clock.name
             + "("
@@ -303,25 +188,24 @@ def instantiate_exerciser(testbench_config, testbench):
             + "),\n"
         )
     for interface in interfaces:
-        if interface.connection_mode == "native":
-            for signal_type, signal in interface.signals.items():
-                exerciser_int += (
-                    leading_spaces
-                    + TAB_SIZE
-                    + "."
-                    + interface.name
-                    + "_"
-                    + signal_type
-                    + "("
-                    + interface.name
-                    + "_"
-                    + signal_type
-                    + "),\n"
-                )
+        for signal_type, signal in interface.signals.items():
+            exerciser_int += (
+                leading_spaces
+                + include.TAB_SIZE
+                + "."
+                + interface.name
+                + "_"
+                + signal_type
+                + "("
+                + interface.name
+                + "_"
+                + signal_type
+                + "),\n"
+            )
     for signal in itertools.chain(signals, resets):
         exerciser_int += (
             leading_spaces
-            + TAB_SIZE
+            + include.TAB_SIZE
             + "."
             + signal.name
             + "("
@@ -332,34 +216,6 @@ def instantiate_exerciser(testbench_config, testbench):
     exerciser_int += leading_spaces + ");\n"
     testbench = include.replace_in_testbenches(
         testbench, "SONAR_EXERCISER_INT", exerciser_int[:-1]
-    )
-    return testbench
-
-
-def instantiate_interface_ips(testbench_config, testbench, used_interfaces):
-    """
-    Instantiate any IPs required by the interfaces
-
-    Args:
-        testbench_config (Testbench): The testbench configuration
-        testbench (str): The testbench being generated
-        used_interfaces (dict): Each used interface appears once
-
-    Returns:
-        str: Updated testbench
-    """
-    interfaces = testbench_config.get_from_dut("interfaces")
-
-    ip_inst = ""
-    leading_spaces = include.get_indentation("SONAR_IP_INST", testbench)
-    for interface in interfaces:
-        curr_interface = used_interfaces[interface.interface_type]
-        if hasattr(curr_interface, "instantiate"):
-            ip_inst = curr_interface.instantiate(
-                ip_inst, interface, leading_spaces, TAB_SIZE
-            )
-    testbench = include.replace_in_testbenches(
-        testbench, "SONAR_IP_INST", ip_inst[:-1]
     )
     return testbench
 
@@ -410,24 +266,24 @@ def instantiate_dut(testbench_config, testbench):
     if parameters:
         dut_inst += testbench_config.metadata["Module_Name"] + " #(\n"
         for parameter in parameters[:-1]:
-            dut_inst += f"{leading_spaces}{TAB_SIZE}.{parameter[0]}({str(parameter[1])}),\n"
-        dut_inst += f"{leading_spaces}{TAB_SIZE}.{parameters[-1][0]}({str(parameters[-1][1])})\n"
+            dut_inst += f"{leading_spaces}{include.TAB_SIZE}.{parameter[0]}({str(parameter[1])}),\n"
+        dut_inst += f"{leading_spaces}{include.TAB_SIZE}.{parameters[-1][0]}({str(parameters[-1][1])})\n"
         dut_inst += f"{leading_spaces}) {module_name}_i (\n"
     else:
         dut_inst += f"{module_name} {module_name}_i (\n"
     for signal in itertools.chain(clocks_in, resets_in):
-        dut_inst += (
-            f"{leading_spaces}{TAB_SIZE}.{signal.name}({signal.name}),\n"
-        )
+        dut_inst += f"{leading_spaces}{include.TAB_SIZE}.{signal.name}({signal.name}),\n"
     dut_type = testbench_config.modules["DUT"].type
     for signal in itertools.chain(signals_in, signals_out):
         port_name = modify_signal_name(signal.name, dut_type)
-        dut_inst += f"{leading_spaces}{TAB_SIZE}.{port_name}({signal.name}),\n"
+        dut_inst += (
+            f"{leading_spaces}{include.TAB_SIZE}.{port_name}({signal.name}),\n"
+        )
     for interface in interfaces:
         for signal_type, signal in interface.signals.items():
             dut_inst += (
                 leading_spaces
-                + TAB_SIZE
+                + include.TAB_SIZE
                 + "."
                 + interface.name
                 + "_"
@@ -545,40 +401,39 @@ def set_signals(testbench_config, testbench, used_interfaces):
             + signal.name
             + '") begin\n'
             + leading_spaces
-            + TAB_SIZE
+            + include.TAB_SIZE
             + signal.name
             + " = args[0];\n"
             + leading_spaces
             + "end\n"
         )
     for interface in interfaces:
-        if interface.connection_mode == "native":
-            curr_interface = used_interfaces[interface.interface_type]
-            for signal_type, signal in interface.signals.items():
-                if (
-                    interface.direction in ("slave", "mixed")
-                    and signal_type in curr_interface.signals["output"]
-                ) or (
-                    interface.direction in ("master")
-                    and signal_type in curr_interface.signals["input"]
-                ):
-                    if ifelse_signal != "":
-                        ifelse_signal += leading_spaces + "else "
-                    ifelse_signal += (
-                        'if(interfaceType_par == "'
-                        + interface.name
-                        + "_"
-                        + signal_type
-                        + '") begin\n'
-                        + leading_spaces
-                        + TAB_SIZE
-                        + interface.name
-                        + "_"
-                        + signal_type
-                        + " = args[0];\n"
-                        + leading_spaces
-                        + "end\n"
-                    )
+        curr_interface = used_interfaces[interface.interface_type]
+        for signal_type, signal in interface.signals.items():
+            if (
+                interface.direction in ("slave", "mixed")
+                and signal_type in curr_interface.signals["output"]
+            ) or (
+                interface.direction in ("master")
+                and signal_type in curr_interface.signals["input"]
+            ):
+                if ifelse_signal != "":
+                    ifelse_signal += leading_spaces + "else "
+                ifelse_signal += (
+                    'if(interfaceType_par == "'
+                    + interface.name
+                    + "_"
+                    + signal_type
+                    + '") begin\n'
+                    + leading_spaces
+                    + include.TAB_SIZE
+                    + interface.name
+                    + "_"
+                    + signal_type
+                    + " = args[0];\n"
+                    + leading_spaces
+                    + "end\n"
+                )
     testbench = include.replace_in_testbenches(
         testbench, "SONAR_IF_ELSE_SIGNAL", ifelse_signal[:-1]
     )
@@ -596,70 +451,38 @@ def set_interfaces(testbench_config, testbench):
     Returns:
         str: Updated testbench
     """
-    dut = testbench_config.modules["DUT"]
-    interfaces_slave = dut.ports.get_interfaces("slave")
-    interfaces_master = dut.ports.get_interfaces("master")
-    interfaces_mixed = dut.ports.get_interfaces("mixed")
+    interfaces = testbench_config.get_from_dut("interfaces")
 
     replace_str = ""
     leading_spaces = include.get_indentation(
         "SONAR_ELSE_IF_INTERFACE_IN", testbench
     )
-    for interface in interfaces_slave:
+    for index, interface in enumerate(interfaces):
         if replace_str != "":
             replace_str += leading_spaces
+        replace_str += 'else if(interfaceType_par == "$$name") begin\n'
         replace_str += (
-            'else if(interfaceType_par == "' + interface.name + '") begin\n'
+            leading_spaces
+            + include.TAB_SIZE
+            + f"$$interfaceType_$$index(args, retval[{index}]);\n"
         )
-        replace_str = include.command_var_replace(
-            replace_str, interface, leading_spaces + TAB_SIZE, "sv", "master"
-        )
-        replace_str += leading_spaces + "end\n"
-    for interface in interfaces_mixed:
-        if replace_str != "":
-            replace_str += leading_spaces
         replace_str += (
-            'else if(interfaceType_par == "' + interface.name + '") begin\n'
+            leading_spaces
+            + include.TAB_SIZE
+            + f"if(retval[{index}] != 0) begin\n"
         )
-        for mode in interface.core.actions["sv"]["modes"]:
-            replace_str += (
-                leading_spaces
-                + TAB_SIZE
-                + "if(args["
-                + str(mode["arg"])
-                + "] == "
-                + str(mode["mode"])
-                + ") begin\n"
-            )
-            replace_str = include.command_var_replace(
-                replace_str,
-                interface,
-                leading_spaces + TAB_SIZE + TAB_SIZE,
-                "sv",
-                mode["func"],
-            )
-            replace_str += leading_spaces + TAB_SIZE + "end\n"
+        replace_str += (
+            leading_spaces + include.TAB_SIZE * 2 + "error = 1'b1;\n"
+        )
+        replace_str += leading_spaces + include.TAB_SIZE * 2 + "$stop;\n"
+        replace_str += leading_spaces + include.TAB_SIZE + "end\n"
         replace_str += leading_spaces + "end\n"
+        replace_str = include.replace_variables(replace_str, interface)
     testbench = include.replace_in_testbenches(
         testbench, "SONAR_ELSE_IF_INTERFACE_IN", replace_str[:-1]
     )
-
-    replace_str = ""
-    leading_spaces = include.get_indentation(
-        "SONAR_ELSE_IF_INTERFACE_OUT", testbench
-    )
-    for interface in interfaces_master:
-        if replace_str != "":
-            replace_str += leading_spaces
-        replace_str += (
-            'else if(interfaceType_par == "' + interface.name + '") begin\n'
-        )
-        replace_str = include.command_var_replace(
-            replace_str, interface, leading_spaces + TAB_SIZE, "sv", "slave"
-        )
-        replace_str += leading_spaces + "end\n"
     testbench = include.replace_in_testbenches(
-        testbench, "SONAR_ELSE_IF_INTERFACE_OUT", replace_str[:-1]
+        testbench, "SONAR_MAX_ENDPOINTS", len(interfaces)
     )
     return testbench
 
@@ -688,12 +511,14 @@ def create_clocks(testbench_config, testbench):
         if replace_str != "":
             replace_str += leading_spaces
         replace_str += "initial begin\n"
-        replace_str += leading_spaces + TAB_SIZE + clock.name + " = 0;\n"
-        replace_str += leading_spaces + TAB_SIZE + "forever begin\n"
+        replace_str += (
+            leading_spaces + include.TAB_SIZE + clock.name + " = 0;\n"
+        )
+        replace_str += leading_spaces + include.TAB_SIZE + "forever begin\n"
         replace_str += (
             leading_spaces
-            + TAB_SIZE
-            + TAB_SIZE
+            + include.TAB_SIZE
+            + include.TAB_SIZE
             + "#("
             + clock.period
             + "/2) "
@@ -718,7 +543,7 @@ def create_clocks(testbench_config, testbench):
         if period > largest_period:
             largest_period = period
             largest_clock = clock.name
-        replace_str += leading_spaces + TAB_SIZE + "end\n"
+        replace_str += leading_spaces + include.TAB_SIZE + "end\n"
         replace_str += leading_spaces + "end\n"
     testbench = include.replace_in_testbenches(
         testbench, "SONAR_INITIAL_CLOCK", replace_str[:-1]
@@ -755,7 +580,7 @@ def set_waits(testbench_config, testbench):
         condition_str = condition["condition"].replace("$value", "args[0]")
         if not condition_str.endswith(";"):
             condition_str += ";"
-        replace_str += leading_spaces + TAB_SIZE + condition_str + "\n"
+        replace_str += leading_spaces + include.TAB_SIZE + condition_str + "\n"
         replace_str += leading_spaces + "end\n"
     testbench = include.replace_in_testbenches(
         testbench, "SONAR_IF_ELSE_WAIT", replace_str[:-1]
@@ -1078,28 +903,21 @@ def create_testbench(testbench_config, testbench, directory):
             interface.interface_type
         )
 
-    testbench = add_imports(testbench_config, testbench, used_interfaces)
-    testbench = add_initial_prologue(
-        testbench_config, testbench, used_interfaces
-    )
-    testbench = add_exerciser_prologue(
-        testbench_config, testbench, used_interfaces
-    )
-    add_tcl(testbench_config, used_interfaces, directory)
-
     testbench, testbench_config = add_exerciser_ports(
         testbench_config, testbench, used_interfaces
     )
     testbench = instantiate_dut(testbench_config, testbench)
     testbench = instantiate_exerciser(testbench_config, testbench)
-    testbench = instantiate_interface_ips(
-        testbench_config, testbench, used_interfaces
-    )
+
     testbench = declare_signals(testbench_config, testbench)
     testbench = set_signals(testbench_config, testbench, used_interfaces)
     testbench = set_interfaces(testbench_config, testbench)
     testbench = create_clocks(testbench_config, testbench)
     testbench = set_waits(testbench_config, testbench)
+
+    testbench = sv_interfaces.add_interfaces(
+        testbench_config, testbench, directory, used_interfaces
+    )
 
     data_file, max_threads = write_data_file(testbench_config)
 

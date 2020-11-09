@@ -102,8 +102,27 @@ class AXI4Stream(base.BaseInterface):
         Returns:
             dict: Dictionary representing the data transaction
         """
-        payload_dict = self._payload(tdata=data, **kwargs)
-        payload_arg = [payload_dict]
+        self._read(thread, data, 0, **kwargs)
+        if "write" not in self.endpoint_modes:
+            self.endpoint_modes.append("write")
+
+    def _writes(self, thread, data, endpoint_mode):
+        """
+        Writes an array of commands to the AXI stream. This command results in
+        a smaller final file size than using the write command in a loop
+
+        Args:
+            thread (Thread): The thread to write the commands to
+            data (Iterable): This should be an iterable of kwargs where the
+                keywords are AXI4Stream compliant.
+            endpoint_mode (int): 0 for writes, 1 for reads
+        """
+
+        payload_arg = []
+        for datum in data:
+            payload_dict = self._payload(**datum, endpoint_mode=endpoint_mode)
+            payload_arg.append(payload_dict)
+
         self._write(thread, payload_arg)
 
     def writes(self, thread, data):
@@ -115,14 +134,12 @@ class AXI4Stream(base.BaseInterface):
             thread (Thread): The thread to write the commands to
             data (Iterable): This should be an iterable of kwargs where the
                 keywords are AXI4Stream compliant.
+            endpoint_mode (int): 0 for writes, 1 for reads
         """
 
-        payload_arg = []
-        for datum in data:
-            payload_dict = self._payload(**datum)
-            payload_arg.append(payload_dict)
-
-        self._write(thread, payload_arg)
+        self._writes(thread, data, 0)
+        if "write" not in self.endpoint_modes:
+            self.endpoint_modes.append("write")
 
     def _write(self, thread, payload):
         """
@@ -183,7 +200,15 @@ class AXI4Stream(base.BaseInterface):
             dict: Dictionary representing the data transaction
         """
 
-        self.write(thread, data, **kwargs)
+        self._read(thread, data, 1, **kwargs)
+        if "read" not in self.endpoint_modes:
+            self.endpoint_modes.append("read")
+
+    def _read(self, thread, data, endpoint_mode, **kwargs):
+        payload_dict = self._payload(tdata=data, **kwargs)
+        payload_dict["endpoint_mode"] = endpoint_mode
+        payload_arg = [payload_dict]
+        self._write(thread, payload_arg)
 
     def reads(self, thread, data):
         """
@@ -196,7 +221,9 @@ class AXI4Stream(base.BaseInterface):
                 keywords are AXI4Stream compliant.
         """
 
-        self.writes(thread, data)
+        self._writes(thread, data, 1)
+        if "read" not in self.endpoint_modes:
+            self.endpoint_modes.append("read")
 
     def asdict(self):
         """
@@ -212,7 +239,7 @@ class AXI4Stream(base.BaseInterface):
             tmp["flit"] = self.flit
         if self.iClass is not None:
             tmp["iClass"] = self.iClass
-        tmp["connection_mode"] = self.connection_mode
+        # tmp["connection_mode"] = self.connection_mode
         return tmp
 
     def wait(self, thread, data, bit_range=None):
@@ -406,7 +433,7 @@ class AXI4StreamCore(base.InterfaceCore):
 
     actions = {
         "sv": {
-            "master": [
+            "write": [
                 "wait($$clock == 0);",
                 {
                     "signals": {"tdata", "tlast", "tkeep", "tdest"},
@@ -417,7 +444,7 @@ class AXI4StreamCore(base.InterfaceCore):
                 "@(negedge $$clock);",
                 "$$name_tvalid = 1'b0;",
             ],
-            "slave": [
+            "read": [
                 "@(posedge $$clock iff $$name_tready && $$name_tvalid);",
                 {
                     "signals": {"tdata", "tlast", "tkeep", "tdest"},
@@ -425,8 +452,7 @@ class AXI4StreamCore(base.InterfaceCore):
                         "assert($$name_$$signal == args[$$i]) begin\n"
                         "end else begin\n"
                         '    $error("AXI-S Assert failed at %t on $$name_$$signal. Expected: %h, Received: %h", $time, args[$$i], $$name_$$signal);\n'
-                        "    error = 1'b1;\n"
-                        "    $stop;\n"
+                        "    retval = 1;\n"
                         "end"
                     ],
                 },
@@ -453,7 +479,13 @@ class AXI4StreamCore(base.InterfaceCore):
     }
 
     args = {
-        "sv": {"tdata": 0, "tlast": 1, "tkeep": 2, "tdest": 3},
+        "sv": {
+            "endpoint_mode": 0,
+            "tdata": 1,
+            "tlast": 2,
+            "tkeep": 3,
+            "tdest": 4,
+        },
         "cpp": {"tdata": 0, "tlast": 1, "tkeep": 2, "tdest": 3},
     }
 

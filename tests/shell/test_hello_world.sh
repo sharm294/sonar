@@ -63,4 +63,4 @@ make cpptb-hello_world
 make runtb-hello_world
 
 # create a vivado project for hello_world and simulate it in terminal
-./run.sh cad hello_world batch behav 1 0 0 0 0
+./run.sh cad hello_world batch behav 1 0 0 0 0 > vivado.log

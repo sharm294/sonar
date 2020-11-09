@@ -35,25 +35,22 @@ SONAR_HEADER_FILE
 #define SONAR_MAX_STRING_SIZE 255
 
 int main(int argc, char* argv[]) {
-  int i;
-  bool printState = false;
-  bool printMatches = false;
-  bool printInterfaces = false;
-  bool readInterfaces = false;
-  for (i = 1; i < argc; i++) {
-    if (std::string(argv[i]).compare("--printStates") == 0) {
-      printState = true;
-    } else if (std::string(argv[i]).compare("--printMatches") == 0) {
-      printMatches = true;
-    } else if (std::string(argv[i]).compare("--printInterfaces") == 0) {
-      printInterfaces = true;
-    } else if (std::string(argv[i]).compare("--readInterfaces") == 0) {
-      readInterfaces = true;
-    } else {
-      std::cout << "Not enough or invalid arguments, please try again.\n";
-      return 2;
-    }
-  }
+  // int i;
+  // bool printMatches = false;
+  // bool printInterfaces = false;
+  // bool readInterfaces = false;
+  // for (i = 1; i < argc; i++) {
+  //   if (std::string(argv[i]).compare("--printMatches") == 0) {
+  //     printMatches = true;
+  //   } else if (std::string(argv[i]).compare("--printInterfaces") == 0) {
+  //     printInterfaces = true;
+  //   } else if (std::string(argv[i]).compare("--readInterfaces") == 0) {
+  //     readInterfaces = true;
+  //   } else {
+  //     std::cout << "Not enough or invalid arguments, please try again.\n";
+  //     return 2;
+  //   }
+  // }
 
   SONAR_TB_SIGNAL_LIST
 
@@ -71,14 +68,12 @@ int main(int argc, char* argv[]) {
   int argCount;
   // ap_uint<SONAR_MAX_DATA_SIZE> readArgs[SONAR_MAX_ARG_NUM];
   long long args[SONAR_MAX_ARG_NUM];
-  bool valid = true;
+  // bool valid = true;
   // int callTB = 0;
 #ifdef DEBUG
   int dbg_currentState;
 #endif
   while (1) {
-    bool read = false;
-
     fscanf(dataFile, "%s %s %s %d", interfaceType, id, cStreamType,
            &argCount);
     for (int l = 0; l < argCount; l++) {
@@ -97,12 +92,6 @@ int main(int argc, char* argv[]) {
     else if (!strcmp(interfaceType, "call_dut")) {
       for (int l = 0; l < args[0]; l++) {
         CALL_TB
-        // #if defined(DEBUG) && defined(FSM_EXISTS)
-        // if (printState) {
-        //   std::cout << "Current State is " + stateParse(dbg_currentState)
-        //             << "\n";
-        // }
-        // #endif
       }
     }
     else if (!strcmp(interfaceType, "end")) {
@@ -115,24 +104,7 @@ int main(int argc, char* argv[]) {
       std::cout << "Unknown interfaceType: " << interfaceType << "\n";
       return 1;
     }
-
-    // if (read) {
-    //   VERIFY(cStreamType)
-    //   else if (printMatches) {
-    //     std::cout << "Match at id: " << id << "\n";
-    //     std::cout << std::hex << "   Received: " << readArgs[0] << " "
-    //               << readArgs[1] << "\n";
-    //   }
-    // }
-
-    // if (printInterfaces) {
-    //   PRINT_INTERFACES
-    // }
   }
-
-  // if (readInterfaces) {
-  //   READ_INTERFACES
-  // }
 
   std::cout << "\n*** Finishing testbench ***\n";
 

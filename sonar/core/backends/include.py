@@ -14,6 +14,8 @@ import sonar.interfaces.axi4_stream
 if TYPE_CHECKING:
     import sonar.interfaces.base_interface as base_interface
 
+TAB_SIZE = "    "
+
 
 def get_indentation(keyword, search_str):
     """

@@ -6,6 +6,8 @@ disable=no-name-in-module, # module detection doesn't always work correctly
         fixme, # allow fixme / TODO etc. in code
         protected-access, # this is fine if done with intention
         import-error, # can be tricky with different environments
+        cyclic-import, # disabled while pylint has a bug with type annotations
+        duplicate-code, # can be addressed later. For now, some is intentional
 
 
 [FORMAT]

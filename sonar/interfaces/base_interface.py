@@ -99,7 +99,7 @@ class BaseInterface(base.SonarObject):
     Defines an interface in sonar
     """
 
-    def __init__(self, name, direction, core, connnection_mode="native"):
+    def __init__(self, name, direction, core):
         """
         Initialize the BaseInterface class with an empty signal list
 
@@ -107,15 +107,25 @@ class BaseInterface(base.SonarObject):
             name (str): name of the interface
             direction (str): direction of the interface (master|slave|mixed)
             core (InterfaceCore): defines the low-level operation of the interface
-            connection_mode (str): defines the connection type to the interface
         """
         self.name = name
         self.direction = direction
         self.signals = {}
         self.index = 0
-        self.connection_mode = connnection_mode
         self.core = core
         self.interface_type = None
+        self.endpoint_modes = []
+
+    @property
+    def interfaceType(self):  # pylint: disable=invalid-name
+        """
+        This is used by regex for variable substitution so cannot have
+        underscores
+
+        Returns:
+            str: type of this interface
+        """
+        return self.interface_type
 
     def add_signal(self, signal_type, signal):
         """
@@ -172,8 +182,11 @@ class BaseInterface(base.SonarObject):
         tmp = {}
         tmp["name"] = self.name
         tmp["direction"] = self.direction
-        tmp["signals"] = self.signals
+        tmp["signals"] = {}
+        for key, value in self.signals.items():
+            tmp["signals"][key] = value.asdict()
         tmp["index"] = self.index
-        tmp["connection_mode"] = self.connection_mode
+        # tmp["connection_mode"] = self.connection_mode
         tmp["interface_type"] = self.interface_type
+        tmp["endpoint_modes"] = self.endpoint_modes
         return tmp

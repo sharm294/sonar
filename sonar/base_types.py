@@ -4,10 +4,12 @@ This module defines basic object types used throughout sonar.
 from __future__ import annotations
 
 import logging
-from collections import namedtuple
-from typing import Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Tuple, Union
 
 from sonar.exceptions import SonarInvalidArgError
+
+if TYPE_CHECKING:
+    import sonar.interfaces.base_interface as base
 
 logger = logging.getLogger(__name__)
 
@@ -165,10 +167,50 @@ class InterfacePort(SonarObject):
         return port
 
 
-InOutPorts = namedtuple("InOutPort", ["input", "output"])
-InterfacePorts = namedtuple(
-    "InterfacePorts", ["master", "slave", "mixed", "count"]
-)
+# InOutPorts = namedtuple("InOutPort", ["input", "output"])
+# InterfacePorts = namedtuple(
+#     "InterfacePorts", ["master", "slave", "mixed", "count"]
+# )
+
+
+class InOutPorts(SonarObject):
+    """
+    Maintains a list of input and output signals
+    """
+
+    def __init__(self):
+        self.input: List[SignalPort] = []
+        self.output: List[SignalPort] = []
+
+    def asdict(self):
+        tmp = {"input": [], "output": []}
+        for signal in self.input:
+            tmp["input"].append(signal.asdict())
+        for signal in self.output:
+            tmp["output"].append(signal.asdict())
+        return tmp
+
+
+class InterfacePorts(SonarObject):
+    """
+    Maintains lists of the different interface directions
+    """
+
+    def __init__(self):
+        self.master: List[base.BaseInterface] = []
+        self.slave: List[base.BaseInterface] = []
+        self.mixed: List[base.BaseInterface] = []
+        self.count: Dict[str, int] = {}
+
+    def asdict(self):
+        tmp = {"master": [], "slave": [], "mixed": [], "count": self.count}
+        for interface in self.master:
+            tmp["master"].append(interface.asdict())
+        for interface in self.slave:
+            tmp["slave"].append(interface.asdict())
+        for interface in self.mixed:
+            tmp["mixed"].append(interface.asdict())
+        return tmp
 
 
 class Signal(SonarObject):
@@ -232,20 +274,16 @@ class ClockPort(Clock):
         return tmp
 
 
-# Signal = namedtuple("Signal", ["name", "size", "direction"])
-# Clock = namedtuple("Clock", ["name", "size", "direction", "period"])
-
-
 class ModulePorts:
     """
     Holds a module's ports
     """
 
     def __init__(self):
-        self.clocks = InOutPorts([], [])
-        self.resets = InOutPorts([], [])
-        self.interfaces = InterfacePorts([], [], [], {})
-        self.signals = InOutPorts([], [])
+        self.clocks = InOutPorts()
+        self.resets = InOutPorts()
+        self.interfaces = InterfacePorts()
+        self.signals = InOutPorts()
 
     def _get_ports(
         self,
@@ -420,8 +458,8 @@ class ModulePorts:
             dict: Module ports
         """
         module_ports = {}
-        module_ports["clocks"] = self.clocks
-        module_ports["resets"] = self.resets
-        module_ports["interfaces"] = self.interfaces
-        module_ports["signals"] = self.signals
+        module_ports["clocks"] = self.clocks.asdict()
+        module_ports["resets"] = self.resets.asdict()
+        module_ports["interfaces"] = self.interfaces.asdict()
+        module_ports["signals"] = self.signals.asdict()
         return module_ports

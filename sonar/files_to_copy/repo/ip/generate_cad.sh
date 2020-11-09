@@ -40,7 +40,10 @@ else
         ln -sf -t "$link_path" "$i"
     done
 fi
-ln -sf -t "$link_path" "$build_path"/"${file}"/"${file}"_tb.sv
+for i in "$build_path"/"${file}"/*.sv; do
+    [ -f "$i" ] || break
+    ln -sf -t "$link_path" "$i"
+done
 ln -sf -t "$link_path" "$build_path"/"${file}"/"${file}"_sv.dat
 for i in "$build_path"/"${file}"/*.tcl; do
     [ -f "$i" ] || break
