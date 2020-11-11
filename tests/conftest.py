@@ -74,6 +74,7 @@ def test_dir(tmpdir_factory):
 
             testbench = base_path.joinpath("testbench")
             hello_world = testbench.joinpath("hello_world")
+            ethernet = testbench.joinpath("ethernet")
 
         class Shell:
             """
@@ -82,6 +83,7 @@ def test_dir(tmpdir_factory):
 
             shell = base_path.joinpath("shell")
             hello_world = shell.joinpath("hello_world")
+            ethernet = shell.joinpath("ethernet")
 
         vivado = VivadoPaths()
         repos = RepoPaths()
@@ -100,8 +102,10 @@ def test_dir(tmpdir_factory):
     TestPaths.repos.valid.mkdir(parents=True)
 
     TestPaths.testbench.hello_world.mkdir(parents=True)
+    TestPaths.testbench.ethernet.mkdir(parents=True)
 
     TestPaths.shell.hello_world.mkdir(parents=True)
+    TestPaths.shell.ethernet.mkdir(parents=True)
 
     return TestPaths
 

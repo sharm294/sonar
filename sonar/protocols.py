@@ -65,7 +65,7 @@ class Ethernet:
 
                 if self.suffix is not None:
                     bin_data.extend(bytearray.fromhex(self.suffix[2:]))
-                interface._file_to_stream(
+                interface.data_to_stream(
                     thread, bin_data, parsing_func, endian
                 )
         else:
@@ -99,7 +99,7 @@ class Ethernet:
 
         if self.suffix is not None:
             bin_data.extend(bytearray.fromhex(self.suffix[2:]))
-        interface._file_to_stream(thread, bin_data, parsing_func, endian)
+        interface.data_to_stream(thread, bin_data, parsing_func, endian)
 
     def get_header_bytes(self):
         """

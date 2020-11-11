@@ -114,6 +114,7 @@ def test_testbench_hello_world(test_dir, monkeypatch):
             str(test_dir.testbench.hello_world.joinpath("hello_world.py")),
             "all",
         )
+        print(hello_world_tb)
     else:
         hello_world_tb.generate_tb(__file__, "all", True)
 

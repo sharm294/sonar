@@ -102,11 +102,9 @@ class AXI4Stream(base.BaseInterface):
         Returns:
             dict: Dictionary representing the data transaction
         """
-        self._read(thread, data, 0, **kwargs)
-        if "write" not in self.endpoint_modes:
-            self.endpoint_modes.append("write")
+        self._read(thread, data, **kwargs)
 
-    def _writes(self, thread, data, endpoint_mode):
+    def _writes(self, thread, data):
         """
         Writes an array of commands to the AXI stream. This command results in
         a smaller final file size than using the write command in a loop
@@ -115,12 +113,11 @@ class AXI4Stream(base.BaseInterface):
             thread (Thread): The thread to write the commands to
             data (Iterable): This should be an iterable of kwargs where the
                 keywords are AXI4Stream compliant.
-            endpoint_mode (int): 0 for writes, 1 for reads
         """
 
         payload_arg = []
         for datum in data:
-            payload_dict = self._payload(**datum, endpoint_mode=endpoint_mode)
+            payload_dict = self._payload(**datum)
             payload_arg.append(payload_dict)
 
         self._write(thread, payload_arg)
@@ -134,12 +131,9 @@ class AXI4Stream(base.BaseInterface):
             thread (Thread): The thread to write the commands to
             data (Iterable): This should be an iterable of kwargs where the
                 keywords are AXI4Stream compliant.
-            endpoint_mode (int): 0 for writes, 1 for reads
         """
 
-        self._writes(thread, data, 0)
-        if "write" not in self.endpoint_modes:
-            self.endpoint_modes.append("write")
+        self._writes(thread, data)
 
     def _write(self, thread, payload):
         """
@@ -161,6 +155,16 @@ class AXI4Stream(base.BaseInterface):
                 "payload": payload,
             }
         }
+        if self.direction == "master" and "read" not in self.endpoint_modes:
+            self.endpoint_modes.append("read")
+        elif self.direction == "slave" and "write" not in self.endpoint_modes:
+            self.endpoint_modes.append("write")
+        for command in payload:
+            if "endpoint_mode" not in command:
+                if self.direction == "master":
+                    command["endpoint_mode"] = 1
+                else:
+                    command["endpoint_mode"] = 0
         thread._add_transaction(transaction)
 
     def _payload(self, existing_payload=None, **kwargs):
@@ -200,13 +204,10 @@ class AXI4Stream(base.BaseInterface):
             dict: Dictionary representing the data transaction
         """
 
-        self._read(thread, data, 1, **kwargs)
-        if "read" not in self.endpoint_modes:
-            self.endpoint_modes.append("read")
+        self._read(thread, data, **kwargs)
 
-    def _read(self, thread, data, endpoint_mode, **kwargs):
+    def _read(self, thread, data, **kwargs):
         payload_dict = self._payload(tdata=data, **kwargs)
-        payload_dict["endpoint_mode"] = endpoint_mode
         payload_arg = [payload_dict]
         self._write(thread, payload_arg)
 
@@ -221,9 +222,7 @@ class AXI4Stream(base.BaseInterface):
                 keywords are AXI4Stream compliant.
         """
 
-        self._writes(thread, data, 1)
-        if "read" not in self.endpoint_modes:
-            self.endpoint_modes.append("read")
+        self._writes(thread, data)
 
     def asdict(self):
         """
@@ -278,50 +277,40 @@ class AXI4Stream(base.BaseInterface):
                 assumes a binary file containing only tdata
             endian (str, optional): Defaults to 'little'. Must be little|big
 
-        Raises:
-            NotImplementedError: Unhandled exception
-
         Returns:
             dict: Dictionary representing the data transaction
         """
 
+        with open(filepath) as f:
+            data = f.read()
+        self.data_to_stream(thread, data, parsing_func, endian)
+
+    def data_to_stream(self, thread, data, parsing_func=None, endian="little"):
+        """
+        Sends the data as a series of AXI4Stream transactions.
+
+        Args:
+            thread (Thread): Thread to stream the data in
+            data (Any): Data to stream
+            parsing_func (Func, optional): Defaults to None. Function that
+                determines how the data is parsed. Must return a list of dicts
+                representing valid AXI4Stream transactions. The default function
+                assumes a binary string containing only tdata
+            endian (str, optional): Defaults to 'little'. Must be little|big
+        """
         transactions = []
         if parsing_func is None:
             parsing_func = self._f2s_bin_data
-        if filepath.endswith(".bin"):
-            with open(filepath) as f:
-                transactions = parsing_func(f, endian)
-        else:
-            raise NotImplementedError()
-
+        transactions = parsing_func(data, endian)
         self._write(thread, transactions)
 
-    def _file_to_stream(self, thread, open_file, parsing_func, endian):
-        """
-        Internal variant of file_to_stream where the file has already been
-        opened, there are no optional arguments, and there is a return value
-
-        Args:
-            thread (Thread): Thread to stream the file in
-            open_file (File): An opened file object
-            parsing_func (Function): A function object to interpret the file with
-            endian (str): 'little' or 'big'
-
-        Returns:
-            dict: Dictionary representing the data transaction
-        """
-
-        transactions = []
-        transactions = parsing_func(open_file, endian)
-        return self._write(thread, transactions)
-
-    def _f2s_bin_data(self, data, endian):
+    def _f2s_bin_data(self, data_str, endian):
         """
         A file parsing function for file_to_stream. Assumes a binary file that
         contains only tdata
 
         Args:
-            data (file): Read data from the file
+            data_str (str): Read data from the file as a string
             endian (str): little|big
 
         Returns:
@@ -329,10 +318,11 @@ class AXI4Stream(base.BaseInterface):
         """
 
         transactions = []
+        data = bytearray(data_str)
         file_size = len(data)
         beat_count = (ceil(file_size / 8.0)) * 8
         beat = 0
-        tdata_bytes = self.get_signal("tdata").size / 8
+        tdata_bytes = int(self.get_signal("tdata").size / 8)
 
         while beat < beat_count:
             tdata = 0
@@ -347,7 +337,8 @@ class AXI4Stream(base.BaseInterface):
                         tdata = (tdata << 8) | (data[i])
                     elif i < beat + tdata_bytes:
                         tdata = tdata << 8
-            payload = self._payload(tdata="0x" + format(tdata, "08x"))
+            # payload = self._payload(tdata="0x" + format(tdata, "08x"))
+            payload = self._payload(tdata=tdata)
 
             if self.has_signal("tkeep"):
                 tkeep = self._f2s_tkeep(file_size, tdata_bytes, beat, endian)
@@ -361,8 +352,7 @@ class AXI4Stream(base.BaseInterface):
 
         return transactions
 
-    @staticmethod
-    def _f2s_tkeep(file_size, tdata_bytes, beat, endian):
+    def _f2s_tkeep(self, file_size, tdata_bytes, beat, endian):
         """
         Calculates tkeep for a particular beat for file_to_stream since the last
         beat may be smaller than a word.
@@ -378,7 +368,7 @@ class AXI4Stream(base.BaseInterface):
         """
 
         if beat < ((ceil(file_size / 8.0) - 1) * 8.0):
-            tkeep = "KEEP_ALL"
+            tkeep = (2 ** self.get_signal("tkeep").size) - 1
         else:
             size_last_transaction = file_size % tdata_bytes
             if size_last_transaction != 0:
@@ -388,10 +378,10 @@ class AXI4Stream(base.BaseInterface):
                 if endian != "little":
                     for _ in range(tdata_bytes - size_last_transaction):
                         tkeep = tkeep + "0"
-                tkeep = "0b" + tkeep
+                tkeep = int(tkeep, 2)
             else:
-                tkeep = "KEEP_ALL"
-        return tkeep
+                tkeep = (2 ** self.get_signal("tkeep").size) - 1
+        return int(tkeep)
 
     @staticmethod
     def _f2s_tlast(file_size, beat):

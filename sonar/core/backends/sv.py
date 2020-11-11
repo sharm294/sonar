@@ -608,7 +608,6 @@ def count_commands(commands):
         "timestamp",
         "display",
         "flag",
-        "interface",
     ]
 
     count = 0
@@ -616,6 +615,9 @@ def count_commands(commands):
         for sv_command in sv_commands:
             if sv_command in command:
                 count += 1
+                break
+            if "interface" in command:
+                count += len(command["interface"]["payload"])
                 break
             if "macro" in command and command["macro"] == "INIT_SIGNALS":
                 count += len(command["commands"])
