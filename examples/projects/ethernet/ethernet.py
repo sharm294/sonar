@@ -40,7 +40,7 @@ def test_testbench_ethernet(test_dir, monkeypatch):
     dut.add_port("m_eth_type", "output", size=16)
     dut.add_port("busy", "output")
     dut.add_port("error_header_early_termination", "output")
-    ethernet_tb.add_module(dut)
+    ethernet_tb.add_dut(dut)
 
     # create an AXI4Stream-M interface with the default side channels + tkeep
     axis_out = AXI4Stream("m_eth_payload_axis", "master", "clk")
@@ -76,7 +76,6 @@ def test_testbench_ethernet(test_dir, monkeypatch):
     mac_src = "01:02:03:04:05:06"
     mac_dst = "07:08:09:0a:0b:0c"
     ether_type = "ba:ba"
-    # padstr = b"\x1A" * 66
     padstr = bytes(range(64))
 
     my_eth = Ethernet(mac_src, mac_dst, ether_type)
@@ -86,9 +85,9 @@ def test_testbench_ethernet(test_dir, monkeypatch):
     # this thread will validate the behavior of the DUT (i.e. the monitor)
     header_thr = test_vector_0.add_thread()
     header_thr.wait_level("m_eth_hdr_valid == 1")
-    header_thr.wait("assert(m_eth_dest_mac == 48'h010203040506);")
-    header_thr.wait("assert(m_eth_src_mac == 48'h0708090a0b0c);")
-    header_thr.wait("assert(m_eth_type == 16'hbaba);")
+    header_thr.assert_value("m_eth_dest_mac == 48'h010203040506")
+    header_thr.assert_value("m_eth_src_mac == 48'h0708090a0b0c")
+    header_thr.assert_value("m_eth_type == 16'hbaba")
 
     payload_thr = test_vector_0.add_thread()
     my_eth.stream(payload_thr, axis_out, "payload")

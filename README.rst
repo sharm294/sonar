@@ -148,5 +148,3 @@ environment are below:
 .. _pytest: https://docs.pytest.org/en/stable/
 .. _conda: https://docs.conda.io/en/latest/miniconda.html
 .. _pre-commit: https://pre-commit.com/
-
-![Build sonar](https://github.com/sharm294/sonar/workflows/Build%20sonar/badge.svg?branch=dev)

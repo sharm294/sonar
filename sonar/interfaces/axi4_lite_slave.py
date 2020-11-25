@@ -25,8 +25,16 @@ class AXI4LiteSlave(base.BaseInterface):
         """
 
         super().__init__(name, "mixed", AXI4LiteSlaveCore)
-        self.clock = clock
-        self.reset = reset
+        if isinstance(clock, sonar.base_types.ClockPort):
+            clock_name = clock.name
+        else:
+            clock_name = clock
+        if isinstance(reset, sonar.base_types.SignalPort):
+            reset_name = reset.name
+        else:
+            reset_name = reset
+        self.clock = clock_name
+        self.reset = reset_name
         self.registers = []
         self.addresses = []
         self.addr_range = ""

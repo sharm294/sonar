@@ -43,7 +43,11 @@ class AXI4Stream(base.BaseInterface):
         """
 
         super().__init__(name, direction, AXI4StreamCore)
-        self.clock = clock
+        if isinstance(clock, sonar.base_types.ClockPort):
+            clock_name = clock.name
+        else:
+            clock_name = clock
+        self.clock = clock_name
         self.flit = flit
         self.interface_type = "axi4_stream"
 
@@ -97,12 +101,13 @@ class AXI4Stream(base.BaseInterface):
 
         Args:
             data (str): Data to write
-            kwargs (str): keyworded arguments where the keyword is the AXI4Stream
-                signal or special keyword and is assigned to the given value
-        Returns:
-            dict: Dictionary representing the data transaction
+            kwargs (str): keyworded arguments where the keyword is the
+                AXI4Stream signal or special keyword and is assigned to the
+                given value
         """
-        self._read(thread, data, **kwargs)
+        payload_dict = self._payload(tdata=data, **kwargs)
+        payload_arg = [payload_dict]
+        self._write(thread, payload_arg)
 
     def _writes(self, thread, data):
         """
@@ -204,12 +209,7 @@ class AXI4Stream(base.BaseInterface):
             dict: Dictionary representing the data transaction
         """
 
-        self._read(thread, data, **kwargs)
-
-    def _read(self, thread, data, **kwargs):
-        payload_dict = self._payload(tdata=data, **kwargs)
-        payload_arg = [payload_dict]
-        self._write(thread, payload_arg)
+        self.write(thread, data, **kwargs)
 
     def reads(self, thread, data):
         """

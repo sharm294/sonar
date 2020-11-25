@@ -577,7 +577,13 @@ def set_waits(testbench_config, testbench):
         replace_str += (
             'if(interfaceType_par == "' + condition["key"] + '") begin\n'
         )
-        condition_str = condition["condition"].replace("$value", "args[0]")
+        regex_variable = re.compile(r"\$\d+")
+        condition_str = condition["condition"]
+        variables = re.findall(regex_variable, condition["condition"])
+        for variable in variables:
+            condition_str = condition_str.replace(
+                variable, f"args[{variable[1:]}]"
+            )
         if not condition_str.endswith(";"):
             condition_str += ";"
         replace_str += leading_spaces + include.TAB_SIZE + condition_str + "\n"
@@ -651,14 +657,14 @@ def write_line(data_file, command, vector_id):
             arg = command["wait"]["value"]
         else:
             arg = 0
-        data_file.append(
-            "wait "
-            + str(command["wait"]["key"])
-            + " "
-            + str(1)
-            + " "
-            + str(arg)
-        )
+        txt = "wait " + command["wait"]["key"] + " "
+        if "args" in command["wait"] and command["wait"]["args"]:
+            txt += str(len(command["wait"]["args"]))
+            for arg in command["wait"]["args"]:
+                txt += " " + str(arg)
+        else:
+            txt += "0"
+        data_file.append(txt)
     elif "signal" in command:
         data_file.append(
             "signal "

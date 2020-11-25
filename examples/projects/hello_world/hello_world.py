@@ -30,24 +30,23 @@ def test_testbench_hello_world(test_dir, monkeypatch):
 
     # create a DUT module named 'DUT' and specify its signal ports
     dut = Module.cpp_vivado("DUT", "20.5ns")
-    # dut.add_clock_port("ap_clk", "20ns")
-    # dut.add_reset_port("ap_rst_n")
     dut.add_port("state_out", size=3, direction="output")
-    dut.add_port("ack", direction="output")
-    hello_world_tb.add_module(dut)
+    dut.add_port("ack", "output")
+    clock = dut.ports.get_clocks("input")[0]  # we know only one clock exists
+    reset = dut.ports.get_resets("input")[0]  # we know only one reset exists
+    hello_world_tb.add_dut(dut)
 
     # create an AXI-M interface with the default side channels and a data width
     # of 64 and add it to the DUT.
-    axis_out = AXI4Stream("axis_output", "master", "ap_clk")
+    axis_out = AXI4Stream("axis_output", "master", clock)
     axis_out.init_signals("default", 64)
     axis_out.iClass = "axis_t"  # this field is needed for C++ TBs
     axis_out.flit = "axis_word_t"  # this field is needed for C++ TBs
-    # axis_out.ports.addChannel('TKEEP', 'tkeep', 8) # e.g. to add a new channel
     dut.add_interface(axis_out)
 
     # create an AXI-S interface with the default side channels and a data width
     # of 64 and add it to the DUT.
-    axis_in = AXI4Stream("axis_input", "slave", "ap_clk")
+    axis_in = AXI4Stream("axis_input", "slave", clock)
     axis_in.init_signals("default", 64)
     axis_in.iClass = "axis_t"
     axis_in.flit = "axis_word_t"
@@ -55,8 +54,8 @@ def test_testbench_hello_world(test_dir, monkeypatch):
 
     # create a S-AXILite interface, set up its register space and add it to the
     # DUT.
-    ctrl_bus = AXI4LiteSlave("s_axi_ctrl_bus", "ap_clk", "ap_rst_n")
-    ctrl_bus.add_register("enable", 0x10)  # register 'enable' is at 0x10
+    ctrl_bus = AXI4LiteSlave("s_axi_ctrl_bus", clock, reset)
+    ctrl_bus.add_register("enable", 0x10)  # register 'enable' is at addr 0x10
     ctrl_bus.set_address("4K", 0)  # address range is 4K at an offset of 0
     ctrl_bus.init_signals(mode="default", data_width=32, addr_width=5)
     dut.add_interface(ctrl_bus)
@@ -68,10 +67,10 @@ def test_testbench_hello_world(test_dir, monkeypatch):
     # this thread just initializes signals. It could be reused in many test
     # vectors so it's created differently from the other threads.
     init_thread = Thread()
-    init_thread.wait_negedge("ap_clk")  # wait for negedge of ap_clk
+    init_thread.wait_negedge(clock.name)  # wait for negedge of the clock
     init_thread.init_signals()  # initialize all signals to zero
     init_thread.add_delay("40ns")
-    init_thread.set_signal("ap_rst_n", 1)
+    init_thread.set_signal(reset.name, 1)
     init_thread.set_signal("axis_output_tready", 1)
     test_vector_0.add_thread(init_thread)
 
@@ -82,10 +81,10 @@ def test_testbench_hello_world(test_dir, monkeypatch):
     ctrl_bus.write(input_thr, "enable", 1)
     axis_in.write(input_thr, 0xABCD)
     input_thr.call_dut(2)
-    input_thr.wait_level("ack == $value", value=1)
+    input_thr.wait_level("ack == $0", 1)
     axis_in.write(input_thr, 0)
     input_thr.call_dut(3)
-    input_thr.wait_level("ack == $value", value=1)
+    input_thr.wait_level("ack == $0", 1)
     input_thr.add_delay("110ns")
     input_thr.set_flag(0)  # sets flag 0 that another thread may be waiting on
 

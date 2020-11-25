@@ -86,19 +86,30 @@ class Testbench(base.SonarObject):
             raise KeyError("Key " + key + " does not exist in metadata")
         self.metadata[key] = value
 
-    def add_module(self, module):
+    # def add_module(self, module):
+    #     """
+    #     Add a module to the testbench
+
+    #     Args:
+    #         module (Module): Module to add to this testbench
+    #     """
+
+    #     self.modules[module.name] = module
+
+    def add_dut(self, module):
         """
-        Adds a module to the testbench
+        Add the device-under-test to the testbench
 
         Args:
             module (Module): Module to add to this testbench
         """
 
-        self.modules[module.name] = module
+        module.name = "DUT"
+        self.modules["DUT"] = module
 
     def add_test_vector(self, vector):
         """
-        Adds a test vector to the testbench
+        Add a test vector to the testbench
 
         Args:
             vector (TestVector): Vector containing one or more non-empty threads
@@ -146,7 +157,7 @@ class Testbench(base.SonarObject):
                         if updated_key:
                             command["wait"]["key"] = updated_key
         if flag_present:
-            waits.append({"condition": "wait(flags[$value]);", "key": "flag"})
+            waits.append({"condition": "wait(flags[args[0]]);", "key": "flag"})
         self.wait_conditions = waits
 
     def asdict(self):
@@ -227,9 +238,6 @@ class Module(base.SonarObject):
         """
 
         self.name = ""
-        # self.lang = "sv"
-        # self.hls = None
-        # self.hls_version = None
         self.type = {"lang": "sv", "hls": None, "hls_version": None}
         self.ports = base.ModulePorts()
         self.parameters = []
@@ -274,7 +282,9 @@ class Module(base.SonarObject):
         return module
 
     @classmethod
-    def cpp_vivado(cls, name, clk_period="20ns", reset_low=True):
+    def cpp_vivado(
+        cls, name, clk_period="20ns", reset_low=True, version="2018.1"
+    ):
         """
         Creates a default cpp module with the given name, language and HLS tool
 
@@ -283,12 +293,15 @@ class Module(base.SonarObject):
             clk_period (str, optional): Defaults to 20ns. Clock period to use
             reset_low (bool, optional): Defaults to True. Enable active low reset
                 Set False to use active high reset
+            version (str, optional): Defaults to 2018.1. Vivado tool version
 
         Returns:
             Module: Object representing a module
         """
 
-        module = cls().cpp(name, "cpp", "vivado", "2018.1")
+        module = cls().cpp(name, "cpp", "vivado", version)
+        # assumes that all Vivado HLS IPs add a clock/reset with these names.
+        # if this behavior changes, this needs to be updated
         module.add_clock_port("ap_clk", clk_period)
         if reset_low:
             module.add_reset_port("ap_rst_n")
@@ -594,49 +607,52 @@ class Thread(base.SonarObject):
             flag_id (number): ID of the flag to wait on (ranges from 0 to Flags-1)
         """
 
-        self.commands.append({"wait": {"key": "flag", "value": flag_id}})
+        self.commands.append({"wait": {"key": "flag", "args": [flag_id]}})
         self._print_timestamp()
         self.commands.append({"flag": {"clear_flag": flag_id}})
 
-    def wait(self, condition, value=None):
+    def _statement(self, condition, *args):
         """
-        Add a wait condition to the thread. For now, the condition must be a
-        complete SystemVerilog line that will be inserted verbatim into the TB.
-        The terminating semicolon should be included.
+        Add a line to the thread, which is a complete Systemverilog line that
+        that will be inserted verbatim into the TB. Any variables used in the
+        statement will be replaced.
 
         Args:
-            condition (str): SV-compatible wait statement (e.g. wait(); or @();)
-            value (number, optional): Defaults to None. The condition can use
-                '$value' as a variable and pass the number that should be
-                inserted. e.g. wait(signal == $value)
+            condition (str): SV-compatible statement (e.g. wait(); or @();)
+            args (int): Conditions can use variables and their values can be
+            passed in as args
         """
 
-        if value is None:
-            self.commands.append({"wait": {"key": condition}})
-        else:
-            self.commands.append({"wait": {"key": condition, "value": value}})
+        self.commands.append({"wait": {"key": condition, "args": args}})
         self._print_timestamp()
 
-    def wait_level(self, condition, value=None):
+    def wait_level(self, condition, *args):
         """
         Add a level-wait condition (wait until the signal value matches) to the
         thread.
 
         Args:
             condition (str): SV-compatible statement (e.g. 'signal == 1')
-            value (number, optional): Defaults to None. The condition can use
-                '$value' as a variable and pass the number that should be
-                inserted. e.g. 'signal == $value'
+            args (int): Conditions can use 'args[x]' as variables and their
+                values can be passed in as args
         """
 
         condition_tmp = "wait(" + condition + ");"
-        if value is None:
-            self.commands.append({"wait": {"key": condition_tmp}})
-        else:
-            self.commands.append(
-                {"wait": {"key": condition_tmp, "value": value}}
-            )
-        self._print_timestamp()
+        self._statement(condition_tmp, *args)
+
+    def assert_value(self, condition, *args):
+        """
+        Add an assertion condition (assert the signal value matches) to the
+        thread.
+
+        Args:
+            condition (str): SV-compatible statement (e.g. 'signal == 1')
+            args (int): Conditions can use 'args[x]' as variables and their
+                values can be passed in as args
+        """
+
+        condition_tmp = "assert(" + condition + ");"
+        self._statement(condition_tmp, *args)
 
     def wait_posedge(self, signal):
         """
@@ -673,8 +689,7 @@ class Thread(base.SonarObject):
         if edge not in ("posedge", "negedge"):
             raise ValueError()
         condition_tmp = "@(" + edge + " " + signal + ");"
-        self.commands.append({"wait": {"key": condition_tmp}})
-        self._print_timestamp()
+        self._statement(condition_tmp)
 
     def _add_transaction(self, transaction):
         """
