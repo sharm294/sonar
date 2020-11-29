@@ -23,6 +23,7 @@ class Testbench(base.SonarObject):
         self.wait_conditions = []
         self.modules = {}
         self.vectors = []
+        self.prologue_thread = None
 
     @classmethod
     def default(cls, module_name):
@@ -117,48 +118,16 @@ class Testbench(base.SonarObject):
 
         self.vectors.append(vector)
 
-    def _finalize_waits(self):
+    def set_prologue_thread(self, thread):
         """
-        Using the test vectors in the testbench, this method aggregates all the
-        wait conditions as required for the Sonar backend. This method must be
-        called ONCE after all test vectors have been completed and added.
+        Set a thread to act as a prologue prior to every test vector. Typically,
+        this thread should set resets and configure the initial state of the
+        system. All other threads in all test vectors will start after this one.
+
+        Args:
+            thread (Thread): A Thread object
         """
-
-        def update_waits(index, temp_key):
-            if temp_key.isdigit():
-                if int(temp_key) >= index:
-                    raise Exception
-                return None, index
-            if temp_key not in conditions:
-                new_key = str(index)
-                waits.append({"condition": temp_key, "key": new_key})
-                conditions.append(temp_key)
-                index += 1
-                return new_key, index
-            for wait in waits:
-                if wait["condition"] == temp_key:
-                    key = wait["key"]
-                    break
-            return key, index
-
-        waits = []
-        conditions = []
-        flag_present = False
-        index = 0
-        for vector in self.vectors:
-            for thread in vector.threads:
-                for command in thread.commands:
-                    if "wait" in command:
-                        temp_key = command["wait"]["key"]
-                        if temp_key == "flag":
-                            flag_present = True
-                            continue
-                        updated_key, index = update_waits(index, temp_key)
-                        if updated_key:
-                            command["wait"]["key"] = updated_key
-        if flag_present:
-            waits.append({"condition": "wait(flags[args[0]]);", "key": "flag"})
-        self.wait_conditions = waits
+        self.prologue_thread = thread
 
     def asdict(self):
         """
@@ -200,9 +169,9 @@ class Testbench(base.SonarObject):
         Args:
             tb_filepath (str): path to the sonar testbench script
             languages (str): sv or all to choose which languages
+            force (bool, optional): Force testbench generation. Defaults to False
         """
 
-        self._finalize_waits()
         generate.sonar(self, tb_filepath, languages, force)
 
     def get_from_dut(self, key):

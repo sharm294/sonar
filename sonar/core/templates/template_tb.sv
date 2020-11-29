@@ -33,19 +33,20 @@ module exerciser (
     SONAR_EXERCISER_PORTS
 );
 
-    logic [MAX_SEEK_SIZE-1:0] threads [MAX_PARALLEL];
+    bit [MAX_SEEK_SIZE-1:0] threads [MAX_PARALLEL];
 
-    logic [MAX_PARALLEL-1:0] testVectorEnd = 0;
-    logic [MAX_PARALLEL-1:0] errorCheck = 0;
-    logic [MAX_PARALLEL-1:0] threadSync = 0;
-    logic [MAX_PARALLEL-1:0] threadSync_golden = 0;
-    logic updateEnd = 0;
-    logic fileReady = 0;
+    bit [MAX_PARALLEL-1:0] testVectorEnd = 0;
+    bit [MAX_PARALLEL-1:0] errorCheck = 0;
+    bit [MAX_PARALLEL-1:0] threadSync = 0;
+    bit [MAX_PARALLEL-1:0] threadSync_golden = 0;
+    bit updateEnd = 0;
+    bit fileReady = 0;
+    bit test_prologue = 0;
 
     int vectorCount;
     time timeRef;
-    logic [SONAR_FLAG_COUNT-1:0] flags = 0;
-    logic [MAX_PARALLEL-1:0] errorCheck_latched = 0;
+    bit [SONAR_FLAG_COUNT-1:0] flags = 0;
+    bit [MAX_PARALLEL-1:0] errorCheck_latched = 0;
     int retval[SONAR_MAX_ENDPOINTS];
 
     SONAR_INCLUDE_ENDPOINTS
@@ -68,6 +69,9 @@ module exerciser (
         end
         else if (packetType_par == "signal") begin
             SONAR_IF_ELSE_SIGNAL
+            else if (interfaceType_par == "test_prologue") begin
+                test_prologue = args[0];
+            end
             else begin
                 $display({"Unhandled case for signal type: ",
                     interfaceType_par});

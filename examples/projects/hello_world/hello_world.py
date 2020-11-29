@@ -72,11 +72,10 @@ def test_testbench_hello_world(test_dir, monkeypatch):
     init_thread.add_delay("40ns")
     init_thread.set_signal(reset.name, 1)
     init_thread.set_signal("axis_output_tready", 1)
-    test_vector_0.add_thread(init_thread)
+    hello_world_tb.set_prologue_thread(init_thread)
 
     # this thread is responsible for sending the stimulus (i.e. the driver)
     input_thr = test_vector_0.add_thread()
-    input_thr.add_delay("100ns")
     input_thr.init_timer()  # zeros a timer that can be evaluated for runtime
     ctrl_bus.write(input_thr, "enable", 1)
     axis_in.write(input_thr, 0xABCD)

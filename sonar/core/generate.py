@@ -99,10 +99,109 @@ def get_data_filepath(sonar_tb_filepath, lang):
     return os.path.join(directory, dut_name + f"_{lang}.dat")
 
 
+def finalize_waits(testbench_config):
+    """
+    Using the test vectors in the testbench, this method aggregates all the
+    wait conditions as required for the Sonar backend
+
+    Args:
+        testbench_config (Testbench): The user-defined testbench configuration
+
+    Returns:
+        Testbench: Updated testbench configuration
+    """
+
+    def update_waits(index, temp_key):
+        if temp_key.isdigit():
+            if int(temp_key) >= index:
+                raise Exception
+            return None, index
+        if temp_key not in conditions:
+            new_key = str(index)
+            waits.append({"condition": temp_key, "key": new_key})
+            conditions.append(temp_key)
+            index += 1
+            return new_key, index
+        for wait in waits:
+            if wait["condition"] == temp_key:
+                key = wait["key"]
+                break
+        return key, index
+
+    waits = []
+    conditions = []
+    flag_present = False
+    index = 0
+    for vector in testbench_config.vectors:
+        for thread in vector.threads:
+            for command in thread.commands:
+                if "wait" in command:
+                    temp_key = command["wait"]["key"]
+                    if temp_key == "flag":
+                        flag_present = True
+                        continue
+                    updated_key, index = update_waits(index, temp_key)
+                    if updated_key:
+                        command["wait"]["key"] = updated_key
+    if flag_present:
+        waits.append({"condition": "wait(flags[args[0]]);", "key": "flag"})
+    testbench_config.wait_conditions = waits
+    return testbench_config
+
+
+def configure_prologue(testbench_config):
+    """
+    If a prologue thread is added, add it to all test vectors and delay other
+    threads to wait for it to finish
+
+    Args:
+        testbench_config (Testbench): The user-defined testbench configuration
+
+    Returns:
+        Testbench: Updated testbench configuration
+    """
+    if testbench_config.prologue_thread is None:
+        return testbench_config
+    prologue_thread = testbench_config.prologue_thread
+    prologue_thread.commands.insert(
+        0, {"signal": {"name": "test_prologue", "value": 1}}
+    )
+    prologue_thread.set_signal("test_prologue", 0)
+    for vector in testbench_config.vectors:
+        for thread in vector.threads:
+            thread.commands.insert(
+                0, {"wait": {"key": "@(negedge test_prologue);"}}
+            )
+        vector.add_thread(prologue_thread)
+    return testbench_config
+
+
+def legalize_config(testbench_config):
+    """
+    There are some additional automatic steps that must be performed on the
+    testbench configuration once the user has finished it
+
+    Args:
+        testbench_config (Testbench): The user-defined testbench configuration
+
+    Returns:
+        Testbench: Updated testbench configuration
+    """
+    testbench_config = configure_prologue(testbench_config)
+    testbench_config = finalize_waits(testbench_config)
+    return testbench_config
+
+
 # TODO error handling
 # TODO make seek size programmatic
 # TODO allow delays by clock cycles
-def sonar(testbench_config, sonar_tb_filepath, languages="sv", force=False):
+def sonar(
+    testbench_config,
+    sonar_tb_filepath,
+    languages="sv",
+    force=False,
+    legalize=True,
+):
     """
     Call the appropriate backends to generate testbenches in the chosen
     languages.
@@ -111,13 +210,18 @@ def sonar(testbench_config, sonar_tb_filepath, languages="sv", force=False):
         testbench_config (Testbench): The user-defined testbench configuration
         sonar_tb_filepath (str): Path to the Python file used to generate
             testbench_config
-        force (bool, optional): Force testbench generation
         languages (str or tuple, optional): Language(s) to generate testbenches
-        for. Defaults to "sv".
+            for. Defaults to "sv".
+        force (bool, optional): Force testbench generation. Defaults to False
+        legalize (bool, optional): Perform testbench legalization on the config
 
     Raises:
         SonarInvalidArgError: Raised for invalid languages
     """
+    if legalize:
+        testbench_config = legalize_config(testbench_config)
+        print(testbench_config)
+
     if isinstance(languages, str):
         if languages == "all":
             active_langs = ("sv", "cpp")

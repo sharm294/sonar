@@ -66,11 +66,10 @@ def test_testbench_ethernet(test_dir, monkeypatch):
     init_thread.set_signal("rst", 0)
     init_thread.set_signal("m_eth_hdr_ready", 1)
     init_thread.set_signal("m_eth_payload_axis_tready", 1)
-    test_vector_0.add_thread(init_thread)
+    ethernet_tb.set_prologue_thread(init_thread)
 
     # this thread is responsible for sending the stimulus (i.e. the driver)
     input_thr = test_vector_0.add_thread()
-    input_thr.add_delay("100ns")
     input_thr.init_timer()  # zeros a timer that can be evaluated for runtime
 
     mac_src = "01:02:03:04:05:06"
