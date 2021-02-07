@@ -6,6 +6,7 @@ import itertools
 import os
 
 import sonar.base_types
+import sonar.endpoints
 import sonar.interfaces.base_interface as base
 
 
@@ -63,6 +64,20 @@ class AXI4LiteSlave(base.BaseInterface):
         """
         return self.get_signal("awaddr").size
 
+    def add_endpoint(self, endpoint, **kwargs):
+        """
+        Add an endpoint to this AXI4-Lite interface
+
+        Args:
+            endpoint (str): Identifier for the endpoint
+            kwargs (?): Keyworded arguments for the endpoint
+        """
+        endpoint_obj = None
+        if endpoint == "manual":
+            endpoint_obj = EndpointManual
+        if endpoint_obj:
+            super().add_endpoint(endpoint_obj, **kwargs)
+
     def write(self, thread, register, data):
         """
         Write data to a register
@@ -88,8 +103,6 @@ class AXI4LiteSlave(base.BaseInterface):
             }
         }
         thread._add_transaction(transaction)
-        if "write" not in self.endpoint_modes:
-            self.endpoint_modes.append("write")
 
     def read(self, thread, register, expected_value):
         """
@@ -120,8 +133,6 @@ class AXI4LiteSlave(base.BaseInterface):
             }
         }
         thread._add_transaction(transaction)
-        if "read" not in self.endpoint_modes:
-            self.endpoint_modes.append("read")
 
     def set_address(self, addr_range, addr_offset):
         """
@@ -225,12 +236,7 @@ class AXI4LiteSlave(base.BaseInterface):
         tmp["addresses"] = self.addresses
         tmp["addr_offset"] = self.addr_offset
         tmp["addr_range"] = self.addr_range
-        # tmp["data_width"] = self.dataWidth
 
-        tmp["readResp"] = "rresp_" + str(self.index)
-        tmp["writeResp"] = "wresp_" + str(self.index)
-        tmp["readData"] = "rdata_" + str(self.index)
-        tmp["agent"] = "master_agent_" + str(self.index)
         return tmp
 
 
@@ -260,35 +266,6 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
             "araddr": {"size": 0, "required": True},
             "rready": {"size": 1, "required": True},
             "bready": {"size": 1, "required": True},
-        },
-    }
-
-    actions = {
-        "sv": {
-            "write": [
-                "$$agent.AXI4LITE_WRITE_BURST(args[1],0,args[2],$$writeResp);"
-            ],
-            "read": [
-                "$$agent.AXI4LITE_READ_BURST(args[1],0,$$readData,$$readResp); //addr, prot, read_data, resp",
-                "assert($$readData == args[2]) begin",
-                "end else begin",
-                '    $error("S-AXILITE Assert failed at %t on $$readData. Expected: %h, Received: %h", $time, args[2], $$readData);',
-                "    retval = 1;",
-                "end",
-            ],
-        },
-        "cpp": {
-            "master": [
-                {
-                    "foreach": "registers",
-                    "commands": [
-                        "if(args[0] == $$addresses){",
-                        "    $$registers = args[1];",
-                        "}",
-                    ],
-                },
-            ],
-            "slave": [],
         },
     }
 
@@ -323,6 +300,41 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
         else:
             imports += "import axi_vip_pkg::*;\n"
         return imports
+
+
+class EndpointManual(sonar.endpoints.Endpoint):
+    """
+    Manual endpoint
+    """
+
+    actions = {
+        "sv": {
+            "write": [
+                "$$agent.AXI4LITE_WRITE_BURST(args[1],0,args[2],$$writeResp);"
+            ],
+            "read": [
+                "$$agent.AXI4LITE_READ_BURST(args[1],0,$$readData,$$readResp); //addr, prot, read_data, resp",
+                "assert($$readData == args[2]) begin",
+                "end else begin",
+                '    $error("S-AXILITE Assert failed at %t on $$readData. Expected: %h, Received: %h", $time, args[2], $$readData);',
+                "    retval = 1;",
+                "end",
+            ],
+        },
+        "cpp": {
+            "master": [
+                {
+                    "foreach": "registers",
+                    "commands": [
+                        "if(args[0] == $$addresses){",
+                        "    $$registers = args[1];",
+                        "}",
+                    ],
+                },
+            ],
+            "slave": [],
+        },
+    }
 
     @staticmethod
     def import_packages_local(interface):
@@ -365,7 +377,6 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
         blocks such as variable declarations.
 
         Args:
-            prologue (str): The preceding text to append to
             indent (str): Indentation to add to each line
 
         Returns:
@@ -419,12 +430,11 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
             tcl_file_gen.close()
 
     @staticmethod
-    def instantiate(interface, indent, tab_size):
+    def instantiate(indent, tab_size):
         """
         Any modules that this interface instantiates in SV.
 
         Args:
-            ip_inst (str): The preceding text to append to
             interface (AXI4LiteSlave): AXI4LiteSlave
             indent (str): Indentation to add to each line
             tab_size (str): One tab worth of indent
@@ -432,25 +442,21 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
         Returns:
             str: Updated ip_inst
         """
-        index = str(interface.index)
+        index = "$$endpointIndex"
         one_tab = indent + tab_size
         ip_inst = indent
         ip_inst += "vip_bd_" + index + " vip_bd_" + index + "_i(\n"
-        ip_inst += one_tab + ".aclk(" + interface.clock + "),\n"
-        ip_inst += one_tab + ".aresetn(" + interface.reset + "),\n"
+        ip_inst += one_tab + ".aclk($$clock),\n"
+        ip_inst += one_tab + ".aresetn($$reset),\n"
         for signal_type in itertools.chain(
             AXI4LiteSlaveCore.signals["input"],
             AXI4LiteSlaveCore.signals["output"],
         ):
-            ip_inst += (
-                one_tab
-                + ".m_axi_"
-                + signal_type
-                + "("
-                + interface.name
-                + "_"
-                + signal_type
-                + "),\n"
-            )
+
+            ip_inst += one_tab + ".m_axi_" + signal_type + "(" + "$$name" + "_"
+            if signal_type in AXI4LiteSlaveCore.signals["output"]:
+                ip_inst += signal_type + "_endpoint[$$endpointIndex]" + "),\n"
+            else:
+                ip_inst += signal_type + "),\n"
         ip_inst = ip_inst[:-2] + "\n" + indent + ");\n"
         return ip_inst

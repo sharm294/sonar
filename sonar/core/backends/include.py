@@ -99,8 +99,9 @@ def replace_variables(
     input_string: str, interface: Any, key: Union[int, None] = None
 ) -> str:
     """
-    In a string, replace all the "$$X" variables with their definitions from the
-    interface.
+    In a string, attempt to replace all the "$$X" variables with their
+    definitions from the interface. If not found in the interface, it skips the
+    variable, leaving it to the user to replace afterwards
 
     Args:
         input_string (str): String containing $$X variables
@@ -114,12 +115,17 @@ def replace_variables(
 
     regex_variable = re.compile(r"\$\$[^_|\W]+")
     for variable in re.findall(regex_variable, input_string):
-        new_variable = getattr(interface, variable[2:])
-        if isinstance(new_variable, (list, tuple)):
-            if key is None:
-                raise ValueError
-            new_variable = new_variable[key]
-        input_string = input_string.replace(variable, str(new_variable))
+        try:
+            new_variable = getattr(interface, variable[2:])
+        except AttributeError:
+            continue
+        else:
+            if isinstance(new_variable, (list, tuple)):
+                if key is None:
+                    raise ValueError
+                new_variable = new_variable[key]
+            input_string = input_string.replace(variable, str(new_variable))
+
     return input_string
 
 
@@ -161,12 +167,14 @@ def replace_signals(interface, action, command, target_string, indent, args):
     Returns:
         str: The updated target_string
     """
-    for signal_type, _ in interface.signals.items():
+    for signal_type, signal in interface.signals.items():
         if signal_type in action["signals"]:
             command_copy = copy.deepcopy(command)
             command_copy = command_copy.replace("$$signal", signal_type)
-            idx = str(args[signal_type])
-            command_copy = command_copy.replace("$$i", idx)
+            command_copy = command_copy.replace("$$size", str(signal.size))
+            if "$$i" in command_copy:
+                idx = str(args[signal_type])
+                command_copy = command_copy.replace("$$i", idx)
             target_string = replace_block(
                 target_string, command_copy, interface, indent
             )
@@ -174,7 +182,7 @@ def replace_signals(interface, action, command, target_string, indent, args):
 
 
 def command_var_replace(
-    target_string, interface, indent, language, action_type
+    target_string, interface, indent, language, action_type, endpoint
 ):
     """
     This function replaces the variables in an interface action block. There
@@ -184,15 +192,16 @@ def command_var_replace(
 
     Args:
         target_string (str): The preceding string to append to
-        interface (???): An interface
+        interface (Interface) An interface
         indent (str): String to add as leading indent for each line
         language (str): Language of the testbench
         action_type (str): Identifier for the list of actions to perform
+        endpoint (Endpoint): The endpoint used to get the actions
 
     Returns:
         str: The updated target_string
     """
-    actions = interface.core.actions[language][action_type]
+    actions = endpoint.actions[language][action_type]
     for action in actions:
         # check if there is a command to repeat for a set of signals
         if isinstance(action, dict):

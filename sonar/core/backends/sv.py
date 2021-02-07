@@ -482,7 +482,7 @@ def set_interfaces(testbench_config, testbench):
         testbench, "SONAR_ELSE_IF_INTERFACE_IN", replace_str[:-1]
     )
     testbench = include.replace_in_testbenches(
-        testbench, "SONAR_MAX_ENDPOINTS", len(interfaces)
+        testbench, "SONAR_INTERFACES_COUNT", len(interfaces)
     )
     return testbench
 
@@ -666,14 +666,27 @@ def write_line(data_file, command, vector_id):
             txt += "0"
         data_file.append(txt)
     elif "signal" in command:
-        data_file.append(
-            "signal "
-            + str(command["signal"]["name"])
-            + " "
-            + str(1)
-            + " "
-            + str(command["signal"]["value"])
-        )
+        # TODO temporary hack for endpoint assignment
+        if "value2" in command["signal"]:
+            data_file.append(
+                "signal "
+                + str(command["signal"]["name"])
+                + " "
+                + str(2)
+                + " "
+                + str(command["signal"]["value"])
+                + " "
+                + str(command["signal"]["value2"])
+            )
+        else:
+            data_file.append(
+                "signal "
+                + str(command["signal"]["name"])
+                + " "
+                + str(1)
+                + " "
+                + str(command["signal"]["value"])
+            )
     elif "delay" in command:
         data_file.append(
             "delay "
@@ -921,10 +934,11 @@ def create_testbench(testbench_config, testbench, directory):
     testbench = set_signals(testbench_config, testbench, used_interfaces)
     testbench = set_interfaces(testbench_config, testbench)
     testbench = create_clocks(testbench_config, testbench)
+
     testbench = set_waits(testbench_config, testbench)
 
     testbench = sv_interfaces.add_interfaces(
-        testbench_config, testbench, directory, used_interfaces
+        testbench_config, testbench, directory
     )
 
     data_file, max_threads = write_data_file(testbench_config)

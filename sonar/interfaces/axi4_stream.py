@@ -2,9 +2,11 @@
 Defines an AXI4-Stream interface
 """
 
+import textwrap
 from math import ceil
 
 import sonar.base_types
+import sonar.endpoints
 import sonar.interfaces.base_interface as base
 
 
@@ -13,7 +15,7 @@ class AXI4Stream(base.BaseInterface):
     Defines the AXI-Stream interface for master and slave
     """
 
-    def __init__(self, name, direction, clock, flit=None, iClass=None):
+    def __init__(self, name, direction, clock, reset):
         """
         Initializes an empty AXI4Stream object
 
@@ -21,6 +23,7 @@ class AXI4Stream(base.BaseInterface):
             name (str): Name of the AXI4Stream interface
             direction (str): master|slave
             clock (str): Associated clock signal
+            reset (str): Associated reset signal
             data_width (int): Width of tdata
 
             flit (str, optional): Defaults to None. See below.
@@ -48,11 +51,16 @@ class AXI4Stream(base.BaseInterface):
         else:
             clock_name = clock
         self.clock = clock_name
-        self.flit = flit
+        if isinstance(reset, sonar.base_types.SignalPort):
+            reset_name = reset.name
+        else:
+            reset_name = reset
+        self.reset = reset_name
+        self.flit = None
         self.interface_type = "axi4_stream"
 
         # this variable needs to be camelCase (i.e. no underscores) for RegEx
-        self.iClass = iClass  # pylint: disable=invalid-name
+        self.iClass = None  # pylint: disable=invalid-name
 
     def init_signals(self, mode, data_width, upper_case=True):
         """
@@ -94,6 +102,25 @@ class AXI4Stream(base.BaseInterface):
         if upper_case:
             signals = base.to_upper_case(signals)
         self.add_signals(signals)
+
+    def add_endpoint(self, endpoint, **kwargs):
+        """
+        Add an endpoint to the AXI4-Stream interface
+
+        Args:
+            endpoint (str): Identifier for the endpoint
+            kwargs (?): Keyworded arguments for the endpoint
+        """
+        endpoint_obj = None
+        if endpoint == "manual":
+            if self.direction == "master":
+                endpoint_obj = EndpointManualSlave
+            else:
+                endpoint_obj = EndpointManualMaster
+        elif endpoint == "variable" and self.direction == "master":
+            endpoint_obj = EndpointVariableTready
+        if endpoint_obj:
+            super().add_endpoint(endpoint_obj, **kwargs)
 
     def write(self, thread, data, **kwargs):
         """
@@ -160,10 +187,6 @@ class AXI4Stream(base.BaseInterface):
                 "payload": payload,
             }
         }
-        if self.direction == "master" and "read" not in self.endpoint_modes:
-            self.endpoint_modes.append("read")
-        elif self.direction == "slave" and "write" not in self.endpoint_modes:
-            self.endpoint_modes.append("write")
         for command in payload:
             if "endpoint_mode" not in command:
                 if self.direction == "master":
@@ -421,19 +444,71 @@ class AXI4StreamCore(base.InterfaceCore):
         },
     }
 
+    args = {
+        "sv": {
+            "endpoint_mode": 0,
+            "tdata": 1,
+            "tlast": 2,
+            "tkeep": 3,
+            "tdest": 4,
+        },
+        "cpp": {"tdata": 0, "tlast": 1, "tkeep": 2, "tdest": 3},
+    }
+
+    @classmethod
+    def write_cpp(cls, packet, _identifier="NULL"):
+        """
+        Write one line of the C++ data file
+
+        Args:
+            packet (dict): The command to write
+
+        Returns:
+            str: The command as a line for the data file
+        """
+        return super().write_cpp(packet, str(packet["iClass"]))
+
+
+class EndpointManualMaster(sonar.endpoints.Endpoint):
+    """
+    EndpointManualMaster class
+    """
+
     actions = {
         "sv": {
             "write": [
                 "wait($$clock == 0);",
                 {
                     "signals": {"tdata", "tlast", "tkeep", "tdest"},
-                    "commands": ["$$name_$$signal = args[$$i];"],
+                    "commands": [
+                        "$$name_$$signal_endpoint[$$endpointIndex] = args[$$i];"
+                    ],
                 },
-                "$$name_tvalid = 1'b1;",
+                "$$name_tvalid_endpoint[$$endpointIndex] = 1'b1;",
                 "@(posedge $$clock iff $$name_tready === 1'b1);",
                 "@(negedge $$clock);",
-                "$$name_tvalid = 1'b0;",
+                "$$name_tvalid_endpoint[$$endpointIndex] = 1'b0;",
             ],
+        },
+        "cpp": {
+            "master": [
+                {
+                    "signals": {"tdata", "tlast", "tkeep", "tdest"},
+                    "commands": ["$$name_flit.$$signal = args[$$i];"],
+                },
+                "$$name.write($$name_flit);",
+            ],
+        },
+    }
+
+
+class EndpointManualSlave(sonar.endpoints.Endpoint):
+    """
+    EndpointManualSlave class
+    """
+
+    actions = {
+        "sv": {
             "read": [
                 "@(posedge $$clock iff $$name_tready && $$name_tvalid);",
                 {
@@ -449,13 +524,6 @@ class AXI4StreamCore(base.InterfaceCore):
             ],
         },
         "cpp": {
-            "master": [
-                {
-                    "signals": {"tdata", "tlast", "tkeep", "tdest"},
-                    "commands": ["$$name_flit.$$signal = args[$$i];"],
-                },
-                "$$name.write($$name_flit);",
-            ],
             "slave": [
                 "$$name.read($$name_flit);",
                 {
@@ -468,26 +536,75 @@ class AXI4StreamCore(base.InterfaceCore):
         },
     }
 
-    args = {
-        "sv": {
-            "endpoint_mode": 0,
-            "tdata": 1,
-            "tlast": 2,
-            "tkeep": 3,
-            "tdest": 4,
-        },
-        "cpp": {"tdata": 0, "tlast": 1, "tkeep": 2, "tdest": 3},
-    }
-
-    @classmethod
-    def write_cpp(cls, packet, identifier="NULL"):
+    @staticmethod
+    def instantiate(_indent, _tab_size):
         """
-        Write one line of the C++ data file
+        Any modules that this interface instantiates in SV.
 
         Args:
-            packet (dict): The command to write
+            indent (str): Indentation to add to each line
+            tab_size (str): One tab worth of indent
 
         Returns:
-            str: The command as a line for the data file
+            str: Updated ip_inst
         """
-        return super().write_cpp(packet, str(packet["iClass"]))
+        prologue = textwrap.dedent(
+            """\
+            always @(posedge $$clock) begin
+                if (~$$reset) begin
+                    $$name_tready_endpoint[$$endpointIndex] <= 0;
+                end else begin
+                    $$name_tready_endpoint[$$endpointIndex] <= 1;
+                end
+            end"""
+        )
+        return prologue
+
+    @classmethod
+    def asdict(cls):
+        tmp = super().asdict()
+        tmp["name"] = "EndpointManualSlave"
+        tmp["interface"] = "axi4_stream"
+        tmp["instantiate"] = True
+        return tmp
+
+
+class EndpointVariableTready(EndpointManualSlave):
+    """
+    EndpointVariableTready class
+    """
+
+    @staticmethod
+    def instantiate(_indent, _tab_size):
+        """
+        Any modules that this interface instantiates in SV.
+
+        Args:
+            _indent (str): Indentation to add to each line
+            _tab_size (str): One tab worth of indent
+
+        Returns:
+            str: Updated ip_inst
+        """
+        prologue = textwrap.dedent(
+            """\
+            logic [7:0] counter_$$endpointIndex;
+            always @(posedge $$clock) begin
+                if (~$$reset) begin
+                    $$name_tready_endpoint[$$endpointIndex] <= 0;
+                    counter_$$endpointIndex <= '0;
+                end else begin
+                    counter_$$endpointIndex <= counter_$$endpointIndex < $$limit ? counter_$$endpointIndex + 1 : '0;
+                end
+            end
+            assign $$name_tready_endpoint[$$endpointIndex] = $$reset && counter_$$endpointIndex < $$cycle;"""
+        )
+        return prologue
+
+    @classmethod
+    def asdict(cls):
+        tmp = super().asdict()
+        tmp["name"] = "EndpointManualSlave"
+        tmp["interface"] = "axi4_stream"
+        tmp["instantiate"] = True
+        return tmp

@@ -4,6 +4,7 @@ Generate the testbenches based on the configuration defined by the user.
 
 import logging
 import os
+from copy import deepcopy
 
 from sonar.core.backends.common import prologue
 from sonar.core.backends.cpp import create_testbench as create_cpp_testbench
@@ -176,6 +177,45 @@ def configure_prologue(testbench_config):
     return testbench_config
 
 
+def add_endpoint_combinations(testbench_config):
+    """
+    If there are multiple endpoints added, duplicate test vectors to capture
+    all the combinations
+
+    Args:
+        testbench_config (Testbench): The testbench
+
+    Returns:
+        Testbench: Updated testbench
+    """
+    interfaces = testbench_config.get_from_dut("interfaces")
+    for interface_index, interface in enumerate(interfaces):
+        vector_num = len(testbench_config.vectors)
+        if len(interface.endpoints) > 1:
+            vectors_copy = deepcopy(testbench_config.vectors)
+            for _ in range(len(interface.endpoints) - 1):
+                vectors_copy_2 = deepcopy(vectors_copy)
+                testbench_config.vectors.extend(vectors_copy_2)
+        # testbench_config.vectors = testbench_config.vectors * len(interface.endpoints)
+        for endpoint_index, _endpoint in enumerate(interface.endpoints):
+            row_index = endpoint_index * vector_num
+            for vector in testbench_config.vectors[
+                row_index : row_index + vector_num
+            ]:
+                vector.threads[0].commands.insert(
+                    0,
+                    {
+                        "signal": {
+                            "name": "endpoint_select",
+                            "value": interface_index,
+                            "value2": endpoint_index,
+                        }
+                    },
+                )
+
+    return testbench_config
+
+
 def legalize_config(testbench_config):
     """
     There are some additional automatic steps that must be performed on the
@@ -189,6 +229,7 @@ def legalize_config(testbench_config):
     """
     testbench_config = configure_prologue(testbench_config)
     testbench_config = finalize_waits(testbench_config)
+    testbench_config = add_endpoint_combinations(testbench_config)
     return testbench_config
 
 

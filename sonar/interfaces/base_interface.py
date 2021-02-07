@@ -30,20 +30,19 @@ class InterfaceCore(base.SonarObject):
     """
 
     signals: Dict[str, dict] = {}
-    actions: Dict[str, dict] = {}
     args: Dict[str, dict] = {}
     # text_replacements = None
     # write = None
 
-    @classmethod
-    def asdict(cls):
-        tmp = {}
-        tmp["signals"] = cls.signals
-        tmp["actions"] = cls.actions
-        tmp["args"] = cls.args
-        # tmp["text_replacements"] = cls.text_replacements
-        # tmp["write"] = cls.write
-        return tmp
+    @staticmethod
+    def import_packages_global():
+        """
+        Specifies any packages that must be imported once per testbench
+
+        Returns:
+            str: Packages to be imported
+        """
+        return ""
 
     @classmethod
     def write_sv(cls, packet):
@@ -93,6 +92,12 @@ class InterfaceCore(base.SonarObject):
             line += "\n"
         return line[:-1]
 
+    @classmethod
+    def asdict(cls):
+        tmp = {}
+        tmp["signals"] = cls.signals
+        return tmp
+
 
 class BaseInterface(base.SonarObject):
     """
@@ -111,10 +116,9 @@ class BaseInterface(base.SonarObject):
         self.name = name
         self.direction = direction
         self.signals = {}
-        self.index = 0
         self.core = core
+        self.endpoints = []
         self.interface_type = None
-        self.endpoint_modes = []
 
     @property
     def interfaceType(self):  # pylint: disable=invalid-name
@@ -178,15 +182,23 @@ class BaseInterface(base.SonarObject):
             return True
         return False
 
+    def add_endpoint(self, endpoint, **kwargs):
+        """
+        Add an endpoint to the interface
+
+        Args:
+            endpoint (Endpoint): The endpoint to add
+            kwargs (?): Keyworded arguments for the endpoint
+        """
+        endpoint.arguments = kwargs
+        self.endpoints.append(endpoint)
+
     def asdict(self):
         tmp = {}
         tmp["name"] = self.name
         tmp["direction"] = self.direction
+        tmp["core"] = self.core
         tmp["signals"] = {}
         for key, value in self.signals.items():
             tmp["signals"][key] = value.asdict()
-        tmp["index"] = self.index
-        # tmp["connection_mode"] = self.connection_mode
-        tmp["interface_type"] = self.interface_type
-        tmp["endpoint_modes"] = self.endpoint_modes
         return tmp

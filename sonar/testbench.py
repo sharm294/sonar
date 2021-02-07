@@ -193,6 +193,10 @@ class Testbench(base.SonarObject):
             return dut.ports.get_signals()
         if key == "wait_conditions":
             return self.wait_conditions
+        if key == "endpoints_flat":
+            endpoints = dut.endpoints.values()
+            # flatten the list of lists into one list
+            return [endpoint for sublist in endpoints for endpoint in sublist]
         return getattr(dut, key)
 
 
@@ -210,7 +214,7 @@ class Module(base.SonarObject):
         self.type = {"lang": "sv", "hls": None, "hls_version": None}
         self.ports = base.ModulePorts()
         self.parameters = []
-        self.interfaces_count = {}
+        self.endpoints = {}
 
     @classmethod
     def default(cls, name):
@@ -312,6 +316,8 @@ class Module(base.SonarObject):
 
         signal = base.ClockPort(name, 1, period, "input")
         self.ports.add_clock(signal)
+        # endpoint = sonar.endpoints.PeriodicSource(name, 0, period)
+        # self.add_endpoint(name, endpoint)
 
     def add_reset_port(self, name):
         """
@@ -344,6 +350,18 @@ class Module(base.SonarObject):
         port.readData = "rdata_" + str(port.index)
         port.agent = "master_agent_" + str(port.index)
         self.ports.add_interface(port)
+
+    def add_endpoint(self, port, endpoint):
+        """
+        Add an endpoint to a port on the module
+
+        Args:
+            port (str): Name of the port
+            endpoint (Endpoint): Endpoint to add
+        """
+        if port not in self.endpoints:
+            self.endpoints[port] = []
+        self.endpoints[port].append(endpoint)
 
     def asdict(self):
         """

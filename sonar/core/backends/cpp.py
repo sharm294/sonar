@@ -141,8 +141,15 @@ def set_interfaces(testbench_config, testbench):
         replace_str += (
             'if(!strcmp(interfaceType, "' + interface.name + '")){\n'
         )
+        # in cpp, only consider first endpoint
+        endpoint = interface.endpoints[0]
         replace_str = include.command_var_replace(
-            replace_str, interface, leading_spaces + TAB_SIZE, "cpp", "master"
+            replace_str,
+            interface,
+            leading_spaces + TAB_SIZE,
+            "cpp",
+            "master",
+            endpoint,
         )
         replace_str += leading_spaces + "}\n"
     testbench = include.replace_in_testbenches(
@@ -161,8 +168,15 @@ def set_interfaces(testbench_config, testbench):
         replace_str_2 += (
             'if(!strcmp(interfaceType, "' + interface.name + '")){\n'
         )
+        # in cpp, only consider first endpoint
+        endpoint = interface.endpoints[0]
         replace_str_2 = include.command_var_replace(
-            replace_str_2, interface, leading_spaces + TAB_SIZE, "cpp", "slave"
+            replace_str_2,
+            interface,
+            leading_spaces + TAB_SIZE,
+            "cpp",
+            "slave",
+            endpoint,
         )
         replace_str_2 += leading_spaces + "}\n"
     testbench = include.replace_in_testbenches(

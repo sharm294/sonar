@@ -47,7 +47,8 @@ module exerciser (
     time timeRef;
     bit [SONAR_FLAG_COUNT-1:0] flags = 0;
     bit [MAX_PARALLEL-1:0] errorCheck_latched = 0;
-    int retval[SONAR_MAX_ENDPOINTS];
+    int retval[SONAR_INTERFACES_COUNT];
+    int endpoint_select[SONAR_INTERFACES_COUNT];
 
     SONAR_INCLUDE_ENDPOINTS
 
@@ -71,6 +72,9 @@ module exerciser (
             SONAR_IF_ELSE_SIGNAL
             else if (interfaceType_par == "test_prologue") begin
                 test_prologue = args[0];
+            end
+            else if (interfaceType_par == "endpoint_select") begin
+                endpoint_select[args[0]] = args[1];
             end
             else begin
                 $display({"Unhandled case for signal type: ",

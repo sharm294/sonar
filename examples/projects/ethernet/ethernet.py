@@ -43,13 +43,15 @@ def test_testbench_ethernet(test_dir, monkeypatch):
     ethernet_tb.add_dut(dut)
 
     # create an AXI4Stream-M interface with the default side channels + tkeep
-    axis_out = AXI4Stream("m_eth_payload_axis", "master", "clk")
+    axis_out = AXI4Stream("m_eth_payload_axis", "master", "clk", "rst")
     axis_out.init_signals("tkeep", 64, False)
+    axis_out.add_endpoint("manual")
     dut.add_interface(axis_out)
 
     # create an AXI4Stream-S interface with the default side channels + tkeep
-    axis_in = AXI4Stream("s_axis", "slave", "clk")
+    axis_in = AXI4Stream("s_axis", "slave", "clk", "rst")
     axis_in.init_signals("tkeep", 64, False)
+    axis_in.add_endpoint("manual")
     dut.add_interface(axis_in)
 
     # test vectors ------------------------------------------------------------
@@ -108,6 +110,7 @@ def test_testbench_ethernet(test_dir, monkeypatch):
             "sv",
             True,
         )
+        print(ethernet_tb)  # used to test printing out the configuration
     else:
         ethernet_tb.generate_tb(__file__, "sv", True)
 

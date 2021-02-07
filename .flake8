@@ -1,3 +1,6 @@
 [flake8]
 # handled by black
 max-line-length = 160
+
+# falsely trips around whitespace in slices
+ignore = E203, W503

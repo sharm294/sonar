@@ -23,7 +23,7 @@ def test_testbench_hello_world(test_dir, monkeypatch):
     # and set the Module_Name metadata tag to 'hello_world' as specified by the
     # default constructor.
     hello_world_tb = Testbench.default("hello_world")
-    hello_world_tb.set_metadata("Timeout_Value", "1us")
+    hello_world_tb.set_metadata("Timeout_Value", "5us")
     hello_world_tb.set_metadata("Headers", ["hello_world.hpp"])
 
     # the DUT -----------------------------------------------------------------
@@ -38,18 +38,21 @@ def test_testbench_hello_world(test_dir, monkeypatch):
 
     # create an AXI-M interface with the default side channels and a data width
     # of 64 and add it to the DUT.
-    axis_out = AXI4Stream("axis_output", "master", clock)
+    axis_out = AXI4Stream("axis_output", "master", clock, reset)
     axis_out.init_signals("default", 64)
     axis_out.iClass = "axis_t"  # this field is needed for C++ TBs
     axis_out.flit = "axis_word_t"  # this field is needed for C++ TBs
+    axis_out.add_endpoint("manual")
+    axis_out.add_endpoint("variable", cycle=2, limit=10)
     dut.add_interface(axis_out)
 
     # create an AXI-S interface with the default side channels and a data width
     # of 64 and add it to the DUT.
-    axis_in = AXI4Stream("axis_input", "slave", clock)
+    axis_in = AXI4Stream("axis_input", "slave", clock, reset)
     axis_in.init_signals("default", 64)
     axis_in.iClass = "axis_t"
     axis_in.flit = "axis_word_t"
+    axis_in.add_endpoint("manual")
     dut.add_interface(axis_in)
 
     # create a S-AXILite interface, set up its register space and add it to the
@@ -58,14 +61,16 @@ def test_testbench_hello_world(test_dir, monkeypatch):
     ctrl_bus.add_register("enable", 0x10)  # register 'enable' is at addr 0x10
     ctrl_bus.set_address("4K", 0)  # address range is 4K at an offset of 0
     ctrl_bus.init_signals(mode="default", data_width=32, addr_width=5)
+    ctrl_bus.add_endpoint("manual")
     dut.add_interface(ctrl_bus)
 
     # test vectors ------------------------------------------------------------
 
     test_vector_0 = TestVector()
 
-    # this thread just initializes signals. It could be reused in many test
-    # vectors so it's created differently from the other threads.
+    # this thread just initializes signals. It is reused in all test
+    # vectors to initialize the test. The other threads wait until this thread
+    # finishes before starting.
     init_thread = Thread()
     init_thread.wait_negedge(clock.name)  # wait for negedge of the clock
     init_thread.init_signals()  # initialize all signals to zero
@@ -112,7 +117,7 @@ def test_testbench_hello_world(test_dir, monkeypatch):
             str(test_dir.testbench.hello_world.joinpath("hello_world.py")),
             "all",
         )
-        print(hello_world_tb)
+        print(hello_world_tb)  # used to test printing out the configuration
     else:
         hello_world_tb.generate_tb(__file__, "all", True)
 
