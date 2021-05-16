@@ -86,8 +86,8 @@ def test_testbench_ethernet(test_dir, monkeypatch):
     # this thread will validate the behavior of the DUT (i.e. the monitor)
     header_thr = test_vector_0.add_thread()
     header_thr.wait_level("m_eth_hdr_valid == 1")
-    header_thr.assert_value("m_eth_dest_mac == 48'h010203040506")
-    header_thr.assert_value("m_eth_src_mac == 48'h0708090a0b0c")
+    header_thr.assert_value("m_eth_src_mac == 48'h010203040506")
+    header_thr.assert_value("m_eth_dest_mac == 48'h0708090a0b0c")
     header_thr.assert_value("m_eth_type == 16'hbaba")
 
     payload_thr = test_vector_0.add_thread()

@@ -261,7 +261,7 @@ def sonar(
     """
     if legalize:
         testbench_config = legalize_config(testbench_config)
-        print(testbench_config)
+        # print(testbench_config)
 
     if isinstance(languages, str):
         if languages == "all":

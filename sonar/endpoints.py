@@ -2,6 +2,7 @@
 Signal endpoints that can be used in testbenches
 """
 
+import textwrap
 from typing import Dict
 
 import sonar.base_types as base
@@ -12,8 +13,35 @@ class Endpoint(base.SonarObject):
     Endpoint class
     """
 
-    actions: Dict[str, Dict] = {}
     arguments: Dict[str, int] = {}
+
+    @classmethod
+    def instantiate(cls, _indent):
+        """
+        Instantiate the endpoint logic
+
+        Args:
+            _indent (str): Indentation to add to each line
+
+        Returns:
+            str: Updated ip_inst
+        """
+        return ""
+
+    @classmethod
+    def asdict(cls):
+        tmp = {
+            "instantiate": False,
+        }
+        return tmp
+
+
+class InterfaceEndpoint(Endpoint):
+    """
+    InterfaceEndpoints class
+    """
+
+    actions: Dict[str, Dict] = {}
 
     @staticmethod
     def import_packages_local(_interface):
@@ -68,27 +96,53 @@ class Endpoint(base.SonarObject):
         """
         return None
 
-    @staticmethod
-    def instantiate(_indent, _tab_size):
+    @classmethod
+    def asdict(cls):
+        tmp = super().asdict()
+        tmp["import_packages_local"] = False
+        tmp["initial_blocks"] = False
+        tmp["source_tcl"] = False
+        tmp["prologue"] = False
+        return tmp
+
+
+class PeriodicSignal(Endpoint):
+    """
+    Endpoint class
+    """
+
+    @classmethod
+    def instantiate(cls, indent):
         """
         Any modules that this interface instantiates in SV.
 
         Args:
             indent (str): Indentation to add to each line
-            tab_size (str): One tab worth of indent
 
         Returns:
             str: Updated ip_inst
         """
-        return ""
+        name = cls.arguments["name"]
+        initial_value = cls.arguments["value"]
+        period = cls.arguments["period"]
+        block = textwrap.indent(
+            textwrap.dedent(
+                f"""\
+            initial begin
+                {name}_endpoint[$$endpointIndex] = {initial_value};
+                forever begin
+                    #({period}/2) {name}_endpoint[$$endpointIndex] <= ~{name}_endpoint[$$endpointIndex];
+                end
+            end
+            """
+            ),
+            indent,
+        )
+        return block
 
     @classmethod
     def asdict(cls):
         tmp = {
-            "import_packages_local": False,
-            "initial_blocks": False,
-            "source_tcl": False,
-            "prologue": False,
             "instantiate": False,
         }
         return tmp

@@ -502,31 +502,10 @@ def create_clocks(testbench_config, testbench):
     dut = testbench_config.modules["DUT"]
     clocks_in = dut.ports.get_clocks("input")
 
-    replace_str = ""
     largest_clock = ""
     largest_period = 0
     regex_int_str = re.compile(r"([0-9]+([\.][0-9]+)*)([a-z]+)")
-    leading_spaces = include.get_indentation("SONAR_INITIAL_CLOCK", testbench)
     for clock in clocks_in:
-        if replace_str != "":
-            replace_str += leading_spaces
-        replace_str += "initial begin\n"
-        replace_str += (
-            leading_spaces + include.TAB_SIZE + clock.name + " = 0;\n"
-        )
-        replace_str += leading_spaces + include.TAB_SIZE + "forever begin\n"
-        replace_str += (
-            leading_spaces
-            + include.TAB_SIZE
-            + include.TAB_SIZE
-            + "#("
-            + clock.period
-            + "/2) "
-            + clock.name
-            + " <= ~"
-            + clock.name
-            + ";\n"
-        )
         regex_match = regex_int_str.match(clock.period)
         if regex_match.group(3) == "s":
             period = float(regex_match.group(1)) * 10 ** 15
@@ -543,11 +522,6 @@ def create_clocks(testbench_config, testbench):
         if period > largest_period:
             largest_period = period
             largest_clock = clock.name
-        replace_str += leading_spaces + include.TAB_SIZE + "end\n"
-        replace_str += leading_spaces + "end\n"
-    testbench = include.replace_in_testbenches(
-        testbench, "SONAR_INITIAL_CLOCK", replace_str[:-1]
-    )
     testbench = include.replace_in_testbenches(
         testbench, "SONAR_VECTOR_CLOCK", largest_clock
     )
@@ -937,6 +911,7 @@ def create_testbench(testbench_config, testbench, directory):
 
     testbench = set_waits(testbench_config, testbench)
 
+    testbench = sv_interfaces.add_signal_endpoints(testbench_config, testbench)
     testbench = sv_interfaces.add_interfaces(
         testbench_config, testbench, directory
     )

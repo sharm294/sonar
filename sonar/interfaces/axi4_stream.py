@@ -56,6 +56,9 @@ class AXI4Stream(base.BaseInterface):
         else:
             reset_name = reset
         self.reset = reset_name
+        self.resetBool = reset_name  # pylint: disable=invalid-name
+        if self.reset.endswith("_n"):
+            self.resetBool = "~" + self.resetBool
         self.flit = None
         self.interface_type = "axi4_stream"
 
@@ -189,10 +192,7 @@ class AXI4Stream(base.BaseInterface):
         }
         for command in payload:
             if "endpoint_mode" not in command:
-                if self.direction == "master":
-                    command["endpoint_mode"] = 1
-                else:
-                    command["endpoint_mode"] = 0
+                command["endpoint_mode"] = 0
         thread._add_transaction(transaction)
 
     def _payload(self, existing_payload=None, **kwargs):
@@ -469,7 +469,7 @@ class AXI4StreamCore(base.InterfaceCore):
         return super().write_cpp(packet, str(packet["iClass"]))
 
 
-class EndpointManualMaster(sonar.endpoints.Endpoint):
+class EndpointManualMaster(sonar.endpoints.InterfaceEndpoint):
     """
     EndpointManualMaster class
     """
@@ -502,7 +502,7 @@ class EndpointManualMaster(sonar.endpoints.Endpoint):
     }
 
 
-class EndpointManualSlave(sonar.endpoints.Endpoint):
+class EndpointManualSlave(sonar.endpoints.InterfaceEndpoint):
     """
     EndpointManualSlave class
     """
@@ -537,13 +537,12 @@ class EndpointManualSlave(sonar.endpoints.Endpoint):
     }
 
     @staticmethod
-    def instantiate(_indent, _tab_size):
+    def instantiate(_indent):
         """
         Any modules that this interface instantiates in SV.
 
         Args:
             indent (str): Indentation to add to each line
-            tab_size (str): One tab worth of indent
 
         Returns:
             str: Updated ip_inst
@@ -551,7 +550,7 @@ class EndpointManualSlave(sonar.endpoints.Endpoint):
         prologue = textwrap.dedent(
             """\
             always @(posedge $$clock) begin
-                if (~$$reset) begin
+                if ($$resetBool) begin
                     $$name_tready_endpoint[$$endpointIndex] <= 0;
                 end else begin
                     $$name_tready_endpoint[$$endpointIndex] <= 1;
@@ -575,13 +574,12 @@ class EndpointVariableTready(EndpointManualSlave):
     """
 
     @staticmethod
-    def instantiate(_indent, _tab_size):
+    def instantiate(_indent):
         """
         Any modules that this interface instantiates in SV.
 
         Args:
             _indent (str): Indentation to add to each line
-            _tab_size (str): One tab worth of indent
 
         Returns:
             str: Updated ip_inst
@@ -590,14 +588,14 @@ class EndpointVariableTready(EndpointManualSlave):
             """\
             logic [7:0] counter_$$endpointIndex;
             always @(posedge $$clock) begin
-                if (~$$reset) begin
+                if ($$resetBool) begin
                     $$name_tready_endpoint[$$endpointIndex] <= 0;
                     counter_$$endpointIndex <= '0;
                 end else begin
                     counter_$$endpointIndex <= counter_$$endpointIndex < $$limit ? counter_$$endpointIndex + 1 : '0;
                 end
             end
-            assign $$name_tready_endpoint[$$endpointIndex] = $$reset && counter_$$endpointIndex < $$cycle;"""
+            assign $$name_tready_endpoint[$$endpointIndex] = ~($$resetBool) && counter_$$endpointIndex < $$cycle;"""
         )
         return prologue
 

@@ -1,6 +1,5 @@
-*****
 sonar
-*****
+=====
 
 +---------------+-----------------------+-----------------------+
 |    Service    |         Master        | Dev                   |
@@ -16,6 +15,14 @@ sonar
 
 *sonar* is a simulation/testbenching and project management
 infrastructure for Vivado projects.
+
+Future Work
+-----------
+
+This was developed during my masters and as I no longer use/need it,
+further work on *sonar* is not planned. While the current test cases pass (in my
+limited test setup [Ubuntu 16.04, Vivado 2017.2] at least), there are certainly
+bugs and incomplete features should you to deviate from the examples.
 
 Testbenching
 ============
@@ -49,7 +56,7 @@ The reach goal is to add hardware IP dependency information so *sonar*
 can go fetch dependencies from other repositories without duplicating
 code.
 
-For now, this is experimental.
+For now, this is experimental and used primarily to run the test suite.
 
 Usage
 =====

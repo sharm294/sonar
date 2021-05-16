@@ -55,7 +55,7 @@ def instantiate_endpoint_ips(testbench, endpoint):
     Returns:
         str: Updated testbench
     """
-    ip_inst = endpoint.instantiate("", include.TAB_SIZE)
+    ip_inst = endpoint.instantiate(include.TAB_SIZE)
     testbench += ip_inst + "\n"
     return testbench
 
@@ -80,6 +80,50 @@ def get_nth_index(dictionary, search_key):
     raise IndexError("dictionary index out of range")
 
 
+def add_signal_endpoints(testbench_config, testbench):
+    """
+    Add signals' sources/sinks
+
+    Args:
+        testbench_config (Testbench): The testbench configuration
+        testbench (str): The testbench being generated
+
+    Returns:
+        str: The testbench
+    """
+    endpoints_str = ""
+    leading_spaces = include.get_indentation(
+        "SONAR_INCLUDE_ENDPOINTS", testbench
+    )
+    all_endpoints = testbench_config.get_from_dut("endpoints")
+    for signal_index, endpoint_dict in enumerate(all_endpoints.items()):
+        signal, endpoints = endpoint_dict
+        if endpoints_str != "":
+            endpoints_str += leading_spaces
+        endpoints_str = (
+            f"logic [$$size-1:0] $$name_endpoint[{len(endpoints)}];\n"
+        )
+        endpoints_str += (
+            leading_spaces
+            + f"assign $$name = $$name_endpoint[{signal_index}];\n"
+        )
+
+        for endpoint in endpoints:
+            endpoints_str += endpoint.instantiate(leading_spaces)
+            endpoints_str = endpoints_str.replace(
+                "$$size", str(endpoint.arguments["size"])
+            )
+        endpoints_str = endpoints_str.replace("$$name", signal)
+        endpoints_str = endpoints_str.replace(
+            "$$endpointIndex", str(signal_index)
+        )
+
+    testbench = include.replace_in_testbenches(
+        testbench, "SONAR_INCLUDE_ENDPOINTS", endpoints_str[:-1]
+    )
+    return testbench
+
+
 def add_interfaces(testbench_config, testbench, directory):
     """
     Add interfaces and their sources/sinks
@@ -92,12 +136,12 @@ def add_interfaces(testbench_config, testbench, directory):
     Returns:
         str: The testbench
     """
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-statements
     endpoints_str = ""
     imports_str = ""
     used_interfaces = {}
     leading_spaces = include.get_indentation(
-        "SONAR_INCLUDE_ENDPOINTS", testbench
+        "SONAR_INCLUDE_INTERFACE_ENDPOINTS", testbench
     )
     interfaces = testbench_config.get_from_dut("interfaces")
     # endpoints = testbench_config.get_from_dut("endpoints_flat")
@@ -174,6 +218,9 @@ def add_interfaces(testbench_config, testbench, directory):
             endpoint_str = endpoint_str.replace(
                 "$$endpointIndex", str(endpoint_index)
             )
+        endpoint_str += f"{include.TAB_SIZE}else begin\n"
+        endpoint_str += include.TAB_SIZE * 2 + '$error("Unknown command!");\n'
+        endpoint_str += f"{include.TAB_SIZE}end\n"
 
         endpoint_str += "endtask\n"
         endpoint_str = include.replace_variables(endpoint_str, interface)
@@ -187,7 +234,7 @@ def add_interfaces(testbench_config, testbench, directory):
         endpoints_str += f'`include "{filename}"\n'
 
     testbench = include.replace_in_testbenches(
-        testbench, "SONAR_INCLUDE_ENDPOINTS", endpoints_str
+        testbench, "SONAR_INCLUDE_INTERFACE_ENDPOINTS", endpoints_str
     )
     testbench = include.replace_in_testbenches(
         testbench, "SONAR_IMPORT_PACKAGES", imports_str[:-1]

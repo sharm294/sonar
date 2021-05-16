@@ -5,6 +5,7 @@ Main module to define a testbench in sonar
 import json
 
 import sonar.base_types as base
+import sonar.endpoints
 from sonar.core import generate
 
 
@@ -316,8 +317,14 @@ class Module(base.SonarObject):
 
         signal = base.ClockPort(name, 1, period, "input")
         self.ports.add_clock(signal)
-        # endpoint = sonar.endpoints.PeriodicSource(name, 0, period)
-        # self.add_endpoint(name, endpoint)
+        endpoint = sonar.endpoints.PeriodicSignal
+        endpoint.arguments = {
+            "name": name,
+            "value": 1,
+            "period": period,
+            "size": 1,
+        }
+        self.add_endpoint(name, endpoint)
 
     def add_reset_port(self, name):
         """
@@ -374,6 +381,7 @@ class Module(base.SonarObject):
         module["name"] = self.name
         module["ports"] = self.ports.asdict()
         module["parameters"] = self.parameters
+        module["endpoints"] = self.endpoints
         module["type"] = self.type
         return module
 

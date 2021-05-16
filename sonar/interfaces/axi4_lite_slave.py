@@ -15,6 +15,8 @@ class AXI4LiteSlave(base.BaseInterface):
     Defines the AXI-Lite slave interface
     """
 
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(self, name, clock, reset):
         """
         Initialize an AXI4LiteSlave interface with the default options
@@ -36,6 +38,9 @@ class AXI4LiteSlave(base.BaseInterface):
             reset_name = reset
         self.clock = clock_name
         self.reset = reset_name
+        self.resetBool = reset_name  # pylint: disable=invalid-name
+        if self.reset.endswith("_n"):
+            self.resetBool = "~" + self.resetBool
         self.registers = []
         self.addresses = []
         self.addr_range = ""
@@ -302,7 +307,7 @@ class AXI4LiteSlaveCore(base.InterfaceCore):
         return imports
 
 
-class EndpointManual(sonar.endpoints.Endpoint):
+class EndpointManual(sonar.endpoints.InterfaceEndpoint):
     """
     Manual endpoint
     """
@@ -430,20 +435,19 @@ class EndpointManual(sonar.endpoints.Endpoint):
             tcl_file_gen.close()
 
     @staticmethod
-    def instantiate(indent, tab_size):
+    def instantiate(indent):
         """
         Any modules that this interface instantiates in SV.
 
         Args:
             interface (AXI4LiteSlave): AXI4LiteSlave
             indent (str): Indentation to add to each line
-            tab_size (str): One tab worth of indent
 
         Returns:
             str: Updated ip_inst
         """
         index = "$$endpointIndex"
-        one_tab = indent + tab_size
+        one_tab = indent + "    "
         ip_inst = indent
         ip_inst += "vip_bd_" + index + " vip_bd_" + index + "_i(\n"
         ip_inst += one_tab + ".aclk($$clock),\n"

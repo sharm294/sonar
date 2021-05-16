@@ -171,7 +171,9 @@ def replace_signals(interface, action, command, target_string, indent, args):
         if signal_type in action["signals"]:
             command_copy = copy.deepcopy(command)
             command_copy = command_copy.replace("$$signal", signal_type)
-            command_copy = command_copy.replace("$$size", str(signal.size))
+            command_copy = command_copy.replace(
+                "$$size", str(int(signal.size))
+            )
             if "$$i" in command_copy:
                 idx = str(args[signal_type])
                 command_copy = command_copy.replace("$$i", idx)

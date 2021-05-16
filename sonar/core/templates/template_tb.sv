@@ -51,6 +51,7 @@ module exerciser (
     int endpoint_select[SONAR_INTERFACES_COUNT];
 
     SONAR_INCLUDE_ENDPOINTS
+    SONAR_INCLUDE_INTERFACE_ENDPOINTS
 
     task automatic evaluateData(
         input logic [MAX_DATA_SIZE-1:0] args [MAX_ARG_NUM],
@@ -128,9 +129,6 @@ module exerciser (
             $finish;
         end
     endtask
-
-    //clock generation
-    SONAR_INITIAL_CLOCK
 
     initial begin
         int status;
